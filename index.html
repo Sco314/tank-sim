@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Interactive Tank & Valve Simulator</title>
+<style>
+  :root{
+    --bg:#0b1020;        /* page background */
+    --card:#121a33;      /* panel background */
+    --ink:#e9f0ff;       /* text */
+    --muted:#9bb0ff;     /* secondary text */
+    --accent:#7cc8ff;    /* UI accents */
+    --ok:#3ddc97;        /* open valve color */
+    --danger:#ff6b6b;    /* overflow warning */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font:500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+    color:var(--ink); background:radial-gradient(1200px 800px at 80% -10%, #1b2752 0%, var(--bg) 60%);
+    display:grid; place-items:center; padding:18px;
+  }
+  .app{width:min(1100px,95vw);}
+  .grid{display:grid; grid-template-columns: 1.2fr 1fr; gap:18px}
+  .card{background:var(--card); border:1px solid #1f2a50; border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  h1{font-size:20px; margin:0 0 8px}
+  .sub{color:var(--muted); font-size:13px}
+  button, input[type=range]{accent-color:var(--accent)}
+  .controls{display:grid; gap:14px}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .row .grow{flex:1}
+  .btn{background:#172144; color:var(--ink); border:1px solid #28366d; padding:10px 14px; border-radius:12px; cursor:pointer}
+  .btn:active{transform:translateY(1px)}
+  .btn.toggle[aria-pressed="true"]{background:#0e2e1f; border-color:#1d6f4b; color:#d6ffee}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:6px 10px; font-variant-numeric:tabular-nums}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .small{font-size:12px; color:var(--muted)}
+
+  /* SVG sizing */
+  .stage{display:flex; align-items:center; justify-content:center}
+  svg{width:100%; height:auto; display:block}
+
+  /* Flow animations controlled via CSS vars */
+  .flow { stroke-dasharray: 10 12; }
+  .flow.on { animation: dash var(--duration, 600ms) linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -22; } }
+
+  .valve{cursor:pointer; transition:.2s transform}
+  .valve:active{transform:scale(.98)}
+
+  .levelRect{ transition: height 120ms linear, y 120ms linear; }
+
+  .warn{color:var(--danger)}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="grid">
+
+      <!-- LEFT: Visualization -->
+      <div class="card stage">
+        <!-- ViewBox is a 1000x600 layout canvas -->
+        <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img">
+          <title id="title">Tank and Pipe Visualization</title>
+          <desc id="desc">Click the inlet valve to start or stop flow into the tank. Use the slider to adjust outlet flow. The blue rectangle shows the liquid level.</desc>
+
+          <!-- Back grid -->
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1" />
+            </pattern>
+            <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7cc8ff"/>
+              <stop offset="100%" stop-color="#2d8bd6"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4"/>
+
+          <!-- Inlet pipe (left) -->
+          <g id="inlet">
+            <path d="M 80 200 H 360 V 260 H 540" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"/>
+            <!-- Flow overlay along the horizontal segments -->
+            <path id="inletFlow" class="flow" d="M 80 200 H 360 M 360 260 H 540" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-dashoffset="0" />
+          </g>
+
+          <!-- Valve (clickable) -->
+          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" transform="translate(340, 190)">
+            <!-- body -->
+            <rect x="-24" y="-24" width="48" height="48" rx="8" fill="#1c2a55" stroke="#2e3f7a"/>
+            <!-- handle shows open/closed angle -->
+            <g id="handle" transform="rotate(0)">
+              <circle cx="0" cy="0" r="8" fill="#e9f0ff" />
+              <rect x="-6" y="-48" width="12" height="32" rx="4" fill="#3ddc97"/>
+            </g>
+            <text x="0" y="58" fill="#9bb0ff" font-size="14" text-anchor="middle">Inlet Valve</text>
+          </g>
+
+          <!-- Tank -->
+          <g id="tank" transform="translate(560, 120)">
+            <!-- shell -->
+            <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"/>
+            <!-- liquid level (animated by JS) -->
+            <rect id="levelRect" class="levelRect" x="6" y="330" width="308" height="0" fill="url(#liquid)"/>
+            <!-- tick marks -->
+            <g id="ticks" stroke="#334a90">
+              <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"/>
+              <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
+              <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
+              <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
+              <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
+              <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
+            </g>
+          </g>
+
+          <!-- Outlet pipe (right, from tank bottom) -->
+          <g id="outlet">
+            <path d="M 720 480 H 940" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"/>
+            <path id="outletFlow" class="flow" d="M 720 480 H 940" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" />
+          </g>
+
+          <!-- Readouts overlay -->
+          <g id="readouts" transform="translate(40, 40)" font-size="18" fill="#e9f0ff">
+            <text id="statusText" x="0" y="0">Valve: CLOSED</text>
+            <text id="levelText" x="0" y="28">Level: 0.0 %</text>
+            <text id="flowText" x="0" y="56">Qin: 0.00 | Qout: 0.00 (units/s)</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- RIGHT: Controls & Telemetry -->
+      <div class="card">
+        <h1>Controls</h1>
+        <div class="sub">Click the green valve or use the buttons. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross‑section area.</div>
+        <div class="controls" style="margin-top:12px">
+          <div class="row">
+            <button id="toggleValve" class="btn toggle" aria-pressed="false">Open Inlet Valve</button>
+            <button id="resetBtn" class="btn">Reset</button>
+            <button id="pauseBtn" class="btn" aria-pressed="false">Pause</button>
+          </div>
+
+          <div class="row">
+            <label for="qout" style="min-width:128px">Outlet flow</label>
+            <input id="qout" class="grow" type="range" min="0" max="1.2" step="0.01" value="0.35" />
+            <output id="qoutVal" style="width:64px; text-align:right">0.35</output>
+          </div>
+
+          <div class="row">
+            <label for="qin" style="min-width:128px">Inlet flow (open)</label>
+            <input id="qin" class="grow" type="range" min="0" max="1.5" step="0.01" value="0.80" />
+            <output id="qinVal" style="width:64px; text-align:right">0.80</output>
+          </div>
+
+          <div class="row">
+            <label for="area" style="min-width:128px">Tank area</label>
+            <input id="area" class="grow" type="range" min="0.5" max="3" step="0.01" value="1.20" />
+            <output id="areaVal" style="width:64px; text-align:right">1.20</output>
+          </div>
+
+          <div class="kv" style="margin-top:10px">
+            <div>Simulation step</div><div><span id="dtMs">16.7</span> ms (dynamic)</div>
+            <div>Tank height (max)</div><div>360 px visual (normalized 1.0)</div>
+            <div>Overflow limit</div><div id="overflowText">100%</div>
+          </div>
+
+          <p class="small" style="margin:8px 0 0">Tip: For a head‑dependent drain, enable “Gravity mode” below. Then Qout = k·√(level). The slider sets k.</p>
+          <div class="row">
+            <label><input type="checkbox" id="gravityMode" /> Gravity mode</label>
+            <input id="kcoeff" class="grow" type="range" min="0" max="1.5" step="0.01" value="0.60" />
+            <output id="kVal" style="width:64px; text-align:right">0.60</output>
+          </div>
+        </div>
+
+        <hr style="border-color:#22305f; opacity:.5; margin:14px 0">
+        <h1>Readouts</h1>
+        <div class="kv">
+          <div>Level</div><div><span id="levelPct">0.0</span>%</div>
+          <div>Volume</div><div><span id="vol">0.000</span> units</div>
+          <div>Qin</div><div><span id="qinRead">0.00</span> units/s</div>
+          <div>Qout</div><div><span id="qoutRead">0.00</span> units/s</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(() => {
+  // --- DOM refs ---
+  const inletFlow = document.getElementById('inletFlow');
+  const outletFlow = document.getElementById('outletFlow');
+  const handle = document.getElementById('handle');
+  const valve = document.getElementById('valve');
+  const statusText = document.getElementById('statusText');
+  const levelText = document.getElementById('levelText');
+  const flowText  = document.getElementById('flowText');
+  const levelRect = document.getElementById('levelRect');
+  const levelPctSpan = document.getElementById('levelPct');
+  const volSpan = document.getElementById('vol');
+  const qinSpan = document.getElementById('qinRead');
+  const qoutSpan = document.getElementById('qoutRead');
+  const dtMsSpan = document.getElementById('dtMs');
+
+  const qoutSlider = document.getElementById('qout');
+  const qoutVal = document.getElementById('qoutVal');
+  const qinSlider = document.getElementById('qin');
+  const qinVal = document.getElementById('qinVal');
+  const areaSlider = document.getElementById('area');
+  const areaVal = document.getElementById('areaVal');
+
+  const gravityMode = document.getElementById('gravityMode');
+  const kcoeff = document.getElementById('kcoeff');
+  const kVal = document.getElementById('kVal');
+
+  const toggleValveBtn = document.getElementById('toggleValve');
+  const resetBtn = document.getElementById('resetBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+
+  // --- Sim params ---
+  let inletOpen = false;    // state
+  let A = parseFloat(areaSlider.value); // cross-section area (units^2)
+  let Hmax = 1.0;           // normalized tank height (maps to 360px)
+  let V = 0.0;              // current volume (units^3)
+  let QinOpen = parseFloat(qinSlider.value);   // units/s when valve open
+  let QoutSet = parseFloat(qoutSlider.value);  // units/s
+
+  // Derived
+  const Vmax = () => A * Hmax;
+  const level = () => Math.min(1, Math.max(0, V / Vmax())); // 0..1
+
+  // --- Helpers ---
+  function updateUI(){
+    // Valve visuals
+    valve.setAttribute('aria-pressed', inletOpen);
+    toggleValveBtn.setAttribute('aria-pressed', inletOpen);
+    toggleValveBtn.textContent = inletOpen ? 'Close Inlet Valve' : 'Open Inlet Valve';
+    statusText.textContent = 'Valve: ' + (inletOpen ? 'OPEN' : 'CLOSED');
+
+    // Flow animations: speed proportional to flow
+    const qin = inletOpen ? QinOpen : 0.0;
+    const qout = gravityMode.checked ? (parseFloat(kcoeff.value) * Math.sqrt(level())) : QoutSet;
+
+    const inletSpeed = Math.max(0.2, 1.2 - qin); // smaller duration = faster
+    const outletSpeed = Math.max(0.2, 1.4 - qout);
+
+    if(qin > 0){
+      inletFlow.classList.add('on');
+      inletFlow.style.setProperty('--duration', `${inletSpeed * 600}ms`);
+    } else {
+      inletFlow.classList.remove('on');
+    }
+
+    if(qout > 0 && level() > 0){
+      outletFlow.classList.add('on');
+      outletFlow.style.setProperty('--duration', `${outletSpeed * 700}ms`);
+    } else {
+      outletFlow.classList.remove('on');
+    }
+
+    // Level rectangle (SVG is flipped: y grows downward)
+    const hPx = 360 * level();            // 0..360
+    const yPx = 120 + 360 - hPx;          // tank group is translated by (560,120)
+    levelRect.setAttribute('y', yPx);
+    levelRect.setAttribute('height', hPx);
+
+    // Readouts
+    const pct = (level()*100).toFixed(1);
+    levelText.textContent = `Level: ${pct} %`;
+    flowText.textContent  = `Qin: ${qin.toFixed(2)} | Qout: ${qout.toFixed(2)} (units/s)`;
+    levelPctSpan.textContent = pct;
+    volSpan.textContent = V.toFixed(3);
+    qinSpan.textContent = qin.toFixed(2);
+    qoutSpan.textContent = qout.toFixed(2);
+
+    // Overflow indicator
+    const overflow = V >= Vmax() - 1e-6;
+    document.getElementById('overflowText').classList.toggle('warn', overflow);
+  }
+
+  // --- Interaction wiring ---
+  function toggleValve(){ inletOpen = !inletOpen; updateUI(); }
+  valve.addEventListener('click', toggleValve);
+  valve.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); toggleValve(); } });
+  toggleValveBtn.addEventListener('click', toggleValve);
+
+  resetBtn.addEventListener('click', ()=>{
+    V = 0; inletOpen = false; updateUI();
+  });
+
+  let paused = false;
+  pauseBtn.addEventListener('click', ()=>{
+    paused = !paused; pauseBtn.setAttribute('aria-pressed', paused); pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  });
+
+  // Sliders
+  function bindRange(slider, out, on){
+    const sync = ()=>{ out.textContent = parseFloat(slider.value).toFixed(2); on && on(); };
+    slider.addEventListener('input', sync); slider.addEventListener('change', sync); sync();
+  }
+  bindRange(qoutSlider, qoutVal, ()=> { QoutSet = parseFloat(qoutSlider.value); });
+  bindRange(qinSlider,  qinVal,  ()=> { QinOpen = parseFloat(qinSlider.value); });
+  bindRange(areaSlider, areaVal, ()=> { A = parseFloat(areaSlider.value); });
+  bindRange(kcoeff,     kVal,    ()=> { /* k shown only */ });
+
+  // --- Simulation loop ---
+  let last = performance.now();
+  function step(now){
+    const dt = Math.min(0.1, (now - last) / 1000); // clamp to 100 ms for stability
+    last = now;
+    dtMsSpan.textContent = ((dt*1000).toFixed(1));
+
+    if(!paused){
+      // Mass balance
+      const Qin = inletOpen ? QinOpen : 0.0;
+      const Qout = gravityMode.checked ? (parseFloat(kcoeff.value) * Math.sqrt(level())) : QoutSet;
+      let dV = (Qin - Math.min(Qout, V > 0 ? Infinity : 0)) * dt; // avoid negative when empty
+      V += dV;
+      V = Math.max(0, Math.min(V, Vmax()));
+    }
+
+    updateUI();
+    requestAnimationFrame(step);
+  }
+
+  // Init
+  updateUI();
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
