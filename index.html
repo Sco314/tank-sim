@@ -101,7 +101,7 @@
             <!-- shell -->
             <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"/>
             <!-- liquid level (animated by JS) -->
-            <rect id="levelRect" class="levelRect" x="6" y="330" width="308" height="0" fill="url(#liquid)"/>
+            <rect id="levelRect" class="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)"/>
             <!-- tick marks -->
             <g id="ticks" stroke="#334a90">
               <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"/>
@@ -259,7 +259,7 @@
 
     // Level rectangle (SVG is flipped: y grows downward)
     const hPx = 360 * level();            // 0..360
-    const yPx = 120 + 360 - hPx;          // tank group is translated by (560,120)
+    const yPx = 360 - hPx;          // inside #tank group; no extra +120
     levelRect.setAttribute('y', yPx);
     levelRect.setAttribute('height', hPx);
 
