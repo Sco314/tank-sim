@@ -3,24 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OS&Y Gate Valve — Top View (Turns + Drag + Hold)</title>
+<title>OS&Y Gate Valve – Top View (Indicators auto-hide)</title>
 <style>
   :root{
     --bg:#0b1330;
     --cyan:#1fd4d6;
     --metal:#8a9199;
     --dark:#4a5058;
-
-    /* Model state */
-    --open: 0;              /* 0..1 (fraction open) */
-    --turns: 8;             /* total turns from shut to fully open */
-    --cw-to-close: 1;       /* 1 = CW closes, CCW opens (common); -1 flips */
-
-    /* Sizes */
-    --R: 90;                /* wheel radius px (SVG space) */
-    --gR: 104;              /* progress ring radius */
+    --open: 0;            /* 0..1 */
+    --turns: 8;           /* travel turns */
+    --cw-to-close: 1;     /* 1=CW closes (CCW opens) */
   }
-
   html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:#c9d1d9;
@@ -28,118 +21,121 @@
     display:grid; place-items:center;
   }
   .wrap{ position:relative; width:min(520px, 96vw); height:min(520px, 96vh); display:grid; place-items:center; }
+
   .valve{ position:relative; width:400px; aspect-ratio:1; }
   svg{ width:100%; height:100%; display:block; }
 
-  /* Wheel rotation in 'turn' units for exact turns */
-  .handwheel{
-    transform-origin: 250px 250px;
-    transform: rotate(calc(var(--cw-to-close) * var(--open) * var(--turns) * -1turn));
-  }
+  /* wheel rotation - 25% larger (r=90 -> r=112.5) */
+  .handwheel{ transform-origin: 250px 250px;
+    transform: rotate(calc(var(--cw-to-close) * var(--open) * var(--turns) * -1turn)); }
 
-  /* Progress ring */
-  .progress{
-    transform-origin: 250px 250px;
-  }
+  /* progress ring – hidden by default, fades in while interacting */
+  .progress{ transform-origin: 250px 250px; opacity:0; transition:opacity .2s ease; }
+  .progress.on{ opacity:.95; }
 
-  /* Buttons */
-  .arrow-btn{
-    position:absolute; top:50%; transform:translateY(-50%);
-    width:96px; height:96px; border:0; background:transparent; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  /* HUD (percent chip) – hidden until interacting */
+  .hud{ 
+    position:absolute; left:50%; top:-22px;
+    transform:translateX(-50%) translateY(8px);
+    opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease;
   }
-  .arrow-btn.left{ left:-120px; }
-  .arrow-btn.right{ right:-120px; }
-  .arrow-btn svg{ width:70px; height:70px; filter: drop-shadow(0 0 8px rgba(31,212,214,0.5)); }
-  .arrow-btn .label{ margin-top:8px; color:var(--cyan); font-size:16px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+  .hud.on{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-  /* HUD chip */
-  .hud{
-    position:absolute; left:50%; bottom:-56px; transform:translateX(-50%);
-    padding:.55rem 1rem; border-radius:999px; background:#1a2840; border:1px solid #2d3f5f;
-    display:flex; gap:14px; align-items:center; white-space:nowrap;
+  /* Centered, larger bubble */
+  .percent{ 
+    background:#1a2840; border:1px solid #2d3f5f; border-radius:999px; 
+    padding:.9rem 1.8rem;
+    font-size:32px; font-weight:600; color:#e6f8ff; line-height:1;
+    box-shadow:0 2px 10px rgba(0,0,0,.25);
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 220px;
   }
-  .hud b{ color:#e7f6ff }
+  .percent b{ font-weight:700; }
 
-  /* Drag overlay */
-  .drag-overlay{ position:absolute; inset:0; }
+  /* drag overlay to spin by hand or click to show indicators */
+  .drag-overlay{ position:absolute; inset:0; cursor:grab; }
+  .drag-overlay.dragging{ cursor:grabbing; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="valve" id="valve">
 
-    <!-- OPEN button -->
-    <button class="arrow-btn left" id="btnOpen" aria-label="Open valve">
-      <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
-        <path d="M 70 20 A 30 30 0 1 0 70 80" stroke="var(--cyan)" stroke-width="7" stroke-linecap="round"/>
-        <polyline points="70,80 58,72 70,64" fill="none" stroke="var(--cyan)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="label">Open</span>
-    </button>
-
-    <!-- CLOSE button -->
-    <button class="arrow-btn right" id="btnClose" aria-label="Close valve">
-      <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
-        <path d="M 30 20 A 30 30 0 1 1 30 80" stroke="var(--cyan)" stroke-width="7" stroke-linecap="round"/>
-        <polyline points="30,80 42,72 30,64" fill="none" stroke="var(--cyan)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="label">Close</span>
-    </button>
-
     <!-- Top-view valve -->
-    <svg viewBox="0 0 500 500" aria-labelledby="title">
+    <svg viewBox="0 0 500 500" aria-labelledby="title" id="svg">
       <title id="title">Top view OS&amp;Y gate valve</title>
       <defs>
         <linearGradient id="metalGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#a8adb5"/><stop offset="50%" stop-color="#7a8088"/><stop offset="100%" stop-color="#5a6169"/>
+          <stop offset="0%" stop-color="#a8adb5"/>
+          <stop offset="50%" stop-color="#7a8088"/>
+          <stop offset="100%" stop-color="#5a6169"/>
         </linearGradient>
         <radialGradient id="bonnetGrad" cx="0.5" cy="0.5">
-          <stop offset="0%" stop-color="#9fa5ad"/><stop offset="70%" stop-color="#7a8088"/><stop offset="100%" stop-color="#5a6169"/>
+          <stop offset="0%" stop-color="#9fa5ad"/>
+          <stop offset="70%" stop-color="#7a8088"/>
+          <stop offset="100%" stop-color="#5a6169"/>
         </radialGradient>
       </defs>
 
-      <!-- T body -->
+      <!-- Body with details -->
       <g id="body">
-        <rect x="30" y="220"  width="150" height="60" rx="8" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="2"/>
+        <!-- Left pipe connection -->
+        <rect x="30" y="220" width="150" height="60" rx="8" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="2"/>
+        <circle cx="60" cy="250" r="18" fill="none" stroke="#3a4048" stroke-width="2"/>
+        
+        <!-- Right pipe connection -->
         <rect x="320" y="220" width="150" height="60" rx="8" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="2"/>
+        <circle cx="440" cy="250" r="18" fill="none" stroke="#3a4048" stroke-width="2"/>
+        
+        <!-- Center body -->
         <rect x="180" y="180" width="140" height="140" rx="12" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="3"/>
+        
+        <!-- Bonnet flange -->
         <circle cx="250" cy="250" r="85" fill="url(#bonnetGrad)" stroke="#4a5058" stroke-width="2"/>
         <circle cx="250" cy="250" r="75" fill="none" stroke="#3a4048" stroke-width="1"/>
+        
+        <!-- Bolt holes (8 positions) -->
+        <circle cx="250" cy="170" r="6" fill="#2a3038"/>
+        <circle cx="250" cy="330" r="6" fill="#2a3038"/>
+        <circle cx="170" cy="250" r="6" fill="#2a3038"/>
+        <circle cx="330" cy="250" r="6" fill="#2a3038"/>
+        <circle cx="200" cy="200" r="6" fill="#2a3038"/>
+        <circle cx="300" cy="200" r="6" fill="#2a3038"/>
+        <circle cx="200" cy="300" r="6" fill="#2a3038"/>
+        <circle cx="300" cy="300" r="6" fill="#2a3038"/>
       </g>
 
-      <!-- Progress ring (under the wheel). We’ll control stroke-dashoffset in JS -->
-      <g class="progress" aria-hidden="true">
-        <circle id="progressTrack" cx="250" cy="250" r="104" fill="none" stroke="rgba(31,212,214,.12)" stroke-width="6"/>
-        <circle id="progressArc"   cx="250" cy="250" r="104" fill="none" stroke="var(--cyan)" stroke-width="6"
+      <!-- Progress ring (25% larger: r=104 -> r=130) -->
+      <g class="progress" id="progressGroup" aria-hidden="true">
+        <circle id="progressTrack" cx="250" cy="250" r="130" fill="none" stroke="rgba(31,212,214,.12)" stroke-width="6"/>
+        <circle id="progressArc"   cx="250" cy="250" r="130" fill="none" stroke="var(--cyan)" stroke-width="6"
                 stroke-linecap="round" stroke-dasharray="0 1"/>
       </g>
 
-      <!-- Wheel (rotates) -->
+      <!-- Wheel (25% larger: r=90 -> r=112.5, spokes scaled proportionally) -->
       <g class="handwheel">
-        <circle cx="250" cy="250" r="90" fill="none" stroke="var(--cyan)" stroke-width="12"/>
-        <!-- spoke trio -->
-        <line x1="250" y1="250" x2="250" y2="162" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
-        <line x1="250" y1="250" x2="325" y2="292" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
-        <line x1="250" y1="250" x2="175" y2="292" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
-        <!-- hub -->
-        <circle cx="250" cy="250" r="25" fill="url(#bonnetGrad)"/>
-        <circle cx="250" cy="250" r="18" fill="#6b7179"/>
-        <circle cx="250" cy="250" r="12" fill="#4a5058"/>
+        <!-- Outer rim -->
+        <circle cx="250" cy="250" r="112.5" fill="none" stroke="var(--cyan)" stroke-width="12"/>
+        
+        <!-- 3 spokes (scaled 25% larger) -->
+        <line x1="250" y1="250" x2="250" y2="142.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="250" y1="250" x2="343.75" y2="302.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="250" y1="250" x2="156.25" y2="302.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        
+        <!-- Center hub (scaled 25% larger) -->
+        <circle cx="250" cy="250" r="31.25" fill="url(#bonnetGrad)"/>
+        <circle cx="250" cy="250" r="22.5" fill="#6b7179"/>
+        <circle cx="250" cy="250" r="15" fill="#4a5058"/>
       </g>
-
-      <!-- Fixed pointer (so you can sense rotation direction) -->
-      <polygon points="250,118 244,134 256,134" fill="var(--cyan)" opacity=".8"/>
     </svg>
 
-    <!-- Drag overlay so you can spin the wheel by hand -->
-    <div class="drag-overlay" id="dragOverlay" aria-hidden="true"></div>
-
-    <!-- HUD -->
-    <div class="hud" aria-live="polite">
-      <span>Open: <b id="pct">0%</b></span>
-      <span>Turns: <b id="turns">0.0</b> / <b id="turnsMax">8</b></span>
+    <!-- Percent HUD -->
+    <div class="hud" id="hud">
+      <div class="percent">Open: <b id="pct">0%</b></div>
     </div>
+
+    <!-- Drag/Click overlay -->
+    <div class="drag-overlay" id="drag"></div>
   </div>
 </div>
 
@@ -147,131 +143,82 @@
 (() => {
   const root   = document.documentElement;
   const pctEl  = document.getElementById('pct');
-  const tEl    = document.getElementById('turns');
-  const tMaxEl = document.getElementById('turnsMax');
-  const btnOpen  = document.getElementById('btnOpen');
-  const btnClose = document.getElementById('btnClose');
-  const overlay  = document.getElementById('dragOverlay');
+  const overlay= document.getElementById('drag');
+  const hud    = document.getElementById('hud');
+  const progressArc   = document.getElementById('progressArc');
+  const progressGroup = document.getElementById('progressGroup');
 
-  const progressArc = document.getElementById('progressArc');
-
-  // Config
-  let TOTAL_TURNS = parseFloat(getComputedStyle(root).getPropertyValue('--turns')) || 8;
-  tMaxEl.textContent = TOTAL_TURNS.toFixed(0);
-
-  // Progress ring setup
-  const R = 104; // must match SVG r
+  const TOTAL_TURNS = parseFloat(getComputedStyle(root).getPropertyValue('--turns')) || 8;
+  const R = 130; // Updated to match new radius
   const C = 2 * Math.PI * R;
   progressArc.setAttribute('stroke-dasharray', `${C} ${C}`);
-  function setProgress(f){
-    const off = C * (1 - f);
-    progressArc.setAttribute('stroke-dashoffset', off);
-  }
 
-  function getOpen(){
-    return parseFloat(getComputedStyle(root).getPropertyValue('--open')) || 0;
+  let hideTimer = null;
+  function showIndicators() {
+    hud.classList.add('on');
+    progressGroup.classList.add('on');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideIndicators, 10000);
   }
+  function hideIndicators(){ hud.classList.remove('on'); progressGroup.classList.remove('on'); }
+
+  function setProgress(f){ progressArc.setAttribute('stroke-dashoffset', C * (1 - f)); }
+  function getOpen(){ return parseFloat(getComputedStyle(root).getPropertyValue('--open')) || 0; }
   function setOpenFraction(f){
     f = Math.max(0, Math.min(1, f));
     root.style.setProperty('--open', f);
     pctEl.textContent = Math.round(f*100) + '%';
-    tEl.textContent   = (f * TOTAL_TURNS).toFixed(1);
     setProgress(f);
-    ValveTop._onChange?.(f); // callback for your sim if you want it
+    showIndicators();
+    ValveTop._onChange?.(f);
   }
 
-  function animateTo(target, ms=900){
-    const start = getOpen();
-    const t0 = performance.now();
-    function tick(t){
-      const k = Math.min(1, (t - t0)/ms);
-      const f = start + (target - start)*k;
-      setOpenFraction(f);
-      if(k<1) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
+  // CLICK (no drag) -> show indicators for 10s
+  overlay.addEventListener('click', () => { showIndicators(); });
 
-  // Hold-to-open/close (smooth)
-  function hold(step){
-    let raf = null, prev = performance.now();
-    function loop(now){
-      const dt = Math.min(64, now - prev); // ms clamp
-      prev = now;
-      const f = getOpen() + step * (dt/1000); // step is fraction/sec
-      setOpenFraction(f);
-      raf = requestAnimationFrame(loop);
-    }
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }
-  let cancelHold = null;
-  btnOpen.addEventListener('pointerdown', e => { e.preventDefault(); cancelHold?.(); cancelHold = hold(+0.5); });  // full travel ~2s
-  btnClose.addEventListener('pointerdown', e => { e.preventDefault(); cancelHold?.(); cancelHold = hold(-0.5); });
-  ['pointerup','pointercancel','pointerleave'].forEach(type => {
-    btnOpen.addEventListener(type, () => { cancelHold?.(); cancelHold=null; });
-    btnClose.addEventListener(type, () => { cancelHold?.(); cancelHold=null; });
-  });
-
-  // Click = step 1/2 turn
-  btnOpen.addEventListener('click',  () => animateTo(Math.min(1, getOpen() + 0.5/TOTAL_TURNS), 250));
-  btnClose.addEventListener('click', () => animateTo(Math.max(0, getOpen() - 0.5/TOTAL_TURNS), 250));
-
-  // Drag the wheel to rotate
+  // DRAG to rotate
   overlay.addEventListener('pointerdown', onDragStart);
   function onDragStart(e){
     overlay.setPointerCapture(e.pointerId);
+    overlay.classList.add('dragging');
+    showIndicators();
     const box = overlay.getBoundingClientRect();
-    const cx = box.left + box.width/2;
-    const cy = box.top  + box.height/2;
+    const cx = box.left + box.width/2, cy = box.top + box.height/2;
     let prevA = Math.atan2(e.clientY - cy, e.clientX - cx);
     let f = getOpen();
-
     function move(ev){
       const a = Math.atan2(ev.clientY - cy, ev.clientX - cx);
       let d = a - prevA;
-      // wrap to [-pi, pi]
       if(d >  Math.PI) d -= 2*Math.PI;
       if(d < -Math.PI) d += 2*Math.PI;
       prevA = a;
-
-      // Convert angle delta to fraction delta
       const dir = parseFloat(getComputedStyle(root).getPropertyValue('--cw-to-close')) || 1;
-      f -= dir * d / (2*Math.PI) / TOTAL_TURNS; // CW closes
+      f -= dir * d / (2*Math.PI) / TOTAL_TURNS;
       setOpenFraction(f);
     }
-    function end(ev){
+    function end(){
       overlay.releasePointerCapture(e.pointerId);
+      overlay.classList.remove('dragging');
       overlay.removeEventListener('pointermove', move);
       overlay.removeEventListener('pointerup', end);
       overlay.removeEventListener('pointercancel', end);
+      showIndicators();
     }
     overlay.addEventListener('pointermove', move);
     overlay.addEventListener('pointerup', end);
     overlay.addEventListener('pointercancel', end);
   }
 
-  // Keyboard: ← open, → close, Home shut, End open, Space toggle
-  window.addEventListener('keydown', (e) => {
-    if(['ArrowLeft','ArrowRight','Home','End',' '].includes(e.key)) e.preventDefault();
-    const step = 1/TOTAL_TURNS; // one turn per keypress
-    if(e.key==='ArrowLeft')  animateTo(Math.min(1, getOpen()+step), 120);
-    if(e.key==='ArrowRight') animateTo(Math.max(0, getOpen()-step), 120);
-    if(e.key==='Home') animateTo(0, 400);
-    if(e.key==='End')  animateTo(1, 400);
-    if(e.key===' ')    animateTo(getOpen()<0.5?1:0, 700);
-  });
-
-  // Expose a tiny API for Tank Sim
+  // API
   window.ValveTop = {
-    set: (f)=> setOpenFraction(f),
-    open: ()=> animateTo(1, 900),
-    close: ()=> animateTo(0, 900),
-    onChange: (fn)=> (ValveTop._onChange = fn)
+    set:(f)=> setOpenFraction(f),
+    open:()=> setOpenFraction(1),
+    close:()=> setOpenFraction(0),
+    onChange:(fn)=> (ValveTop._onChange = fn)
   };
 
   // init
-  setOpenFraction(0);
+  setProgress(0);
 })();
 </script>
 </body>
