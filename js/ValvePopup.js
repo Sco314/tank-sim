@@ -1,7 +1,5 @@
 /**
- * ValvePopup.js - Modal popup for interactive valve control
- * 
- * Displays valve.html in an iframe and connects it to the simulation
+ * ValvePopup.js - Modal popup for interactive valve control (FIXED)
  */
 
 class ValvePopup {
@@ -9,7 +7,8 @@ class ValvePopup {
     this.onValveChange = onValveChange;
     this.isOpen = false;
     this.autoCloseTimer = null;
-    this.autoCloseDelay = 7000; // 7 seconds
+    this.autoCloseDelay = 7000;
+    this.iframeReady = false;
     
     this._createModal();
     this._setupEventListeners();
@@ -72,14 +71,6 @@ class ValvePopup {
       justify-content: center;
       transition: all 0.2s ease;
     `;
-    this.closeBtn.onmouseover = () => {
-      this.closeBtn.style.background = 'rgba(255, 107, 107, 1)';
-      this.closeBtn.style.transform = 'scale(1.1)';
-    };
-    this.closeBtn.onmouseout = () => {
-      this.closeBtn.style.background = 'rgba(255, 107, 107, 0.9)';
-      this.closeBtn.style.transform = 'scale(1)';
-    };
 
     // Create title bar
     this.titleBar = document.createElement('div');
@@ -115,6 +106,14 @@ class ValvePopup {
   _setupEventListeners() {
     // Close button
     this.closeBtn.addEventListener('click', () => this.close());
+    this.closeBtn.addEventListener('mouseenter', () => {
+      this.closeBtn.style.background = 'rgba(255, 107, 107, 1)';
+      this.closeBtn.style.transform = 'scale(1.1)';
+    });
+    this.closeBtn.addEventListener('mouseleave', () => {
+      this.closeBtn.style.background = 'rgba(255, 107, 107, 0.9)';
+      this.closeBtn.style.transform = 'scale(1)';
+    });
 
     // Click outside to close
     this.overlay.addEventListener('click', (e) => {
@@ -130,26 +129,64 @@ class ValvePopup {
       }
     });
 
-    // Listen for messages from iframe
-    window.addEventListener('message', (e) => {
-      if (e.data.type === 'valve-change') {
-        this._resetAutoCloseTimer();
-        if (this.onValveChange) {
-          this.onValveChange(e.data.value);
-        }
-      } else if (e.data.type === 'valve-ready') {
-        console.log('Valve iframe ready');
-      }
-    });
-
-    // Reset timer on any interaction with the modal
+    // Reset timer on interactions
     this.container.addEventListener('mouseenter', () => this._resetAutoCloseTimer());
     this.container.addEventListener('mousemove', () => this._resetAutoCloseTimer());
     this.container.addEventListener('touchstart', () => this._resetAutoCloseTimer());
+    this.container.addEventListener('click', () => this._resetAutoCloseTimer());
+
+    // Iframe load event
+    this.iframe.addEventListener('load', () => {
+      console.log('Iframe loaded');
+      this._setupIframeConnection();
+    });
+  }
+
+  _setupIframeConnection() {
+    // Poll for ValveTop API to be ready
+    const checkReady = () => {
+      try {
+        if (this.iframe.contentWindow && this.iframe.contentWindow.ValveTop) {
+          console.log('ValveTop API found!');
+          this.iframeReady = true;
+          
+          // Set up the callback
+          this.iframe.contentWindow.ValveTop.onChange((value) => {
+            console.log('Valve changed:', value);
+            this._resetAutoCloseTimer();
+            if (this.onValveChange) {
+              this.onValveChange(value);
+            }
+          });
+          
+          return true;
+        }
+      } catch (e) {
+        console.error('Error accessing iframe:', e);
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (!checkReady()) {
+      // If not ready, poll every 100ms for up to 3 seconds
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (checkReady() || attempts > 30) {
+          clearInterval(interval);
+          if (attempts > 30) {
+            console.error('Failed to connect to valve iframe');
+          }
+        }
+      }, 100);
+    }
   }
 
   open(currentValue = 0) {
+    console.log('Opening valve popup with value:', currentValue);
     this.isOpen = true;
+    this.currentValue = currentValue;
     this.overlay.style.display = 'flex';
     
     // Trigger animations
@@ -158,24 +195,38 @@ class ValvePopup {
       this.container.style.transform = 'scale(1)';
     });
 
-    // Wait for iframe to load, then set initial value
-    if (this.iframe.contentWindow) {
-      this.iframe.onload = () => {
-        this._sendToValve('set-value', currentValue);
-        this._setupValveCallback();
-      };
+    // If iframe is already ready, set the value
+    if (this.iframeReady) {
+      this._setValveValue(currentValue);
+    } else {
+      // Wait for ready and then set value
+      const waitForReady = setInterval(() => {
+        if (this.iframeReady) {
+          clearInterval(waitForReady);
+          this._setValveValue(currentValue);
+        }
+      }, 50);
       
-      // If already loaded, set immediately
-      if (this.iframe.contentDocument && this.iframe.contentDocument.readyState === 'complete') {
-        this._sendToValve('set-value', currentValue);
-        this._setupValveCallback();
-      }
+      // Timeout after 3 seconds
+      setTimeout(() => clearInterval(waitForReady), 3000);
     }
 
     this._resetAutoCloseTimer();
   }
 
+  _setValveValue(value) {
+    try {
+      if (this.iframe.contentWindow && this.iframe.contentWindow.ValveTop) {
+        console.log('Setting valve to:', value);
+        this.iframe.contentWindow.ValveTop.set(value);
+      }
+    } catch (e) {
+      console.error('Error setting valve value:', e);
+    }
+  }
+
   close() {
+    console.log('Closing valve popup');
     this.isOpen = false;
     this.overlay.style.opacity = '0';
     this.container.style.transform = 'scale(0.9)';
@@ -187,47 +238,11 @@ class ValvePopup {
     this._clearAutoCloseTimer();
   }
 
-  _setupValveCallback() {
-    // Inject code into iframe to send messages back to parent
-    const script = this.iframe.contentDocument.createElement('script');
-    script.textContent = `
-      if (window.ValveTop) {
-        window.ValveTop.onChange((value) => {
-          window.parent.postMessage({
-            type: 'valve-change',
-            value: value
-          }, '*');
-        });
-        
-        // Notify parent that valve is ready
-        window.parent.postMessage({
-          type: 'valve-ready'
-        }, '*');
-      }
-    `;
-    this.iframe.contentDocument.body.appendChild(script);
-  }
-
-  _sendToValve(command, value) {
-    if (this.iframe.contentWindow && this.iframe.contentWindow.ValveTop) {
-      switch (command) {
-        case 'set-value':
-          this.iframe.contentWindow.ValveTop.set(value);
-          break;
-        case 'open':
-          this.iframe.contentWindow.ValveTop.open();
-          break;
-        case 'close':
-          this.iframe.contentWindow.ValveTop.close();
-          break;
-      }
-    }
-  }
-
   _resetAutoCloseTimer() {
     this._clearAutoCloseTimer();
     this.autoCloseTimer = setTimeout(() => {
       if (this.isOpen) {
+        console.log('Auto-closing valve popup');
         this.close();
       }
     }, this.autoCloseDelay);
@@ -238,10 +253,6 @@ class ValvePopup {
       clearTimeout(this.autoCloseTimer);
       this.autoCloseTimer = null;
     }
-  }
-
-  setAutoCloseDelay(ms) {
-    this.autoCloseDelay = ms;
   }
 }
 
