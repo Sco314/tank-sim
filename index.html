@@ -42,25 +42,23 @@
   .flow.on { animation: dash var(--duration, 600ms) linear infinite; }
   @keyframes dash { to { stroke-dashoffset: -22; } }
   
-  /* Enhanced valve button styling - larger clickable area with hover effect */
+  /* Enhanced valve button styling - NO TRANSFORMS, just visual feedback */
   .valve{
-    cursor:pointer; 
-    transition:.2s transform, .2s opacity;
+    cursor: pointer;
+    transform: none !important; /* Force no transform on hover */
   }
-  .valve:hover{
-    transform:scale(1.05);
-    opacity: 0.9;
+  .valve:hover, .valve:active, .valve:focus {
+    transform: none !important; /* Absolutely no transforms */
   }
-  .valve:active{
-    transform:scale(.98);
+  .valve .valve-bg{
+    transition: opacity 0.2s ease, stroke-width 0.2s ease;
   }
-  /* Pulse animation hint */
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+  .valve:hover .valve-bg{
+    opacity: 1 !important;
+    stroke-width: 3;
   }
-  .valve:hover .valve-bg {
-    animation: pulse 1.5s ease-in-out infinite;
+  .valve:active .valve-bg{
+    fill: #2a3f7a !important;
   }
   
   .levelRect{ transition: height 120ms linear, y 120ms linear; }
@@ -93,26 +91,26 @@
             <path id="inletFlow" class="flow" d="M 80 200 H 360 M 360 260 H 540" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-dashoffset="0" />
           </g>
           
-          <!-- ENHANCED: Larger clickable valve area with invisible hitbox -->
-          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open valve control" transform="translate(340, 190)">
-            <!-- Large invisible hitbox for easier clicking (80x120px) -->
-            <rect class="valve-hitbox" x="-40" y="-60" width="80" height="120" fill="transparent" stroke="none" pointer-events="all"/>
+          <!-- FIXED: Valve positioned at midpoint of left horizontal pipe -->
+          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open valve control" transform="translate(220, 230)">
+            <!-- Large invisible hitbox for easier clicking (100x100px centered) -->
+            <rect class="valve-hitbox" x="-50" y="-50" width="100" height="100" fill="transparent" stroke="none"/>
             
             <!-- Visual background with highlight -->
-            <rect class="valve-bg" x="-28" y="-28" width="56" height="56" rx="12" fill="#1c2a55" stroke="#3ddc97" stroke-width="2" opacity="0.8"/>
+            <rect class="valve-bg" x="-28" y="-28" width="56" height="56" rx="12" fill="#1c2a55" stroke="#3ddc97" stroke-width="2" opacity="0.6"/>
             
             <!-- Valve body -->
             <rect x="-24" y="-24" width="48" height="48" rx="8" fill="#1c2a55" stroke="#2e3f7a" stroke-width="2"/>
             
             <!-- Handle that rotates -->
-            <g id="handle" transform="rotate(0)">
+            <g id="handle" transform="rotate(0)" pointer-events="none">
               <circle cx="0" cy="0" r="8" fill="#e9f0ff" />
               <rect x="-6" y="-48" width="12" height="32" rx="4" fill="#3ddc97"/>
             </g>
             
             <!-- Label -->
-            <text x="0" y="66" fill="#9bb0ff" font-size="14" text-anchor="middle" font-weight="600">Inlet Valve</text>
-            <text x="0" y="82" fill="#7cc8ff" font-size="11" text-anchor="middle">(click to control)</text>
+            <text x="0" y="66" fill="#9bb0ff" font-size="14" text-anchor="middle" font-weight="600" pointer-events="none">Inlet Valve</text>
+            <text x="0" y="82" fill="#7cc8ff" font-size="11" text-anchor="middle" pointer-events="none">(click to control)</text>
           </g>
           
           <g id="tank" transform="translate(560, 120)">
