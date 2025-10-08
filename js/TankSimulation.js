@@ -1,7 +1,7 @@
 /**
  * TankSimulation.js - Refactored tank simulator with valve popup integration
  * 
- * Same functionality as original, now with interactive valve popup
+ * Now with live valve updates and proper valve icon button behavior
  */
 
 // ============================================================================
@@ -162,7 +162,7 @@ class TankSimulation {
     this.kCoeff = 0.6;
     this.valveOpenFraction = 0; // 0 to 1, controlled by popup valve
     
-    // Create valve popup
+    // Create valve popup with callback
     this.valvePopup = new ValvePopup((value) => {
       this._onValvePopupChange(value);
     });
@@ -173,6 +173,8 @@ class TankSimulation {
     // Start simulation
     this.lastTime = performance.now();
     this._run();
+    
+    console.log('Tank Simulation Started - Valve popup integrated');
   }
 
   _getDOMElements() {
@@ -212,8 +214,11 @@ class TankSimulation {
   }
 
   _setupEventListeners() {
-    // Valve toggle - open popup instead of simple toggle
-    this.dom.valve.addEventListener('click', () => this._openValvePopup());
+    // FIXED: Valve icon in SVG now opens popup (not toggle)
+    this.dom.valve.addEventListener('click', () => {
+      console.log('Valve icon clicked - opening popup');
+      this._openValvePopup();
+    });
     this.dom.valve.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -268,18 +273,23 @@ class TankSimulation {
     this.inletValve.toggle();
     // Update valve open fraction to match binary state
     this.valveOpenFraction = this.inletValve.isOpen ? 1 : 0;
+    console.log('Quick toggle - valve now:', this.valveOpenFraction);
   }
 
   _openValvePopup() {
-    // Open the popup with current valve position
+    // Open the popup with current valve position (maintains last position)
+    console.log('Opening valve popup with current position:', this.valveOpenFraction);
     this.valvePopup.open(this.valveOpenFraction);
   }
 
   _onValvePopupChange(openFraction) {
+    // FIXED: This is called live as the valve wheel is turned
+    console.log('Valve changed to:', openFraction);
+    
     // Update simulation based on valve position (0 to 1)
     this.valveOpenFraction = openFraction;
     
-    // Update binary valve state for compatibility
+    // Update binary valve state for compatibility with views
     this.inletValve.isOpen = (openFraction > 0.05);
   }
 
@@ -287,6 +297,7 @@ class TankSimulation {
     this.tank.reset();
     this.inletValve.isOpen = false;
     this.valveOpenFraction = 0;
+    console.log('Simulation reset');
   }
 
   _togglePause() {
@@ -357,7 +368,7 @@ let simulation;
 
 window.addEventListener('DOMContentLoaded', () => {
   simulation = new TankSimulation();
-  console.log('Tank Simulation Started with Valve Popup Integration');
+  console.log('Tank Simulation Started with Live Valve Control');
 });
 
 // Expose for debugging
