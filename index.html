@@ -21,20 +21,6 @@
     color:var(--ink); background:radial-gradient(1200px 800px at 80% -10%, #1b2752 0%, var(--bg) 60%);
     display:grid; place-items:center; padding:18px;
   }
-
-<button onclick="testPopup()" style="position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;">TEST POPUP</button>
-<script>
-function testPopup() {
-  console.log('Test button clicked');
-  if (window.ValvePopup) {
-    const popup = new ValvePopup((value) => console.log('Valve value:', value));
-    popup.open(0.5);
-  } else {
-    console.error('ValvePopup not loaded!');
-  }
-}
-</script>
-  
   .app{width:min(1100px,95vw);}
   .grid{display:grid; grid-template-columns: 1.2fr 1fr; gap:18px}
   .card{background:var(--card); border:1px solid #1f2a50; border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
@@ -62,6 +48,9 @@ function testPopup() {
 </style>
 </head>
 <body>
+  <!-- TEST BUTTON - Remove after testing -->
+  <button onclick="testPopup()" style="position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;border:2px solid white;border-radius:8px;font-weight:bold;cursor:pointer;">TEST POPUP</button>
+
   <div class="app">
     <div class="grid">
       <!-- LEFT: Visualization -->
@@ -167,5 +156,20 @@ function testPopup() {
   <!-- Load organized JavaScript -->
   <script src="js/ValvePopup.js"></script>
   <script src="js/TankSimulation.js"></script>
+  
+  <!-- Test popup function -->
+  <script>
+  function testPopup() {
+    console.log('Test button clicked');
+    if (window.ValvePopup) {
+      console.log('ValvePopup found, creating instance...');
+      const popup = new ValvePopup((value) => console.log('Valve value:', value));
+      popup.open(0.5);
+    } else {
+      console.error('ValvePopup not loaded!');
+      alert('ValvePopup.js failed to load. Check the console for errors.');
+    }
+  }
+  </script>
 </body>
 </html>
