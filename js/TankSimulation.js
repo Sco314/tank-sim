@@ -65,8 +65,8 @@ class TankView {
   constructor(tank, levelRect, statusText, levelText) {
     this.tank = tank;
     this.levelRect = levelRect;
-    this.statusText = statusText;
-    this.levelText = levelText;
+    this.statusText = statusText; // May be null
+    this.levelText = levelText;   // May be null
   }
 
   render() {
@@ -76,7 +76,11 @@ class TankView {
     
     this.levelRect.setAttribute('y', yPx);
     this.levelRect.setAttribute('height', hPx);
-    this.levelText.textContent = `Level: ${(level * 100).toFixed(1)} %`;
+    
+    // Only update if element exists
+    if (this.levelText) {
+      this.levelText.textContent = `Level: ${(level * 100).toFixed(1)} %`;
+    }
   }
 }
 
@@ -86,7 +90,7 @@ class ValveView {
     this.valveElement = valveElement;
     this.handle = handle;
     this.inletFlow = inletFlow;
-    this.statusText = statusText;
+    this.statusText = statusText; // May be null
     this.toggleButton = toggleButton;
   }
 
@@ -184,9 +188,10 @@ class TankSimulation {
       outletFlow: document.getElementById('outletFlow'),
       handle: document.getElementById('handle'),
       valve: document.getElementById('valve'),
-      statusText: document.getElementById('statusText'),
-      levelText: document.getElementById('levelText'),
-      flowText: document.getElementById('flowText'),
+      // Removed from SVG - no longer exist
+      statusText: null,
+      levelText: null,
+      flowText: null,
       levelRect: document.getElementById('levelRect'),
       
       // Readout spans
@@ -214,15 +219,15 @@ class TankSimulation {
   }
 
   _setupEventListeners() {
-    // FIXED: Valve icon in SVG now opens popup (not toggle)
+    // FIXED: Use mousedown instead of click for SVG elements (more reliable)
     const openPopup = (e) => {
-      console.log('=== VALVE CLICK DETECTED ===');
-      console.log('Event:', e);
-      console.log('Target:', e.target);
+      console.log('=== VALVE ACTIVATED ===');
+      console.log('Event type:', e.type);
       console.log('Current valve position:', this.valveOpenFraction);
       
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       
       this._openValvePopup();
     };
@@ -235,12 +240,20 @@ class TankSimulation {
     
     console.log('Setting up valve click listener on:', this.dom.valve);
     
-    this.dom.valve.addEventListener('click', openPopup, true); // Use capture phase
+    // Use mousedown AND click for reliability
     this.dom.valve.addEventListener('mousedown', (e) => {
       console.log('Valve mousedown detected');
-    });
+      openPopup(e);
+    }, true);
+    
+    this.dom.valve.addEventListener('touchstart', (e) => {
+      console.log('Valve touchstart detected');
+      openPopup(e);
+    }, true);
+    
     this.dom.valve.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
+        console.log('Valve keyboard activated');
         openPopup(e);
       }
     });
@@ -381,8 +394,7 @@ class TankSimulation {
                        this.valveOpenFraction === 1 ? 'OPEN' : 
                        `${valvePct}% OPEN`;
     
-    this.dom.statusText.textContent = `Valve: ${valveStatus}`;
-    this.dom.flowText.textContent = `Qin: ${Qin.toFixed(2)} | Qout: ${Qout.toFixed(2)} (units/s)`;
+    // Update right panel readouts (these always exist)
     this.dom.levelPct.textContent = pct;
     this.dom.vol.textContent = this.tank.volume.toFixed(3);
     this.dom.qinRead.textContent = Qin.toFixed(2);
