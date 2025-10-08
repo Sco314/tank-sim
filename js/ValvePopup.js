@@ -185,9 +185,17 @@ class ValvePopup {
 
   open(currentValue = 0) {
     console.log('Opening valve popup with value:', currentValue);
+    
+    // Clear any existing timers
+    this._clearAutoCloseTimer();
+    
+    // Mark as open
     this.isOpen = true;
     this.currentValue = currentValue;
+    
+    // Show overlay
     this.overlay.style.display = 'flex';
+    this.overlay.style.pointerEvents = 'auto'; // Ensure it's clickable
     
     // Trigger animations
     requestAnimationFrame(() => {
@@ -195,20 +203,22 @@ class ValvePopup {
       this.container.style.transform = 'scale(1)';
     });
 
-    // If iframe is already ready, set the value
+    // If iframe is already ready, set the value immediately
     if (this.iframeReady) {
-      this._setValveValue(currentValue);
+      setTimeout(() => this._setValveValue(currentValue), 100);
     } else {
       // Wait for ready and then set value
+      let attempts = 0;
       const waitForReady = setInterval(() => {
+        attempts++;
         if (this.iframeReady) {
           clearInterval(waitForReady);
           this._setValveValue(currentValue);
+        } else if (attempts > 60) { // 3 seconds max
+          clearInterval(waitForReady);
+          console.error('Iframe failed to load in time');
         }
       }, 50);
-      
-      // Timeout after 3 seconds
-      setTimeout(() => clearInterval(waitForReady), 3000);
     }
 
     this._resetAutoCloseTimer();
@@ -226,13 +236,22 @@ class ValvePopup {
   }
 
   close() {
+    if (!this.isOpen) {
+      console.log('Popup already closed');
+      return;
+    }
+    
     console.log('Closing valve popup');
     this.isOpen = false;
+    
+    // Animate out
     this.overlay.style.opacity = '0';
     this.container.style.transform = 'scale(0.9)';
     
+    // Hide after animation completes
     setTimeout(() => {
       this.overlay.style.display = 'none';
+      this.overlay.style.pointerEvents = 'none';
     }, 300);
 
     this._clearAutoCloseTimer();
