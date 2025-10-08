@@ -215,14 +215,33 @@ class TankSimulation {
 
   _setupEventListeners() {
     // FIXED: Valve icon in SVG now opens popup (not toggle)
-    this.dom.valve.addEventListener('click', () => {
-      console.log('Valve icon clicked - opening popup');
+    const openPopup = (e) => {
+      console.log('=== VALVE CLICK DETECTED ===');
+      console.log('Event:', e);
+      console.log('Target:', e.target);
+      console.log('Current valve position:', this.valveOpenFraction);
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
       this._openValvePopup();
+    };
+    
+    // Make sure we're getting the right element
+    if (!this.dom.valve) {
+      console.error('ERROR: Valve element not found!');
+      return;
+    }
+    
+    console.log('Setting up valve click listener on:', this.dom.valve);
+    
+    this.dom.valve.addEventListener('click', openPopup, true); // Use capture phase
+    this.dom.valve.addEventListener('mousedown', (e) => {
+      console.log('Valve mousedown detected');
     });
     this.dom.valve.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this._openValvePopup();
+        openPopup(e);
       }
     });
     
@@ -256,6 +275,8 @@ class TankSimulation {
     this.dom.gravityModeCheck.addEventListener('change', (e) => {
       this.gravityMode = e.target.checked;
     });
+    
+    console.log('All event listeners set up successfully');
   }
 
   _bindSlider(slider, output, onChange) {
@@ -279,7 +300,19 @@ class TankSimulation {
   _openValvePopup() {
     // Open the popup with current valve position (maintains last position)
     console.log('Opening valve popup with current position:', this.valveOpenFraction);
-    this.valvePopup.open(this.valveOpenFraction);
+    
+    if (!this.valvePopup) {
+      console.error('Valve popup not initialized!');
+      return;
+    }
+    
+    if (this.valvePopup.isOpen) {
+      console.log('Popup is already open, closing first...');
+      this.valvePopup.close();
+      setTimeout(() => this.valvePopup.open(this.valveOpenFraction), 400);
+    } else {
+      this.valvePopup.open(this.valveOpenFraction);
+    }
   }
 
   _onValvePopupChange(openFraction) {
