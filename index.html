@@ -54,7 +54,7 @@
       <div class="card stage">
         <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img">
           <title id="title">Tank and Pipe Visualization</title>
-          <desc id="desc">Click the inlet valve to start or stop flow into the tank. Use the slider to adjust outlet flow. The blue rectangle shows the liquid level.</desc>
+          <desc id="desc">Click the inlet valve to open interactive valve control. Use the slider to adjust outlet flow. The blue rectangle shows the liquid level.</desc>
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1" />
@@ -104,7 +104,7 @@
       <!-- RIGHT: Controls & Telemetry -->
       <div class="card">
         <h1>Controls</h1>
-        <div class="sub">Click the green valve or use the buttons. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross‑section area.</div>
+        <div class="sub">Click the green valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
         <div class="controls" style="margin-top:12px">
           <div class="row">
             <button id="toggleValve" class="btn toggle" aria-pressed="false">Open Inlet Valve</button>
@@ -117,7 +117,7 @@
             <output id="qoutVal" style="width:64px; text-align:right">0.35</output>
           </div>
           <div class="row">
-            <label for="qin" style="min-width:128px">Inlet flow (open)</label>
+            <label for="qin" style="min-width:128px">Inlet flow (max)</label>
             <input id="qin" class="grow" type="range" min="0" max="1.5" step="0.01" value="0.80" />
             <output id="qinVal" style="width:64px; text-align:right">0.80</output>
           </div>
@@ -131,7 +131,7 @@
             <div>Tank height (max)</div><div>360 px visual (normalized 1.0)</div>
             <div>Overflow limit</div><div id="overflowText">100%</div>
           </div>
-          <p class="small" style="margin:8px 0 0">Tip: For a head‑dependent drain, enable "Gravity mode" below. Then Qout = k·√(level). The slider sets k.</p>
+          <p class="small" style="margin:8px 0 0">Tip: For a head-dependent drain, enable "Gravity mode" below. Then Qout = k·√(level). The slider sets k.</p>
           <div class="row">
             <label><input type="checkbox" id="gravityMode" /> Gravity mode</label>
             <input id="kcoeff" class="grow" type="range" min="0" max="1.5" step="0.01" value="0.60" />
@@ -151,6 +151,7 @@
   </div>
 
   <!-- Load organized JavaScript -->
+  <script src="js/ValvePopup.js"></script>
   <script src="js/TankSimulation.js"></script>
 </body>
 </html>
