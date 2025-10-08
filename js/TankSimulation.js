@@ -1,8 +1,7 @@
 /**
- * TankSimulation.js - Refactored tank simulator
+ * TankSimulation.js - Refactored tank simulator with valve popup integration
  * 
- * Same functionality as original, just organized into classes
- * Makes it easy to add a 2nd tank later
+ * Same functionality as original, now with interactive valve popup
  */
 
 // ============================================================================
@@ -161,6 +160,12 @@ class TankSimulation {
     this.gravityMode = false;
     this.outletFlowRate = 0.35;
     this.kCoeff = 0.6;
+    this.valveOpenFraction = 0; // 0 to 1, controlled by popup valve
+    
+    // Create valve popup
+    this.valvePopup = new ValvePopup((value) => {
+      this._onValvePopupChange(value);
+    });
     
     // Setup event listeners
     this._setupEventListeners();
@@ -207,14 +212,16 @@ class TankSimulation {
   }
 
   _setupEventListeners() {
-    // Valve toggle
-    this.dom.valve.addEventListener('click', () => this._toggleValve());
+    // Valve toggle - open popup instead of simple toggle
+    this.dom.valve.addEventListener('click', () => this._openValvePopup());
     this.dom.valve.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        this._toggleValve();
+        this._openValvePopup();
       }
     });
+    
+    // Button still does simple toggle for quick control
     this.dom.toggleValve.addEventListener('click', () => this._toggleValve());
     
     // Reset button
@@ -259,11 +266,27 @@ class TankSimulation {
 
   _toggleValve() {
     this.inletValve.toggle();
+    // Update valve open fraction to match binary state
+    this.valveOpenFraction = this.inletValve.isOpen ? 1 : 0;
+  }
+
+  _openValvePopup() {
+    // Open the popup with current valve position
+    this.valvePopup.open(this.valveOpenFraction);
+  }
+
+  _onValvePopupChange(openFraction) {
+    // Update simulation based on valve position (0 to 1)
+    this.valveOpenFraction = openFraction;
+    
+    // Update binary valve state for compatibility
+    this.inletValve.isOpen = (openFraction > 0.05);
   }
 
   _reset() {
     this.tank.reset();
     this.inletValve.isOpen = false;
+    this.valveOpenFraction = 0;
   }
 
   _togglePause() {
@@ -281,8 +304,10 @@ class TankSimulation {
     this.dom.dtMs.textContent = (dt * 1000).toFixed(1);
     
     if (!this.paused) {
-      // Calculate flow rates
-      const Qin = this.inletValve.getFlowRate();
+      // Calculate flow rates - inlet flow is now proportional to valve opening
+      const maxInletFlow = this.inletValve.flowRate;
+      const Qin = maxInletFlow * this.valveOpenFraction;
+      
       const Qout = this.gravityMode 
         ? (this.kCoeff * Math.sqrt(this.tank.getLevel()))
         : this.outletFlowRate;
@@ -305,8 +330,14 @@ class TankSimulation {
   _updateReadouts(Qin, Qout) {
     const level = this.tank.getLevel();
     const pct = (level * 100).toFixed(1);
+    const valvePct = (this.valveOpenFraction * 100).toFixed(0);
     
-    this.dom.statusText.textContent = `Valve: ${this.inletValve.isOpen ? 'OPEN' : 'CLOSED'}`;
+    // Show valve position as percentage
+    const valveStatus = this.valveOpenFraction === 0 ? 'CLOSED' : 
+                       this.valveOpenFraction === 1 ? 'OPEN' : 
+                       `${valvePct}% OPEN`;
+    
+    this.dom.statusText.textContent = `Valve: ${valveStatus}`;
     this.dom.flowText.textContent = `Qin: ${Qin.toFixed(2)} | Qout: ${Qout.toFixed(2)} (units/s)`;
     this.dom.levelPct.textContent = pct;
     this.dom.vol.textContent = this.tank.volume.toFixed(3);
@@ -326,7 +357,7 @@ let simulation;
 
 window.addEventListener('DOMContentLoaded', () => {
   simulation = new TankSimulation();
-  console.log('Tank Simulation Started');
+  console.log('Tank Simulation Started with Valve Popup Integration');
 });
 
 // Expose for debugging
