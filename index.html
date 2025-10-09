@@ -53,10 +53,22 @@
                 <text x="0" y="85" fill="#7cc8ff" font-size="10" text-anchor="middle" pointer-events="none" id="izsrg">(click to control)</text>
               </g>
             </g>
-            <g id="outlet">
-              <path d="M 660 460 H 940" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" id="i8y0r"></path>
-              <path id="outletFlow" d="M 660 460 H 940" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
-            </g>
+           
+<!-- OUTLET (continuous; runs under pump, then up, then right) -->
+<g id="outlet">
+  <!-- Base pipe -->
+  <path id="outletPipe"
+        d="M 660 460 H 815 V 295 H 960"
+        fill="none" stroke="#9bb0ff" stroke-width="20"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Flow overlay (same geometry) -->
+  <path id="outletFlow"
+        d="M 660 460 H 815 V 295 H 960"
+        fill="none" stroke="#7cc8ff" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"
+        class="flow"/>
+</g>
 
 <!-- PUMP on outlet pipe -->
 <g id="pump" class="pump" tabindex="0" role="button"
@@ -64,11 +76,11 @@
   <!-- Adjust the translate() to position it on the outlet line -->
   <g transform="translate(790, 460)">
     <!-- Big, invisible hitbox for easy clicking -->
-    <rect x="-50" y="-50" width="100" height="100" fill="transparent"/>
+    <rect x="-50" y="-50" width="260" height="260" fill="transparent"/>
 
     <!-- Your pump image -->
     <image href="https://sco314.github.io/tank-sim/cent-pump-5-inlet-left.png"
-           x="-28" y="-28" width="100" height="100" />
+           x="-28" y="-136" width="260" height="260" />
 
     <!-- Optional labels -->
     <text x="0" y="68" fill="#9bb0ff" font-size="13" text-anchor="middle" font-weight="600" pointer-events="none">
@@ -98,7 +110,7 @@
         <!-- RIGHT: Controls & Telemetry -->
         <div id="ixaoq" class="card">
           <h1>Controls</h1>
-          <div class="sub">Click the green valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
+          <div class="sub">Click the valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
           <div id="i3zec" class="controls">
             <div class="row">
               <button type="button" id="toggleValve" aria-pressed="false" class="btn toggle">Open Inlet Valve</button>
@@ -165,6 +177,38 @@
         }
       }
     </script>
+<script>
+  // Pump UI + flow toggle
+  const pumpEl = document.getElementById('pump');
+  const outletFlowPath = document.getElementById('outletFlow'); // the continuous flow overlay
+  const togglePumpBtn = document.getElementById('togglePump');  // optional button if you added one
+  let pumpOn = false;
+
+  function setPump(on){
+    pumpOn = !!on;
+    pumpEl?.setAttribute('aria-pressed', pumpOn);
+    outletFlowPath?.classList.toggle('on', pumpOn); // uses your existing .flow.on animation
+
+    // Optional control button text/state, if present
+    if (togglePumpBtn) {
+      togglePumpBtn.setAttribute('aria-pressed', pumpOn);
+      togglePumpBtn.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
+    }
+
+    // Optional physics hook (safe no-op if not defined)
+    if (window.simulation && typeof window.simulation.setPumpFactor === 'function') {
+      window.simulation.setPumpFactor(pumpOn ? 1 : 0);
+    }
+  }
+
+  pumpEl?.addEventListener('click', () => setPump(!pumpOn));
+  pumpEl?.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
+  });
+
+  // Initialize OFF
+  setPump(false);
+</script>
 
     <div id="ic1747" class="valve-modal-overlay">
       <div id="itrtxo" class="valve-modal-container">
