@@ -231,6 +231,12 @@ svg {
   color: var(--danger);
 }
 
+.pump{ cursor:pointer; }
+.pump image{ transition: filter .15s ease, opacity .15s ease; }
+.pump:hover  image{ filter: drop-shadow(0 1px 6px rgba(124,200,255,.35)); }
+.pump:active image{ filter: drop-shadow(0 1px 10px rgba(124,200,255,.55)); }
+
+
 #i8u9j {
   min-width: 128px;
 }
