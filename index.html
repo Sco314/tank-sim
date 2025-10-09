@@ -1,69 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <title>Interactive Tank &amp; Valve Simulator</title>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="robots" content="index,follow">
-    <meta name="generator" content="GrapesJS Studio">
-    <link rel="stylesheet" href="./style.css">
-<style>
-  /* Use the full width for the stage */
-  .grid{ grid-template-columns: 1fr; }
+<head>
+  <title>Interactive Tank & Valve Simulator</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css">
 
-/* animated dashed flow */
-.flow { stroke-dasharray: 10 12; }
-.flow.on { animation: dash var(--duration, 600ms) linear infinite; }
-@keyframes dash { to { stroke-dashoffset: -22; } }
-</style>
-  </head>
+  <style>
+    /* grid + flow you already had */
+    .grid{ grid-template-columns: 1fr; }
+    .flow { stroke-dasharray: 10 12; }
+    .flow.on { animation: dash var(--duration, 600ms) linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -22; } }
 
+    /* Drawer + launcher styles (moved into <style>) */
+    .controls-toggle{
+      position: fixed; top: 12px; right: 12px; z-index: 1000;
+      background:#172144; color:#e9f0ff; border:1px solid #28366d;
+      padding:10px 14px; border-radius:12px; cursor:pointer;
+    }
+    .controls-toggle:active{ transform: translateY(1px); }
 
-  /* Top-right launcher button */
-  .controls-toggle{
-    position: fixed; top: 12px; right: 12px; z-index: 1000;
-    background:#172144; color:#e9f0ff; border:1px solid #28366d;
-    padding:10px 14px; border-radius:12px; cursor:pointer;
-  }
-  .controls-toggle:active{ transform: translateY(1px); }
-
-  /* Drawer overlay + panel */
-  .controls-drawer{
-    position: fixed; inset: 0; z-index: 999;
-    pointer-events: none; /* off until open */
-  }
-  .controls-drawer::before{
-    content:""; position:absolute; inset:0; background: rgba(0,0,0,.35);
-    opacity:0; transition: opacity .2s ease;
-  }
-  .controls-panel{
-    position: absolute; top:0; right:0; height:100vh;
-    width:min(420px, 92vw); background: var(--card);
-    border-left:1px solid #1f2a50; box-shadow: -20px 0 50px rgba(0,0,0,.4);
-    transform: translateX(100%); transition: transform .25s ease;
-    overflow:auto; padding:16px;
-  }
-  .controls-close{
-    position: sticky; top:0; float:right; margin:-6px -6px 8px 8px;
-    background:transparent; color:var(--ink); border:1px solid #28366d;
-    border-radius:10px; padding:6px 10px; cursor:pointer; font-size:20px;
-  }
-  /* Open state */
-  .controls-drawer.open{ pointer-events: auto; }
-  .controls-drawer.open::before{ opacity:1; }
-  .controls-drawer.open .controls-panel{ transform: translateX(0); }
-</style>
+    .controls-drawer{
+      position: fixed; inset: 0; z-index: 999;
+      pointer-events: none; /* off until open */
+    }
+    .controls-drawer::before{
+      content:""; position:absolute; inset:0; background: rgba(0,0,0,.35);
+      opacity:0; transition: opacity .2s ease;
+    }
+    .controls-panel{
+      position: absolute; top:0; right:0; height:100vh;
+      width:min(420px, 92vw); background: var(--card, #121a33);
+      border-left:1px solid #1f2a50; box-shadow: -20px 0 50px rgba(0,0,0,.4);
+      transform: translateX(100%); transition: transform .25s ease;
+      overflow:auto; padding:16px; color: var(--ink, #e9f0ff);
+    }
+    .controls-close{
+      position: sticky; top:0; float:right; margin:-6px -6px 8px 8px;
+      background:transparent; color:var(--ink, #e9f0ff); border:1px solid #28366d;
+      border-radius:10px; padding:6px 10px; cursor:pointer; font-size:20px;
+    }
+    .controls-drawer.open{ pointer-events: auto; }
+    .controls-drawer.open::before{ opacity:1; }
+    .controls-drawer.open .controls-panel{ transform: translateX(0); }
+  </style>
+</head>
 
   <body id="id13">
+
 <button id="controlsToggle"
         class="controls-toggle"
         aria-controls="controlsDrawer"
         aria-expanded="false">
   Controls
 </button>
-
-    <!-- TEST BUTTON - Remove after testing -->
-    <!-- <button onclick="testPopup()" style="position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;border:2px solid white;border-radius:8px;font-weight:bold;cursor:pointer;">TEST POPUP</button> -->
+  
     <div id="ie7wb" class="app">
       <div id="i4pt7" class="grid">
         <!-- LEFT: Visualization -->
@@ -80,14 +72,16 @@
                 <stop offset="100%" stop-color="#2d8bd6" id="ijp66"></stop>
               </linearGradient>
             </defs>
-            <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4" id="ip0tv"></rect>
+            
+<rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4" id="ip0tv"></rect>
             <g id="inlet">
               <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" id="idxxi"></path>
               <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-dashoffset="0" class="flow"></path>
             </g>
             <g id="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open valve control" class="valve">
               <g transform="translate(230, 57)" id="ifqjq">
-              <!-- Large invisible hitbox-->
+              
+<!-- Large invisible hitbox-->
 <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125" fill="transparent" stroke="none"/>
 
 <!-- Replace the visual with the PNG (use any size; width/height sets the rendered size) -->
@@ -129,7 +123,7 @@
   <!-- Adjust the translate() to position it on the outlet line -->
   <g transform="translate(790, 460)">
     <!-- Big, invisible hitbox for easy clicking -->
-    <rect x="-50" y="-50" width="240" height="24S0" fill="transparent"/>
+    <rect x="-25" y="-135" width="240" height="240" fill="transparent"/>
 
     <!-- Your pump image -->
     <image href="https://sco314.github.io/tank-sim/cent-pump-8-inlet-left.png"
