@@ -44,6 +44,16 @@
     .controls-drawer.open{ pointer-events: auto; }
     .controls-drawer.open::before{ opacity:1; }
     .controls-drawer.open .controls-panel{ transform: translateX(0); }
+
+/* Pump: clickable image; show pointer cursor */
+#pump image { pointer-events: all; }
+#pump { cursor: pointer; }
+
+/* Valves: only the hitbox is clickable; image/labels ignore clicks */
+.valve image,
+.valve text { pointer-events: none; }
+.valve .valve-hitbox { pointer-events: auto; cursor: pointer; }
+
   </style>
 </head>
 
@@ -117,17 +127,17 @@
         class="flow"/>
 </g>
 
-<!-- PUMP on outlet pipe -->
-<g id="pump" class="pump" tabindex="0" role="button"
-   aria-pressed="false" aria-label="Toggle outlet pump">
-  <!-- Adjust the translate() to position it on the outlet line -->
-  <g transform="translate(790, 460)">
-    <!-- Big, invisible hitbox for easy clicking -->
-    <rect x="-25" y="-135" width="240" height="240" fill="transparent"/>
+<!-- PUMP  -->
+<g id="pump"
+   class="pump"
+   transform="translate(790,460)"
+   tabindex="0" role="button" aria-pressed="true" aria-label="Toggle pump">
 
-    <!-- Your pump image -->
-    <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png"
-           x="-20" y="-130" width="230" height="230" />
+  <!-- Clickable image (no hitbox needed) -->
+  <image
+    href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png"
+    x="-20" y="-130" width="230" height="230" />
+</g>
 
     <!-- Optional labels -->
     <text x="0" y="68" fill="#9bb0ff" font-size="13" text-anchor="middle" font-weight="600" pointer-events="none">
@@ -401,22 +411,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 2000);
 })();
 </script>
+
 <script>
 (() => {
-  // Elements
+  // Elements (some may not exist yet; code handles that)
   const pumpEl         = document.getElementById('pump');
-  const outletValveEl  = document.getElementById('outletValve'); // may not exist yet
-  const outletFlowPath = document.getElementById('outletFlow');
+  const outletValveEl  = document.getElementById('outletValve'); // optional
+  const outletFlowPath = document.getElementById('outletFlow');  // optional
   const togglePumpBtn  = document.getElementById('togglePump');  // optional
 
   // State
-  let pumpOn = true;                 // start ON
-  let outletValveOpen = true;        // assume open; ignored if no valve element
+  let pumpOn = true;          // start ON
+  let outletValveOpen = true; // treated as open if no outletValveEl
 
   function updateOutletVisual() {
-    const valveOK = outletValveEl ? outletValveOpen : true; // if no valve, treat as open
-    const flowing = pumpOn && valveOK;
-    outletFlowPath?.classList.toggle('on', flowing);
+    const valveOK = outletValveEl ? outletValveOpen : true;
+    if (outletFlowPath) {
+      outletFlowPath.classList.toggle('on', pumpOn && valveOK);
+    }
   }
 
   function setPump(on) {
@@ -426,14 +438,16 @@ document.addEventListener('DOMContentLoaded', () => {
       togglePumpBtn.setAttribute('aria-pressed', pumpOn);
       togglePumpBtn.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
     }
-    if (window.simulation?.setPumpFactor) window.simulation.setPumpFactor(pumpOn ? 1 : 0);
+    // physics hook (safe if absent)
+    window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0);
     updateOutletVisual();
   }
 
   function setOutletValve(open) {
+    if (!outletValveEl) return; // nothing to do if no valve element
     outletValveOpen = !!open;
-    outletValveEl?.setAttribute('aria-pressed', outletValveOpen);
-    if (window.simulation?.setOutletValve) window.simulation.setOutletValve(outletValveOpen ? 1 : 0);
+    outletValveEl.setAttribute('aria-pressed', outletValveOpen);
+    window.simulation?.setOutletValve?.(outletValveOpen ? 1 : 0);
     updateOutletVisual();
   }
 
@@ -455,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (outletValveEl) setOutletValve(true);
 })();
 </script>
+
 
   </body>
 </html>
