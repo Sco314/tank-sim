@@ -255,38 +255,6 @@
         }
       }
     </script>
-<script>
-  // Pump UI + flow toggle
-  const pumpEl = document.getElementById('pump');
-  const outletFlowPath = document.getElementById('outletFlow'); // the continuous flow overlay
-  const togglePumpBtn = document.getElementById('togglePump');  // optional button if you added one
-  let pumpOn = false;
-
-  function setPump(on){
-    pumpOn = !!on;
-    pumpEl?.setAttribute('aria-pressed', pumpOn);
-    outletFlowPath?.classList.toggle('on', pumpOn); // uses your existing .flow.on animation
-
-    // Optional control button text/state, if present
-    if (togglePumpBtn) {
-      togglePumpBtn.setAttribute('aria-pressed', pumpOn);
-      togglePumpBtn.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
-    }
-
-    // Optional physics hook (safe no-op if not defined)
-    if (window.simulation && typeof window.simulation.setPumpFactor === 'function') {
-      window.simulation.setPumpFactor(pumpOn ? 1 : 0);
-    }
-  }
-
-  pumpEl?.addEventListener('click', () => setPump(!pumpOn));
-  pumpEl?.addEventListener('keydown', (e) => {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
-  });
-
-  // Initialize OFF
-  setPump(true);
-</script>
 
     <div id="ic1747" class="valve-modal-overlay">
       <div id="itrtxo" class="valve-modal-container">
@@ -431,6 +399,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // if we have the button wired, leave inlet following real state; else remove the flash
     if (toggleBtn) syncInletFlow(); else f1?.classList.remove('on');
   }, 2000);
+})();
+</script>
+<script>
+(() => {
+  // Elements
+  const pumpEl         = document.getElementById('pump');
+  const outletValveEl  = document.getElementById('outletValve'); // may not exist yet
+  const outletFlowPath = document.getElementById('outletFlow');
+  const togglePumpBtn  = document.getElementById('togglePump');  // optional
+
+  // State
+  let pumpOn = true;                 // start ON
+  let outletValveOpen = true;        // assume open; ignored if no valve element
+
+  function updateOutletVisual() {
+    const valveOK = outletValveEl ? outletValveOpen : true; // if no valve, treat as open
+    const flowing = pumpOn && valveOK;
+    outletFlowPath?.classList.toggle('on', flowing);
+  }
+
+  function setPump(on) {
+    pumpOn = !!on;
+    pumpEl?.setAttribute('aria-pressed', pumpOn);
+    if (togglePumpBtn) {
+      togglePumpBtn.setAttribute('aria-pressed', pumpOn);
+      togglePumpBtn.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
+    }
+    if (window.simulation?.setPumpFactor) window.simulation.setPumpFactor(pumpOn ? 1 : 0);
+    updateOutletVisual();
+  }
+
+  function setOutletValve(open) {
+    outletValveOpen = !!open;
+    outletValveEl?.setAttribute('aria-pressed', outletValveOpen);
+    if (window.simulation?.setOutletValve) window.simulation.setOutletValve(outletValveOpen ? 1 : 0);
+    updateOutletVisual();
+  }
+
+  // Interactions
+  pumpEl?.addEventListener('click', () => setPump(!pumpOn));
+  pumpEl?.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
+  });
+
+  if (outletValveEl) {
+    outletValveEl.addEventListener('click', () => setOutletValve(!outletValveOpen));
+    outletValveEl.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setOutletValve(!outletValveOpen); }
+    });
+  }
+
+  // Init
+  setPump(true);
+  if (outletValveEl) setOutletValve(true);
 })();
 </script>
 
