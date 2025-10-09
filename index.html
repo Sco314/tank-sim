@@ -7,8 +7,61 @@
     <meta name="robots" content="index,follow">
     <meta name="generator" content="GrapesJS Studio">
     <link rel="stylesheet" href="./style.css">
+<style>
+  /* Use the full width for the stage */
+  .grid{ grid-template-columns: 1fr; }
+
+/* animated dashed flow */
+.flow { stroke-dasharray: 10 12; }
+.flow.on { animation: dash var(--duration, 600ms) linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -22; } }
+</style>
   </head>
+
+
+  /* Top-right launcher button */
+  .controls-toggle{
+    position: fixed; top: 12px; right: 12px; z-index: 1000;
+    background:#172144; color:#e9f0ff; border:1px solid #28366d;
+    padding:10px 14px; border-radius:12px; cursor:pointer;
+  }
+  .controls-toggle:active{ transform: translateY(1px); }
+
+  /* Drawer overlay + panel */
+  .controls-drawer{
+    position: fixed; inset: 0; z-index: 999;
+    pointer-events: none; /* off until open */
+  }
+  .controls-drawer::before{
+    content:""; position:absolute; inset:0; background: rgba(0,0,0,.35);
+    opacity:0; transition: opacity .2s ease;
+  }
+  .controls-panel{
+    position: absolute; top:0; right:0; height:100vh;
+    width:min(420px, 92vw); background: var(--card);
+    border-left:1px solid #1f2a50; box-shadow: -20px 0 50px rgba(0,0,0,.4);
+    transform: translateX(100%); transition: transform .25s ease;
+    overflow:auto; padding:16px;
+  }
+  .controls-close{
+    position: sticky; top:0; float:right; margin:-6px -6px 8px 8px;
+    background:transparent; color:var(--ink); border:1px solid #28366d;
+    border-radius:10px; padding:6px 10px; cursor:pointer; font-size:20px;
+  }
+  /* Open state */
+  .controls-drawer.open{ pointer-events: auto; }
+  .controls-drawer.open::before{ opacity:1; }
+  .controls-drawer.open .controls-panel{ transform: translateX(0); }
+</style>
+
   <body id="id13">
+<button id="controlsToggle"
+        class="controls-toggle"
+        aria-controls="controlsDrawer"
+        aria-expanded="false">
+  Controls
+</button>
+
     <!-- TEST BUTTON - Remove after testing -->
     <!-- <button onclick="testPopup()" style="position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;border:2px solid white;border-radius:8px;font-weight:bold;cursor:pointer;">TEST POPUP</button> -->
     <div id="ie7wb" class="app">
@@ -107,54 +160,63 @@
           </svg>
         </div>
 
-        <!-- RIGHT: Controls & Telemetry -->
-        <div id="ixaoq" class="card">
-          <h1>Controls</h1>
-          <div class="sub">Click the valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
-          <div id="i3zec" class="controls">
-            <div class="row">
-              <button type="button" id="toggleValve" aria-pressed="false" class="btn toggle">Open Inlet Valve</button>
-              <button type="button" id="resetBtn" class="btn">Reset</button>
-              <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
-            </div>
-            <div class="row">
-              <label for="qout" id="i8u9j">Outlet flow</label>
-              <input type="range" id="qout" min="0" max="1.2" step="0.01" value="0.35" class="grow"/>
-              <output id="qoutVal">0.35</output>
-            </div>
-            <div class="row">
-              <label for="qin" id="id1ii">Inlet flow (max)</label>
-              <input type="range" id="qin" min="0" max="1.5" step="0.01" value="0.80" class="grow"/>
-              <output id="qinVal">0.80</output>
-            </div>
-            <div class="row">
-              <label for="area" id="iiezj">Tank area</label>
-              <input type="range" id="area" min="0.5" max="3" step="0.01" value="1.20" class="grow"/>
-              <output id="areaVal">1.20</output>
-            </div>
-            <div id="irdd2" class="kv">
-              <div>Simulation step</div><div><span id="dtMs">16.7</span> ms (dynamic)</div>
-              <div>Tank height (max)</div><div>360 px visual (normalized 1.0)</div>
-              <div>Overflow limit</div><div id="overflowText">100%</div>
-            </div>
-            <p id="iaxfc5" class="small">Tip: For a head-dependent drain, enable "Gravity mode" below. Then Qout = k·√(level). The slider sets k.</p>
-            <div class="row">
-              <label><input type="checkbox" id="gravityMode"/> Gravity mode</label>
-              <input type="range" id="kcoeff" min="0" max="1.5" step="0.01" value="0.60" class="grow"/>
-              <output id="kVal">0.60</output>
-            </div>
-          </div>
-          <hr id="ir0ydi"/>
-          <h1>Readouts</h1>
-          <div class="kv">
-            <div>Level</div><div><span id="levelPct">0.0</span>%</div>
-            <div>Volume</div><div><span id="vol">0.000</span> units</div>
-            <div>Qin</div><div><span id="qinRead">0.00</span> units/s</div>
-            <div>Qout</div><div><span id="qoutRead">0.35</span> units/s</div>
-          </div>
+        
+<!-- Controls Drawer (hidden by default) -->
+<aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
+  <div class="controls-panel card" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+    <button id="controlsClose" class="controls-close" aria-label="Close controls">×</button>
+
+    <!-- Keep your existing content here (unchanged) -->
+    <div id="ixaoq">
+      <h1 id="controlsTitle">Controls</h1>
+      <div class="sub">Click the valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
+      <div id="i3zec" class="controls">
+        <div class="row">
+          <button type="button" id="toggleValve" aria-pressed="false" class="btn toggle">Open Inlet Valve</button>
+          <button type="button" id="resetBtn" class="btn">Reset</button>
+          <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
+        </div>
+        <div class="row">
+          <label for="qout" id="i8u9j">Outlet flow</label>
+          <input type="range" id="qout" min="0" max="1.2" step="0.01" value="0.35" class="grow"/>
+          <output id="qoutVal">0.35</output>
+        </div>
+        <div class="row">
+          <label for="qin" id="id1ii">Inlet flow (max)</label>
+          <input type="range" id="qin" min="0" max="1.5" step="0.01" value="0.80" class="grow"/>
+          <output id="qinVal">0.80</output>
+        </div>
+        <div class="row">
+          <label for="area" id="iiezj">Tank area</label>
+          <input type="range" id="area" min="0.5" max="3" step="0.01" value="1.20" class="grow"/>
+          <output id="areaVal">1.20</output>
+        </div>
+        <div id="irdd2" class="kv">
+          <div>Simulation step</div><div><span id="dtMs">16.7</span> ms (dynamic)</div>
+          <div>Tank height (max)</div><div>360 px visual (normalized 1.0)</div>
+          <div>Overflow limit</div><div id="overflowText">100%</div>
+        </div>
+        <p id="iaxfc5" class="small">Tip: For a head-dependent drain, enable "Gravity mode" below. Then Qout = k·√(level). The slider sets k.</p>
+        <div class="row">
+          <label><input type="checkbox" id="gravityMode"/> Gravity mode</label>
+          <input type="range" id="kcoeff" min="0" max="1.5" step="0.01" value="0.60" class="grow"/>
+          <output id="kVal">0.60</output>
         </div>
       </div>
+
+      <hr id="ir0ydi"/>
+      <h1>Readouts</h1>
+      <div class="kv">
+        <div>Level</div><div><span id="levelPct">0.0</span>%</div>
+        <div>Volume</div><div><span id="vol">0.000</span> units</div>
+        <div>Qin</div><div><span id="qinRead">0.00</span> units/s</div>
+        <div>Qout</div><div><span id="qoutRead">0.35</span> units/s</div>
+      </div>
     </div>
+  </div>
+</aside>
+
+
 
     <!-- Load organized JavaScript -->
     <script src="js/ValvePopup.js"></script>
@@ -207,7 +269,7 @@
   });
 
   // Initialize OFF
-  setPump(false);
+  setPump(true);
 </script>
 
     <div id="ic1747" class="valve-modal-overlay">
@@ -217,5 +279,144 @@
         <iframe frameborder="0" src="valve.html" title="Interactive valve control" id="ikt2sz"></iframe>
       </div>
     </div>
+<script>
+  (function(){
+    const drawer   = document.getElementById('controlsDrawer');
+    const panel    = drawer.querySelector('.controls-panel');
+    const toggle   = document.getElementById('controlsToggle');
+    const closeBtn = document.getElementById('controlsClose');
+
+    function openDrawer(){
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden','false');
+      toggle.setAttribute('aria-expanded','true');
+      // move focus into the drawer
+      setTimeout(() => closeBtn.focus(), 0);
+    }
+    function closeDrawer(){
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden','true');
+      toggle.setAttribute('aria-expanded','false');
+      toggle.focus();
+    }
+
+    // Clicks
+    toggle.addEventListener('click', openDrawer);
+    closeBtn.addEventListener('click', closeDrawer);
+    // Click on backdrop closes (ignore clicks inside panel)
+    drawer.addEventListener('click', (e) => {
+      if (!panel.contains(e.target)) closeDrawer();
+    });
+    // ESC closes
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+    });
+  })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Try a few selectors in case IDs drift
+  const valveEl = document.querySelector('#valve, g#valve, [data-role="inlet-valve"]');
+  const toggleBtn = document.querySelector('#toggleValve, button#toggleValve');
+  const inletFlow = document.getElementById('inletFlow');
+
+  if (!valveEl)  console.warn('Valve wiring: inlet valve SVG not found (expected #valve).');
+  if (!toggleBtn) console.warn('Valve wiring: right-panel toggle button not found (expected #toggleValve).');
+  if (!inletFlow) console.warn('Valve wiring: inlet flow path not found (expected #inletFlow).');
+
+  if (!valveEl || !toggleBtn) return; // can't bind
+
+  function isValveOpenFromButton() {
+    const pressed = toggleBtn.getAttribute('aria-pressed');
+    if (pressed === 'true')  return true;
+    if (pressed === 'false') return false;
+    return /close/i.test(toggleBtn.textContent || ''); // fallback by label
+  }
+
+  function syncInletFlow() {
+    inletFlow?.classList.toggle('on', isValveOpenFromButton());
+  }
+
+  function toggleFromGraphic() {
+    toggleBtn.click();   // reuse your existing sim logic
+    syncInletFlow();     // keep visuals in sync immediately
+  }
+
+  valveEl.addEventListener('click', toggleFromGraphic);
+  valveEl.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFromGraphic(); }
+  });
+  toggleBtn.addEventListener('click', syncInletFlow);
+
+  // Initial sync on load
+  syncInletFlow();
+
+  console.info('Valve wiring bound:',
+    { valveEl, toggleBtn, inletFlow, isOpen: isValveOpenFromButton() });
+});
+</script>
+<script>
+/* Drop-in sanity patch: adds .flow CSS if missing, wires SVG valve -> button,
+   and flashes inlet+outlet flows so you can verify motion. */
+(function () {
+  // 1) Ensure the flow CSS exists (if not, inject a tiny fallback)
+  function hasFlowCss() {
+    return Array.from(document.styleSheets || []).some(s => {
+      try {
+        return Array.from(s.cssRules || []).some(r => r.cssText.includes('.flow.on'));
+      } catch (e) { return false; }
+    });
+  }
+  if (!hasFlowCss()) {
+    const style = document.createElement('style');
+    style.textContent =
+      '.flow{stroke-dasharray:10 12;}' +
+      '@keyframes dash{to{stroke-dashoffset:-22}}' +
+      '.flow.on{animation:dash var(--duration,600ms) linear infinite;}';
+    document.head.appendChild(style);
+    console.warn('Injected fallback .flow CSS (style.css might not have loaded or inline <style> was out of place).');
+  }
+
+  // 2) Wire the SVG inlet valve to the existing right-panel button logic
+  const valveEl   = document.querySelector('#valve, g#valve, [data-role="inlet-valve"]');
+  const toggleBtn = document.querySelector('#toggleValve, button#toggleValve');
+  const inletFlow = document.getElementById('inletFlow');
+
+  function isValveOpenFromButton() {
+    const pressed = toggleBtn?.getAttribute('aria-pressed');
+    if (pressed === 'true')  return true;
+    if (pressed === 'false') return false;
+    return /close/i.test((toggleBtn?.textContent || '')); // fallback by label text
+  }
+  function syncInletFlow() {
+    inletFlow?.classList.toggle('on', isValveOpenFromButton());
+  }
+  function toggleFromGraphic() {
+    toggleBtn?.click();   // reuse your existing sim handler
+    syncInletFlow();      // update dashed inlet immediately
+  }
+
+  if (!valveEl)  console.warn('Valve wiring: #valve not found.');
+  if (!toggleBtn) console.warn('Valve wiring: #toggleValve not found.');
+  if (valveEl && toggleBtn) {
+    valveEl.addEventListener('click', toggleFromGraphic);
+    valveEl.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFromGraphic(); }
+    });
+    toggleBtn.addEventListener('click', syncInletFlow);
+    syncInletFlow(); // initial sync
+  }
+
+  // 3) Flash both flows for 2s to prove CSS/IDs are good
+  const f1 = document.getElementById('inletFlow');
+  const f2 = document.getElementById('outletFlow');
+  f1?.classList.add('on'); f2?.classList.add('on');
+  setTimeout(() => {
+    // if we have the button wired, leave inlet following real state; else remove the flash
+    if (toggleBtn) syncInletFlow(); else f1?.classList.remove('on');
+  }, 2000);
+})();
+</script>
+
   </body>
 </html>
