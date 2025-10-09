@@ -138,6 +138,28 @@
     </text>
   </g>
 </g>
+
+<!-- OUTLET VALVE (after the pump, on the vertical riser) -->
+<g id="outletValve" class="valve" tabindex="0" role="button"
+   aria-pressed="false" aria-label="Open outlet valve">
+  <!-- Centered on the riser at x=815; adjust y if needed -->
+  <g transform="translate(815, 380)">
+    <!-- Big, invisible hitbox for easy clicking -->
+    <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125"
+          fill="transparent" stroke="none"/>
+
+    <!-- Valve icon (roughly centered) -->
+    <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png"
+           x="-38" y="-38" width="76" height="76" />
+
+    <!-- Labels -->
+    <text x="0" y="70" fill="#9bb0ff" font-size="13" text-anchor="middle"
+          font-weight="600" pointer-events="none">Outlet Valve</text>
+    <text x="0" y="85" fill="#7cc8ff" font-size="10" text-anchor="middle"
+          pointer-events="none">(click to control)</text>
+  </g>
+</g>
+
 		  
             <g id="tank" transform="translate(340, 120)">
               <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4" id="i85h9"></rect>
