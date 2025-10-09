@@ -230,6 +230,28 @@
         </div>
       </div>
 
+<!-- ==== OUTLET VALVE PANEL (drawer "popout") ==== -->
+<section id="ctrl-outlet" class="ctrl-section" hidden>
+  <h2 style="margin-top:0">Outlet Valve</h2>
+
+  <div style="display:flex;align-items:center;gap:.6rem">
+    <label for="outletValveRange" style="white-space:nowrap">Position</label>
+    <output id="outletValvePct" style="font-weight:600">100%</output>
+  </div>
+
+  <input type="range" id="outletValveRange" min="0" max="100" step="5" value="100" style="width:100%;margin:10px 0 16px">
+
+  <div style="display:flex;gap:.5rem">
+    <button id="outletValveQuickClose" class="controls-close" type="button" aria-label="Close outlet valve to 0%">
+      Close
+    </button>
+    <button id="outletValveQuickOpen" class="controls-close" type="button" aria-label="Open outlet valve to 100%">
+      Open
+    </button>
+  </div>
+</section>
+
+
       <hr id="ir0ydi"/>
       <h1>Readouts</h1>
       <div class="kv">
