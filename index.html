@@ -54,6 +54,9 @@
 .valve text { pointer-events: none; }
 .valve .valve-hitbox { pointer-events: auto; cursor: pointer; }
 
+/* Hide
+.ctrl-section[hidden]{ display:none; }
+
   </style>
 </head>
 
@@ -131,25 +134,21 @@
    <text x="135" y="100" fill="#7cc8ff" font-size="10" text-anchor="middle" pointer-events="none">(click to toggle)</text> -->
 </g>
 
-<!-- OUTLET VALVE (after the pump, on the vertical riser) -->
-<g id="outletValve" class="valve" tabindex="0" role="button"
-   aria-pressed="false" aria-label="Open outlet valve">
-  <!-- Centered on the riser at x=815; adjust y if needed -->
-  <g transform="translate(815, 380)">
-    <!-- Big, invisible hitbox for easy clicking -->
+<!-- OUTLET VALVE -->
+<g id="outletValve" class="valve" aria-label="Open outlet valve">
+  <g transform="translate(890,278)">
+    <!-- debug dot: shows the group's origin; remove when happy -->
+    <circle cx="0" cy="0" r="2" fill="magenta"/>
+
     <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125"
-          fill="transparent" stroke="none"/>
+          fill="transparent" stroke="none" tabindex="0" role="button" aria-pressed="true" />
 
-    <!-- Valve icon (roughly centered) -->
+    <!-- icon centered on the hitbox -->
     <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png"
-           x="40" y="-141" width="76" height="76" />
-
-    <!-- Hide Labels 
-    <text x="78" y="-50" fill="#9bb0ff" font-size="13" text-anchor="middle"
-          font-weight="600" pointer-events="none">Outlet Valve</text>
-    <text x="78" y="-35" fill="#7cc8ff" font-size="10" text-anchor="middle"
-          pointer-events="none">(click to control)</text> -->
+           x="-38" y="-38" width="76" height="76" />
   </g>
+</g>
+
 
 		  
             <g id="tank" transform="translate(340, 120)">
@@ -236,10 +235,16 @@
           title="Outlet Valve Control"
           style="width:100%;max-width:360px;height:240px;border:0;background:#0e1734;border-radius:12px"></iframe>
 </div>
-
-
 </section>
 
+<!-- ==== PUMP PANEL (drawer "popout") ==== -->
+<section id="ctrl-pump" class="ctrl-section" hidden>
+  <h2 style="margin-top:0">Pump</h2>
+  <p class="small">Starts flow from the tank to the outlet valve. Flow appears only when the outlet valve is open.</p>
+  <div class="row">
+    <button type="button" id="pumpToggleBtn" class="btn toggle" aria-pressed="true">Stop Pump</button>
+  </div>
+</section>
 
       <hr id="ir0ydi"/>
       <h1>Readouts</h1>
@@ -427,11 +432,12 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- delete this 
 <script>
 (() => {
-  // Elements (some may not exist yet; code handles that)
-  const pumpEl         = document.getElementById('pump');
-  const outletValveEl  = document.getElementById('outletValve'); // optional
-  const outletFlowPath = document.getElementById('outletFlow');  // optional
-  const togglePumpBtn  = document.getElementById('togglePump');  // optional
+  // Elements
+  const pumpEl            = document.getElementById('pump');
+  const outletValveEl     = document.getElementById('outletValve');
+  const outletFlowPath    = document.getElementById('outletFlow');
+  const drawer            = document.getElementById('controlsDrawer');
+  const panelSections     = document.querySelectorAll('.ctrl-section');
 
   // State
   let pumpOn = true;          // start ON
@@ -486,113 +492,129 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 (() => {
-  // Elements
-  const pumpEl            = document.getElementById('pump');
-  const outletValveEl     = document.getElementById('outletValve');
-  const outletFlowPath    = document.getElementById('outletFlow');    // dashed outlet overlay
-  const drawer            = document.getElementById('controlsDrawer'); // your <aside class="controls-drawer">
-  const panelSections     = document.querySelectorAll('.ctrl-section');
+  // ===== Elements =====
+  const pumpEl             = document.getElementById('pump');
+  const outletValveEl      = document.getElementById('outletValve');
+  const outletValveHit     = document.querySelector('#outletValve .valve-hitbox'); // focusable rect
+  const outletFlowPath     = document.getElementById('outletFlow');
 
-  // Outlet valve UI in drawer
-  const outletPanel       = document.getElementById('ctrl-outlet');
-  const outletRange       = document.getElementById('outletValveRange');
-  const outletPct         = document.getElementById('outletValvePct');
-  const outletQuickClose  = document.getElementById('outletValveQuickClose');
-  const outletQuickOpen   = document.getElementById('outletValveQuickOpen');
-  
-  // Add sync hooks helpers 
-  const outletValveFrame = document.getElementById('outletValveFrame');
+  const drawer             = document.getElementById('controlsDrawer');
+  const panelSections      = document.querySelectorAll('.ctrl-section');
 
-function sendValveToFrame(pos){
-  try { outletValveFrame?.contentWindow?.postMessage({ type:'valve:set', value: pos }, '*'); }
-  catch(_) {}
-}
-window.addEventListener('message', (e) => {
-  const d = e.data;
-  if (!d || d.type !== 'valve:changed') return;
-  const pos = Math.max(0, Math.min(1, +d.value || 0));
-  setOutletValve(pos); // update our sim + slider if the iframe changes
-});
+  // Outlet panel widgets
+  const outletPanel        = document.getElementById('ctrl-outlet');
+  const outletRange        = document.getElementById('outletValveRange');
+  const outletPct          = document.getElementById('outletValvePct');
+  const outletQuickClose   = document.getElementById('outletValveQuickClose');
+  const outletQuickOpen    = document.getElementById('outletValveQuickOpen');
+  const outletValveFrame   = document.getElementById('outletValveFrame'); // optional iframe embed
 
+  // Pump panel widgets (added in Fix 2)
+  const pumpPanel          = document.getElementById('ctrl-pump');
+  const pumpToggleBtn      = document.getElementById('pumpToggleBtn');
 
-  // State
-  let pumpOn = true;           // pump running
-  let outletValvePos = 1;      // 0..1 openness (physics value)
-  let outletValveOpen = true;  // convenience boolean
+  // ===== State =====
+  let pumpOn = true;
+  let outletValvePos = 1;      // 0..1
+  let outletValveOpen = true;
 
-  // ---- Helpers ----
-function showSection(sectionId){
-  // show only the requested section
-  panelSections.forEach(sec => { sec.hidden = (sec.id !== sectionId); });
+  // ===== Helpers =====
+  function showSection(sectionId){
+    panelSections.forEach(sec => { sec.hidden = (sec.id !== sectionId); });
 
-  // mirror openDrawer() behavior for ARIA + focus
-  const toggle   = document.getElementById('controlsToggle');
-  const closeBtn = document.getElementById('controlsClose');
+    const toggle   = document.getElementById('controlsToggle');
+    const closeBtn = document.getElementById('controlsClose');
 
-  if (drawer) {
-    drawer.classList.add('open');
-    drawer.setAttribute('aria-hidden', 'false');
+    if (drawer) {
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden','false');
+    }
+    toggle?.setAttribute('aria-expanded','true');
+    setTimeout(() => closeBtn?.focus(), 0);
+    document.getElementById(sectionId)?.scrollIntoView({ block:'start', behavior:'smooth' });
   }
-  toggle?.setAttribute('aria-expanded', 'true');
-
-  // move focus into the drawer for accessibility
-  setTimeout(() => closeBtn?.focus(), 0);
-
-  // scroll the chosen section into view
-  document.getElementById(sectionId)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-}
-
 
   function updateOutletUI(){
-    if (!outletRange) return;
     const pct = Math.round(outletValvePos * 100);
-    outletRange.value = pct;
-    if (outletPct) outletPct.textContent = pct + '%';
+    if (outletRange) outletRange.value = pct;
+    if (outletPct)   outletPct.textContent = pct + '%';
   }
 
-//in setOutletValve(pos) after call updateOutletUI add
-sendValveToFrame(outletValvePos);
+  function sendValveToFrame(pos){
+    try { outletValveFrame?.contentWindow?.postMessage({ type:'valve:set', value: pos }, '*'); }
+    catch(_) {}
+  }
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || d.type !== 'valve:changed') return;
+    const pos = Math.max(0, Math.min(1, +d.value || 0));
+    setOutletValve(pos); // two-way sync from iframe
+  });
 
   function updateOutletVisual(){
     const flowing = pumpOn && outletValvePos > 0;
     outletFlowPath?.classList.toggle('on', flowing);
-
-    // Optional: scale animation speed and opacity by valve position
     if (outletFlowPath) {
-      const dur = 1200 - Math.round(800 * outletValvePos);   // 1200ms closed -> 400ms open
+      const dur = 1200 - Math.round(800 * outletValvePos);   // slower closed → faster open
       outletFlowPath.style.setProperty('--duration', dur + 'ms');
       outletFlowPath.style.opacity = flowing ? (0.25 + 0.75 * outletValvePos) : 0.15;
     }
   }
 
+  function updatePumpUI(){
+    if (!pumpToggleBtn) return;
+    pumpToggleBtn.setAttribute('aria-pressed', String(pumpOn));
+    pumpToggleBtn.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
+  }
+
+  // ===== State setters =====
   function setPump(on){
     pumpOn = !!on;
-    pumpEl?.setAttribute('aria-pressed', pumpOn);
+    pumpEl?.setAttribute('aria-pressed', String(pumpOn));
     window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0);
+    updatePumpUI();
     updateOutletVisual();
   }
 
-  function setOutletValve(pos){      // pos in [0..1]
-    outletValvePos = Math.max(0, Math.min(1, pos));
+  function setOutletValve(pos){
+    outletValvePos  = Math.max(0, Math.min(1, pos));
     outletValveOpen = outletValvePos > 0;
-    outletValveEl?.setAttribute('aria-pressed', outletValveOpen);
-    window.simulation?.setOutletValve?.(outletValvePos);  // your physics hook (supports partial open)
+    outletValveEl?.setAttribute('aria-pressed', String(outletValveOpen));
+
+    // Preferred physics hook (supports partial open)
+    window.simulation?.setOutletValve?.(outletValvePos);
+
+    // (Optional) Drive old #qout slider so physics follows if no hook:
+    // const qoutSlider = document.getElementById('qout');
+    // if (qoutSlider) {
+    //   const max = parseFloat(qoutSlider.max) || 1;
+    //   qoutSlider.value = (outletValvePos * max).toFixed(2);
+    //   qoutSlider.dispatchEvent(new Event('input', { bubbles: true }));
+    // }
+
     updateOutletUI();
+    sendValveToFrame(outletValvePos); // keep iframe in sync
     updateOutletVisual();
   }
 
-  // ---- Interactions ----
-  // Pump: click toggles; space/enter toggles
-  pumpEl?.addEventListener('click', () => setPump(!pumpOn));
+  // ===== Interactions =====
+
+  // Pump: CLICK opens its panel; keyboard toggles on/off
+  pumpEl?.addEventListener('click', () => showSection('ctrl-pump'));
   pumpEl?.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
   });
 
-  // Outlet valve: click opens drawer section; space/enter toggles 0%/100%
-  outletValveEl?.addEventListener('click', () => showSection('ctrl-outlet'));
-  outletValveEl?.addEventListener('keydown', e => {
+  // Pump panel button
+  pumpToggleBtn?.addEventListener('click', () => setPump(!pumpOn));
+
+  // Outlet valve: click/keyboard on the HITBOX opens the outlet section
+  outletValveHit?.addEventListener('click', () => showSection('ctrl-outlet'));
+  outletValveHit?.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
+      // quick toggle 0%/100% when using keyboard on the hitbox
       setOutletValve(outletValvePos > 0 ? 0 : 1);
     }
   });
@@ -605,11 +627,12 @@ sendValveToFrame(outletValvePos);
   outletQuickClose?.addEventListener('click', () => setOutletValve(0));
   outletQuickOpen?.addEventListener('click',  () => setOutletValve(1));
 
-  // ---- Init ----
+  // ===== Init =====
   setPump(true);
-  setOutletValve(1);   // start open
+  setOutletValve(1);
 })();
 </script>
+
 
   </body>
 </html>
