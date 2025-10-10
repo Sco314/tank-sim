@@ -62,15 +62,6 @@
   --modal-h: min(420px, 88vh);
   --ink: #e9f0ff;
   --panel: #0f1731;
-  --edge: #14d9e8; /* cyan accent to match inlet */
-}
-
-/* --- Popout window (shared by inlet/outlet/pump) --- */
-:root{
-  --modal-w: min(560px, 92vw);
-  --modal-h: min(420px, 88vh);
-  --ink: #e9f0ff;
-  --panel: #0f1731;
   --edge: #14d9e8;    /* cyan accent */
   --danger: #EC4437;  /* red close */
 }
@@ -222,8 +213,7 @@
 <g id="outletValve" class="valve" aria-label="Open outlet valve">
   <g transform="translate(890,278)">
     <!-- debug dot: shows the group's origin; remove when happy -->
-    <circle cx="0" cy="0" r="2" fill="magenta"/>
-
+    
     <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125"
           fill="transparent" stroke="none" tabindex="0" role="button" aria-pressed="true" />
 
@@ -462,26 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script>
-/* Drop-in sanity patch: adds .flow CSS if missing, wires SVG valve -> button,
-   and flashes inlet+outlet flows so you can verify motion. */
-(function () {
-  // 1) Ensure the flow CSS exists (if not, inject a tiny fallback)
-  function hasFlowCss() {
-    return Array.from(document.styleSheets || []).some(s => {
-      try {
-        return Array.from(s.cssRules || []).some(r => r.cssText.includes('.flow.on'));
-      } catch (e) { return false; }
-    });
-  }
-  if (!hasFlowCss()) {
-    const style = document.createElement('style');
-    style.textContent =
-      '.flow{stroke-dasharray:10 12;}' +
-      '@keyframes dash{to{stroke-dashoffset:-22}}' +
-      '.flow.on{animation:dash var(--duration,600ms) linear infinite;}';
-    document.head.appendChild(style);
-    console.warn('Injected fallback .flow CSS (style.css might not have loaded or inline <style> was out of place).');
-  }
 
   // 2) Wire the SVG inlet valve to the existing right-panel button logic
   const valveEl   = document.querySelector('#valve, g#valve, [data-role="inlet-valve"]');
@@ -526,61 +496,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 (() => {
-  // ===== Click targets =====
-  const inletValveHit   = document.querySelector('#valve .valve-hitbox') || document.getElementById('valve');
+  // ===== Click targets / elements =====
+  const inletValveHit   = document.querySelector('#valve .valve-hitbox')  || document.getElementById('valve');
   const outletValveHit  = document.querySelector('#outletValve .valve-hitbox') || document.getElementById('outletValve');
   const pumpEl          = document.getElementById('pump');
 
-  // ===== Flow path =====
+  // Flow path for outlet (dashed overlay)
   const outletFlowPath  = document.getElementById('outletFlow');
 
-  // ===== Modals (inlet/outlet) =====
+  // Inlet popout
   const inletModal      = document.getElementById('inletModal');
   const inletClose      = document.getElementById('inletModalClose');
   const inletIframe     = document.getElementById('inletValveIframe');
 
+  // Outlet popout
   const outletModal     = document.getElementById('outletModal');
   const outletClose     = document.getElementById('outletModalClose');
   const outletIframe    = document.getElementById('outletValveIframe');
+
+  // Pump popout
+  const pumpModal       = document.getElementById('pumpModal');
+  const pumpClose       = document.getElementById('pumpModalClose');
+  const pumpOnBtn       = document.getElementById('pumpOnBtn');
+  const pumpOffBtn      = document.getElementById('pumpOffBtn');
 
   // ===== State =====
   let pumpOn = true;
   let outletValvePos = 1; // 0..1
 
-  // ===== Helpers =====
-  function openModal(el){ el?.classList.add('open'); el?.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; }
-  function closeModal(el){ el?.classList.remove('open'); el?.setAttribute('aria-hidden','true'); document.body.style.overflow=''; }
-
-  function updateOutletVisual(){
-    const flowing = pumpOn && outletValvePos > 0;
-    outletFlowPath?.classList.toggle('on', flowing);
-    if (outletFlowPath){
-      const dur = 1200 - Math.round(800 * outletValvePos);
-      outletFlowPath.style.setProperty('--duration', dur + 'ms');
-      outletFlowPath.style.opacity = flowing ? (0.25 + 0.75 * outletValvePos) : 0.15;
-    }
+  // ===== Modal helpers =====
+  function openModal(el){
+    el?.classList.add('open');
+    el?.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(el){
+    el?.classList.remove('open');
+    el?.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
   }
 
-  function setPump(on){
-    pumpOn = !!on;
-    document.getElementById('pump')?.setAttribute('aria-pressed', String(pumpOn));
-    window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0);
-    updateOutletVisual();
-  }
-
-  function setOutletValve(pos){
-    outletValvePos = Math.max(0, Math.min(1, pos));
-    document.getElementById('outletValve')?.setAttribute('aria-pressed', String(outletValvePos > 0));
-    window.simulation?.setOutletValve?.(outletValvePos);
-    try { outletIframe?.contentWindow?.postMessage({ type:'valve:set', value: outletValvePos }, '*'); } catch(_) {}
-    updateOutletVisual();
-  }
-
-  // === Make iframes fit and send initial % after they load ===
+  // Make valve iframes fit and push initial % so their “Open:XX%” shows immediately
   function fitAndInit(iframe, initialValue){
     if (!iframe) return;
     const send = () => {
-      // set exact height to avoid inner scrollbars (same-origin)
       try {
         const doc = iframe.contentDocument || iframe.contentWindow?.document;
         const h = Math.max(
@@ -588,18 +547,59 @@ document.addEventListener('DOMContentLoaded', () => {
           doc?.body?.scrollHeight || 0,
           340
         );
+        // prevent inner scrollbars
         iframe.style.height = Math.min(h, 360) + 'px';
       } catch(_) {}
-
-      // push the starting position so the % label appears immediately
       try { iframe.contentWindow?.postMessage({ type:'valve:set', value: initialValue }, '*'); } catch(_) {}
     };
-    if (iframe.complete) { setTimeout(send, 0); }  // already loaded
+    if (iframe.complete) { setTimeout(send, 0); }
     iframe.addEventListener('load', () => setTimeout(send, 0), { once:true });
   }
 
+  // ===== Visuals =====
+  function updateOutletVisual(){
+    const flowing = pumpOn && outletValvePos > 0;
+    outletFlowPath?.classList.toggle('on', flowing);
+    if (outletFlowPath){
+      const dur = 1200 - Math.round(800 * outletValvePos); // slower closed → faster open
+      outletFlowPath.style.setProperty('--duration', dur + 'ms');
+      outletFlowPath.style.opacity = flowing ? (0.25 + 0.75 * outletValvePos) : 0.15;
+    }
+  }
+
+  // Keep pump UI pieces in sync (aria + segmented buttons)
+  function updatePumpUI(){
+    document.getElementById('pump')?.setAttribute('aria-pressed', String(pumpOn));
+    if (pumpOnBtn && pumpOffBtn){
+      pumpOnBtn.classList.toggle('active',  pumpOn);
+      pumpOffBtn.classList.toggle('active', !pumpOn);
+      pumpOnBtn.setAttribute('aria-pressed',  String(pumpOn));
+      pumpOffBtn.setAttribute('aria-pressed', String(!pumpOn));
+    }
+  }
+
+  // ===== Setters (single source of truth) =====
+  function setPump(on){
+    pumpOn = !!on;
+    window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0); // no-op if not provided
+    updatePumpUI();          // ← IMPORTANT: highlight On/Off + aria
+    updateOutletVisual();    // dashed outlet flow reflects pump state
+  }
+
+  function setOutletValve(pos){
+    outletValvePos = Math.max(0, Math.min(1, pos));
+    document.getElementById('outletValve')?.setAttribute('aria-pressed', String(outletValvePos > 0));
+    window.simulation?.setOutletValve?.(outletValvePos); // supports partial open
+    try { outletIframe?.contentWindow?.postMessage({ type:'valve:set', value: outletValvePos }, '*'); } catch(_) {}
+    updateOutletVisual();
+  }
+
   // ===== Inlet popout =====
-  function openInlet(){ openModal(inletModal); fitAndInit(inletIframe, 1); setTimeout(() => inletClose?.focus(), 0); }
+  function openInlet(){
+    openModal(inletModal);
+    fitAndInit(inletIframe, 1); // inlet UI starts at 100% visually
+    setTimeout(() => inletClose?.focus(), 0);
+  }
   inletValveHit?.setAttribute('tabindex','0');
   inletValveHit?.setAttribute('role','button');
   inletValveHit?.addEventListener('click', openInlet);
@@ -608,7 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
   inletModal?.addEventListener('click', (e) => { if (e.target === inletModal) closeModal(inletModal); });
 
   // ===== Outlet popout =====
-  function openOutlet(){ openModal(outletModal); fitAndInit(outletIframe, outletValvePos); setTimeout(() => outletClose?.focus(), 0); }
+  function openOutlet(){
+    openModal(outletModal);
+    fitAndInit(outletIframe, outletValvePos);
+    setTimeout(() => outletClose?.focus(), 0);
+  }
   outletValveHit?.setAttribute('tabindex','0');
   outletValveHit?.setAttribute('role','button');
   outletValveHit?.addEventListener('click', openOutlet);
@@ -616,25 +620,37 @@ document.addEventListener('DOMContentLoaded', () => {
   outletClose?.addEventListener('click', () => closeModal(outletModal));
   outletModal?.addEventListener('click', (e) => { if (e.target === outletModal) closeModal(outletModal); });
 
-  // Two-way sync from both iframes (valve.html posts {type:'valve:changed', value})
+  // Only accept valve changes from the OUTLET iframe
   window.addEventListener('message', (e) => {
+    if (!outletIframe || e.source !== outletIframe.contentWindow) return;
     const d = e.data;
     if (!d || d.type !== 'valve:changed') return;
     const pos = Math.max(0, Math.min(1, +d.value || 0));
-    // If you later want inlet % to affect physics, branch here.
-    setOutletValve(pos);   // outlet controls real outflow
+    setOutletValve(pos);
   });
 
-  // Pump keyboard toggle (click opens its own popout if you added one)
-  pumpEl?.addEventListener('keydown', e => {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
+  // ===== Pump popout =====
+  function openPump(){
+    openModal(pumpModal);
+    setTimeout(() => pumpClose?.focus(), 0);
+  }
+  pumpEl?.addEventListener('click', openPump);  // click opens popout
+  pumpEl?.addEventListener('keydown', e => {    // space/enter = quick toggle
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); setPump(!pumpOn); }
   });
+  pumpClose?.addEventListener('click', () => closeModal(pumpModal));
+  pumpModal?.addEventListener('click', (e) => { if (e.target === pumpModal) closeModal(pumpModal); });
 
-  // Init
-  setPump(true);
-  setOutletValve(1);
+  // segmented buttons inside pump popout
+  pumpOnBtn?.addEventListener('click',  () => setPump(true));
+  pumpOffBtn?.addEventListener('click', () => setPump(false));
+
+  // ===== Init =====
+  setPump(true);       // highlight “On”, set aria, update flow
+  setOutletValve(1);   // 100% open
 })();
 </script>
+
 
 
   </body>
