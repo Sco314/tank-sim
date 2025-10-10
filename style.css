@@ -358,3 +358,82 @@ svg {
     stroke-dashoffset: -22;
   }
 }
+
+
+
+/* Modal Window Styling (for inlet, outlet, pump) */
+.valve-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.valve-modal-overlay.open { 
+  display: flex; 
+  opacity: 1;
+}
+
+.valve-modal-container {
+  position: relative;
+  width: min(600px, 90vw);
+  height: min(600px, 90vh);
+  background: rgb(11, 19, 48);
+  border-radius: 16px;
+  border: 2px solid rgb(31, 212, 214);
+  box-shadow: rgba(0, 0, 0, 0.5) 0px 20px 60px;
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: transform 0.3s;
+}
+
+.valve-modal-overlay.open .valve-modal-container {
+  transform: scale(1);
+}
+
+.valve-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 107, 107, 0.9);
+  border: 2px solid rgb(255, 135, 135);
+  border-radius: 50%;
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+}
+
+.valve-modal-close:hover { 
+  background: rgba(255, 107, 107, 1);
+  transform: scale(1.05);
+}
+
+.valve-modal-title {
+  padding: 16px 24px;
+  background: rgba(31, 212, 214, 0.1);
+  border-bottom: 1px solid rgb(31, 212, 214);
+  color: rgb(233, 240, 255);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.valve-modal-container iframe { 
+  width: 100%;
+  height: calc(100% - 60px);
+  border: none;
+  display: block;
+}
