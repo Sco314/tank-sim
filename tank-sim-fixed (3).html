@@ -330,28 +330,43 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.style.overflow = '';
   }
 
-  // Helper to send valve position to iframe (with retry for load timing)
-  function sendValvePosition(iframe, value, retries = 5) {
-    function attempt() {
-      try {
-        iframe?.contentWindow?.postMessage({ 
-          type: 'valve:set', 
-          value: value 
-        }, '*');
-      } catch(e) {
-        if (retries > 0) {
-          setTimeout(() => sendValvePosition(iframe, value, retries - 1), 100);
+  // Helper to send valve position to iframe (with better load detection)
+  function sendValvePosition(iframe, value, retries = 8) {
+    if (!iframe || !iframe.contentWindow) return;
+    
+    function attempt(delay = 0) {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.postMessage({ 
+            type: 'valve:set', 
+            value: value 
+          }, '*');
+          console.log(`Sent valve position ${value} to iframe`);
+        } catch(e) {
+          console.warn('Failed to send valve position:', e);
         }
-      }
+      }, delay);
     }
     
-    if (iframe?.contentWindow) {
-      // Try immediately
-      attempt();
-      // Also try after a short delay to catch late loads
-      setTimeout(attempt, 50);
-      setTimeout(attempt, 150);
-    }
+    // Multiple attempts with increasing delays to catch iframe whenever it loads
+    attempt(0);      // immediate
+    attempt(50);     // 50ms
+    attempt(100);    // 100ms
+    attempt(200);    // 200ms
+    attempt(350);    // 350ms
+    attempt(500);    // 500ms
+    attempt(750);    // 750ms
+    attempt(1000);   // 1s
+  }
+
+  // Listen for iframe load events and send initial position
+  function setupIframeSync(iframe, getValue) {
+    if (!iframe) return;
+    
+    iframe.addEventListener('load', () => {
+      console.log('Iframe loaded, sending initial value');
+      sendValvePosition(iframe, getValue());
+    });
   }
 
   // Visual Updates
@@ -410,10 +425,14 @@ document.addEventListener('DOMContentLoaded', () => {
   inletClose?.addEventListener('click', () => closeModal(inletModal));
   inletModal?.addEventListener('click', (e) => { if (e.target === inletModal) closeModal(inletModal); });
 
+  // Setup iframe sync for inlet
+  setupIframeSync(inletIframe, () => inletValvePos);
+
   // Outlet Valve Modal
   function openOutlet(){
     openModal(outletModal);
     // Send current position immediately when opening
+    console.log('Opening outlet valve, position:', outletValvePos);
     sendValvePosition(outletIframe, outletValvePos);
     setTimeout(() => outletClose?.focus(), 0);
   }
@@ -424,6 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   outletClose?.addEventListener('click', () => closeModal(outletModal));
   outletModal?.addEventListener('click', (e) => { if (e.target === outletModal) closeModal(outletModal); });
+
+  // Setup iframe sync for outlet
+  setupIframeSync(outletIframe, () => outletValvePos);
 
   // Listen for valve changes from iframes
   window.addEventListener('message', (e) => {
