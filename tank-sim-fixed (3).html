@@ -53,58 +53,7 @@
     .valve .valve-hitbox { pointer-events: auto; cursor: pointer; }
     .ctrl-section[hidden]{ display:none; }
 
-    /* Modal Windows - EXACT copy from working index.html with enhancements from screenshots */
-    .valve-modal-overlay{
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,.5); z-index: 1002;
-    }
-    .valve-modal-overlay.open{ display: flex; }
-
-    .valve-modal-container{
-      position: relative; 
-      width: min(520px, 92vw);
-      background: #121a33; 
-      color: #e9f0ff;
-      border: 2px solid #14d9e8; /* cyan border from screenshots */
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 20px rgba(20, 217, 232, 0.2);
-      padding: 12px;
-    }
-    
-    .valve-modal-close{
-      position: absolute; 
-      right: 8px; 
-      top: 8px;
-      width: 32px;
-      height: 32px;
-      background: #EC4437; /* red from screenshots */
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      color: #fff;
-      font-size: 20px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-    .valve-modal-close:hover{ filter: brightness(1.15); }
-    
-    .valve-modal-title{
-      margin: 2px 0 10px;
-      font-weight: 600;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #2a3d78; /* horizontal line from screenshots */
-    }
-    
-    .valve-modal-container iframe{ 
-      width: 100%; 
-      height: 420px; 
-      border: 0;
-      display: block;
-    }
+    /* Modal window styling now in style.css */
   </style>
 </head>
 
