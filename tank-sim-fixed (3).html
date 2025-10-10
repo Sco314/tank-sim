@@ -256,41 +256,6 @@
 })();
 </script>
 
-<!-- Valve Wiring Script -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const valveEl = document.querySelector('#valve');
-  const toggleBtn = document.querySelector('#toggleValve');
-  const inletFlow = document.getElementById('inletFlow');
-
-  if (!valveEl || !toggleBtn) return;
-
-  function isValveOpenFromButton() {
-    const pressed = toggleBtn.getAttribute('aria-pressed');
-    if (pressed === 'true') return true;
-    if (pressed === 'false') return false;
-    return /close/i.test(toggleBtn.textContent || '');
-  }
-
-  function syncInletFlow() {
-    inletFlow?.classList.toggle('on', isValveOpenFromButton());
-  }
-
-  function toggleFromGraphic() {
-    toggleBtn.click();
-    syncInletFlow();
-  }
-
-  valveEl.addEventListener('click', toggleFromGraphic);
-  valveEl.addEventListener('keydown', e => {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFromGraphic(); }
-  });
-  toggleBtn.addEventListener('click', syncInletFlow);
-
-  syncInletFlow();
-});
-</script>
-
 <!-- Main Modal Control Script -->
 <script>
 (() => {
