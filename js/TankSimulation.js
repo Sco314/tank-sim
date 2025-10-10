@@ -388,11 +388,10 @@ _setupEventListeners() {
 // INITIALIZE ON PAGE LOAD
 // ============================================================================
 
-let simulation;
 
+// Initialize AND expose the instance
 window.addEventListener('DOMContentLoaded', () => {
-  simulation = new TankSimulation();
-  console.log('Tank Simulation Started with Live Valve Control');
+  window.simulation = new TankSimulation();
 });
 
 // Expose for debugging
