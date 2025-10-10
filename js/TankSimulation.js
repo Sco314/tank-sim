@@ -170,12 +170,7 @@ class TankSimulation {
   this.pumpOn = true;              // Pump starts ON
   this.outletValvePos = 1.0;       // Outlet valve starts 100% open
   this.pumpCapacity = 1.2;         // Max pump flow rate (match your needs)
-    
-    // Create valve popup with callback
-    this.valvePopup = new ValvePopup((value) => {
-      this._onValvePopupChange(value);
-    });
-    
+      
     // Setup event listeners
     this._setupEventListeners();
     
