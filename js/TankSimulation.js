@@ -165,6 +165,11 @@ class TankSimulation {
     this.outletFlowRate = 0.35;
     this.kCoeff = 0.6;
     this.valveOpenFraction = 0; // 0 to 1, controlled by popup valve
+
+    
+  this.pumpOn = true;              // Pump starts ON
+  this.outletValvePos = 1.0;       // Outlet valve starts 100% open
+  this.pumpCapacity = 1.2;         // Max pump flow rate (match your needs)
     
     // Create valve popup with callback
     this.valvePopup = new ValvePopup((value) => {
@@ -339,6 +344,25 @@ class TankSimulation {
     this.inletValve.isOpen = (openFraction > 0.05);
   }
 
+// Called from parent HTML when pump is toggled
+setPumpFactor(factor) {
+  this.pumpOn = (factor > 0);
+  console.log('Pump set to:', this.pumpOn ? 'ON' : 'OFF');
+}
+
+// Called from parent HTML when outlet valve is adjusted
+setOutletValve(position) {
+  this.outletValvePos = Math.max(0, Math.min(1, position));
+  console.log('Outlet valve set to:', (this.outletValvePos * 100).toFixed(0) + '%');
+}
+
+// Optional: for inlet valve (if you want proportional control)
+setInletValve(position) {
+  this.valveOpenFraction = Math.max(0, Math.min(1, position));
+  this.inletValve.isOpen = (position > 0.05);
+  console.log('Inlet valve set to:', (this.valveOpenFraction * 100).toFixed(0) + '%');
+}
+  
   _reset() {
     this.tank.reset();
     this.inletValve.isOpen = false;
@@ -365,9 +389,22 @@ class TankSimulation {
       const maxInletFlow = this.inletValve.flowRate;
       const Qin = maxInletFlow * this.valveOpenFraction;
       
-      const Qout = this.gravityMode 
-        ? (this.kCoeff * Math.sqrt(this.tank.getLevel()))
-        : this.outletFlowRate;
+// Calculate outlet flow based on pump + valve (per your physics doc)
+let Qout = 0;
+if (this.gravityMode) {
+  // Gravity mode: flow depends on tank level
+  Qout = this.kCoeff * this.outletValvePos * Math.sqrt(this.tank.getLevel());
+} else {
+  // Normal mode: pump must be ON and valve must be open
+  if (this.pumpOn) {
+    Qout = this.outletValvePos * this.pumpCapacity;
+  }
+}
+
+// Realistic gate: can't pump from empty tank
+if (this.tank.getLevel() <= 0.01) {
+  Qout = 0;
+}
       
       // Update physics
       this.tank.step(dt, Qin, Qout);
@@ -399,6 +436,15 @@ class TankSimulation {
     this.dom.vol.textContent = this.tank.volume.toFixed(3);
     this.dom.qinRead.textContent = Qin.toFixed(2);
     this.dom.qoutRead.textContent = Qout.toFixed(2);
+
+_updateReadouts(Qin, Qout) {
+  // ... existing code ...
+  
+  // Show pump and outlet valve status in console
+  const pumpStatus = this.pumpOn ? 'ON' : 'OFF';
+  const outletPct = (this.outletValvePos * 100).toFixed(0);
+  console.log(`Pump: ${pumpStatus}, Outlet Valve: ${outletPct}%, Qout: ${Qout.toFixed(2)}`);
+}
     
     // Overflow warning
     this.dom.overflowText.classList.toggle('warn', this.tank.isOverflow());
