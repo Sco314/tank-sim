@@ -233,6 +233,10 @@ _setupEventListeners() {
     this.outletFlowRate = val;
   });
   
+  this._bindSlider(this.dom.qout, this.dom.qoutVal, (val) => {
+    this.pumpCapacity = val;       // ← instead of this.outletFlowRate
+  });
+
   this._bindSlider(this.dom.qin, this.dom.qinVal, (val) => {
     this.inletValve.setFlowRate(val);
   });
@@ -391,8 +395,11 @@ _setupEventListeners() {
 
 // Initialize AND expose the instance
 window.addEventListener('DOMContentLoaded', () => {
-  window.simulation = new TankSimulation();
+  const sim = new TankSimulation();
+  window.simulation = sim;   // <-- make it reachable by page scripts
+  console.log('Tank Simulation Started with Live Valve Control');
 });
+
 
 // Expose for debugging
 window.simulation = simulation;
