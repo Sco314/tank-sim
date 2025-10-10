@@ -223,79 +223,40 @@ class TankSimulation {
     };
   }
 
-  _setupEventListeners() {
-    // FIXED: Use mousedown instead of click for SVG elements (more reliable)
-    const openPopup = (e) => {
-      console.log('=== VALVE ACTIVATED ===');
-      console.log('Event type:', e.type);
-      console.log('Current valve position:', this.valveOpenFraction);
-      
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      
-      this._openValvePopup();
-    };
-    
-    // Make sure we're getting the right element
-    if (!this.dom.valve) {
-      console.error('ERROR: Valve element not found!');
-      return;
-    }
-    
-    console.log('Setting up valve click listener on:', this.dom.valve);
-    
-    // Use mousedown AND click for reliability
-    this.dom.valve.addEventListener('mousedown', (e) => {
-      console.log('Valve mousedown detected');
-      openPopup(e);
-    }, true);
-    
-    this.dom.valve.addEventListener('touchstart', (e) => {
-      console.log('Valve touchstart detected');
-      openPopup(e);
-    }, true);
-    
-    this.dom.valve.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        console.log('Valve keyboard activated');
-        openPopup(e);
-      }
-    });
-    
-    // Button still does simple toggle for quick control
-    this.dom.toggleValve.addEventListener('click', () => this._toggleValve());
-    
-    // Reset button
-    this.dom.resetBtn.addEventListener('click', () => this._reset());
-    
-    // Pause button
-    this.dom.pauseBtn.addEventListener('click', () => this._togglePause());
-    
-    // Sliders
-    this._bindSlider(this.dom.qout, this.dom.qoutVal, (val) => {
-      this.outletFlowRate = val;
-    });
-    
-    this._bindSlider(this.dom.qin, this.dom.qinVal, (val) => {
-      this.inletValve.setFlowRate(val);
-    });
-    
-    this._bindSlider(this.dom.area, this.dom.areaVal, (val) => {
-      this.tank.area = val;
-    });
-    
-    this._bindSlider(this.dom.kcoeff, this.dom.kVal, (val) => {
-      this.kCoeff = val;
-    });
-    
-    // Gravity mode checkbox
-    this.dom.gravityModeCheck.addEventListener('change', (e) => {
-      this.gravityMode = e.target.checked;
-    });
-    
-    console.log('All event listeners set up successfully');
-  }
+_setupEventListeners() {
+  // Button toggle for quick control (keep this)
+  this.dom.toggleValve.addEventListener('click', () => this._toggleValve());
+  
+  // Reset button
+  this.dom.resetBtn.addEventListener('click', () => this._reset());
+  
+  // Pause button
+  this.dom.pauseBtn.addEventListener('click', () => this._togglePause());
+  
+  // Sliders
+  this._bindSlider(this.dom.qout, this.dom.qoutVal, (val) => {
+    this.outletFlowRate = val;
+  });
+  
+  this._bindSlider(this.dom.qin, this.dom.qinVal, (val) => {
+    this.inletValve.setFlowRate(val);
+  });
+  
+  this._bindSlider(this.dom.area, this.dom.areaVal, (val) => {
+    this.tank.area = val;
+  });
+  
+  this._bindSlider(this.dom.kcoeff, this.dom.kVal, (val) => {
+    this.kCoeff = val;
+  });
+  
+  // Gravity mode checkbox
+  this.dom.gravityModeCheck.addEventListener('change', (e) => {
+    this.gravityMode = e.target.checked;
+  });
+  
+  console.log('All event listeners set up successfully');
+}
 
   _bindSlider(slider, output, onChange) {
     const sync = () => {
