@@ -434,6 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 </script>
 
+
+<!-- delete this 
 <script>
 (() => {
   // Elements (some may not exist yet; code handles that)
@@ -491,7 +493,100 @@ document.addEventListener('DOMContentLoaded', () => {
   if (outletValveEl) setOutletValve(true);
 })();
 </script>
+-->
 
+<script>
+(() => {
+  // Elements
+  const pumpEl            = document.getElementById('pump');
+  const outletValveEl     = document.getElementById('outletValve');
+  const outletFlowPath    = document.getElementById('outletFlow');    // dashed outlet overlay
+  const drawer            = document.getElementById('controlsDrawer'); // your <aside class="controls-drawer">
+  const panelSections     = document.querySelectorAll('.ctrl-section');
+
+  // Outlet valve UI in drawer
+  const outletPanel       = document.getElementById('ctrl-outlet');
+  const outletRange       = document.getElementById('outletValveRange');
+  const outletPct         = document.getElementById('outletValvePct');
+  const outletQuickClose  = document.getElementById('outletValveQuickClose');
+  const outletQuickOpen   = document.getElementById('outletValveQuickOpen');
+
+  // State
+  let pumpOn = true;           // pump running
+  let outletValvePos = 1;      // 0..1 openness (physics value)
+  let outletValveOpen = true;  // convenience boolean
+
+  // ---- Helpers ----
+  function showSection(sectionId){
+    panelSections.forEach(sec => sec.hidden = sec.id !== sectionId);
+    drawer?.classList.add('open');
+    document.getElementById(sectionId)?.scrollIntoView({block:'start', behavior:'smooth'});
+  }
+
+  function updateOutletUI(){
+    if (!outletRange) return;
+    const pct = Math.round(outletValvePos * 100);
+    outletRange.value = pct;
+    if (outletPct) outletPct.textContent = pct + '%';
+  }
+
+  function updateOutletVisual(){
+    const flowing = pumpOn && outletValvePos > 0;
+    outletFlowPath?.classList.toggle('on', flowing);
+
+    // Optional: scale animation speed and opacity by valve position
+    if (outletFlowPath) {
+      const dur = 1200 - Math.round(800 * outletValvePos);   // 1200ms closed -> 400ms open
+      outletFlowPath.style.setProperty('--duration', dur + 'ms');
+      outletFlowPath.style.opacity = flowing ? (0.25 + 0.75 * outletValvePos) : 0.15;
+    }
+  }
+
+  function setPump(on){
+    pumpOn = !!on;
+    pumpEl?.setAttribute('aria-pressed', pumpOn);
+    window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0);
+    updateOutletVisual();
+  }
+
+  function setOutletValve(pos){      // pos in [0..1]
+    outletValvePos = Math.max(0, Math.min(1, pos));
+    outletValveOpen = outletValvePos > 0;
+    outletValveEl?.setAttribute('aria-pressed', outletValveOpen);
+    window.simulation?.setOutletValve?.(outletValvePos);  // your physics hook (supports partial open)
+    updateOutletUI();
+    updateOutletVisual();
+  }
+
+  // ---- Interactions ----
+  // Pump: click toggles; space/enter toggles
+  pumpEl?.addEventListener('click', () => setPump(!pumpOn));
+  pumpEl?.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setPump(!pumpOn); }
+  });
+
+  // Outlet valve: click opens drawer section; space/enter toggles 0%/100%
+  outletValveEl?.addEventListener('click', () => showSection('ctrl-outlet'));
+  outletValveEl?.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      setOutletValve(outletValvePos > 0 ? 0 : 1);
+    }
+  });
+
+  // Drawer widgets: range + quick buttons
+  outletRange?.addEventListener('input', e => {
+    const pct = parseInt(e.target.value, 10) || 0;
+    setOutletValve(pct / 100);
+  });
+  outletQuickClose?.addEventListener('click', () => setOutletValve(0));
+  outletQuickOpen?.addEventListener('click',  () => setOutletValve(1));
+
+  // ---- Init ----
+  setPump(true);
+  setOutletValve(1);   // start open
+})();
+</script>
 
   </body>
 </html>
