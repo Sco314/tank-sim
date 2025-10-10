@@ -333,7 +333,7 @@ class TankSimulation {
     }
   }
 
-  _onValvePopupChange(openFraction) {
+_onValvePopupChange(openFraction) {
     // FIXED: This is called live as the valve wheel is turned
     console.log('Valve changed to:', openFraction);
     
@@ -344,24 +344,24 @@ class TankSimulation {
     this.inletValve.isOpen = (openFraction > 0.05);
   }
 
-// Called from parent HTML when pump is toggled
-setPumpFactor(factor) {
-  this.pumpOn = (factor > 0);
-  console.log('Pump set to:', this.pumpOn ? 'ON' : 'OFF');
-}
+  // Called from parent HTML when pump is toggled
+  setPumpFactor(factor) {
+    this.pumpOn = (factor > 0);
+    console.log('Pump set to:', this.pumpOn ? 'ON' : 'OFF');
+  }
 
-// Called from parent HTML when outlet valve is adjusted
-setOutletValve(position) {
-  this.outletValvePos = Math.max(0, Math.min(1, position));
-  console.log('Outlet valve set to:', (this.outletValvePos * 100).toFixed(0) + '%');
-}
+  // Called from parent HTML when outlet valve is adjusted
+  setOutletValve(position) {
+    this.outletValvePos = Math.max(0, Math.min(1, position));
+    console.log('Outlet valve set to:', (this.outletValvePos * 100).toFixed(0) + '%');
+  }
 
-// Optional: for inlet valve (if you want proportional control)
-setInletValve(position) {
-  this.valveOpenFraction = Math.max(0, Math.min(1, position));
-  this.inletValve.isOpen = (position > 0.05);
-  console.log('Inlet valve set to:', (this.valveOpenFraction * 100).toFixed(0) + '%');
-}
+  // Optional: for inlet valve (if you want proportional control)
+  setInletValve(position) {
+    this.valveOpenFraction = Math.max(0, Math.min(1, position));
+    this.inletValve.isOpen = (position > 0.05);
+    console.log('Inlet valve set to:', (this.valveOpenFraction * 100).toFixed(0) + '%');
+  }
   
   _reset() {
     this.tank.reset();
@@ -385,26 +385,26 @@ setInletValve(position) {
     this.dom.dtMs.textContent = (dt * 1000).toFixed(1);
     
     if (!this.paused) {
-      // Calculate flow rates - inlet flow is now proportional to valve opening
+      // INLET FLOW: proportional to valve opening
       const maxInletFlow = this.inletValve.flowRate;
       const Qin = maxInletFlow * this.valveOpenFraction;
       
-// Calculate outlet flow based on pump + valve (per your physics doc)
-let Qout = 0;
-if (this.gravityMode) {
-  // Gravity mode: flow depends on tank level
-  Qout = this.kCoeff * this.outletValvePos * Math.sqrt(this.tank.getLevel());
-} else {
-  // Normal mode: pump must be ON and valve must be open
-  if (this.pumpOn) {
-    Qout = this.outletValvePos * this.pumpCapacity;
-  }
-}
+      // OUTLET FLOW: depends on pump + outlet valve
+      let Qout = 0;
+      if (this.gravityMode) {
+        // Gravity mode: flow depends on tank level
+        Qout = this.kCoeff * this.outletValvePos * Math.sqrt(this.tank.getLevel());
+      } else {
+        // Normal mode: pump must be ON and valve must be open
+        if (this.pumpOn) {
+          Qout = this.outletValvePos * this.pumpCapacity;
+        }
+      }
 
-// Realistic gate: can't pump from empty tank
-if (this.tank.getLevel() <= 0.01) {
-  Qout = 0;
-}
+      // Realistic gate: can't pump from empty tank
+      if (this.tank.getLevel() <= 0.01) {
+        Qout = 0;
+      }
       
       // Update physics
       this.tank.step(dt, Qin, Qout);
@@ -431,20 +431,15 @@ if (this.tank.getLevel() <= 0.01) {
                        this.valveOpenFraction === 1 ? 'OPEN' : 
                        `${valvePct}% OPEN`;
     
-    // Update right panel readouts (these always exist)
+    // Update right panel readouts
     this.dom.levelPct.textContent = pct;
     this.dom.vol.textContent = this.tank.volume.toFixed(3);
     this.dom.qinRead.textContent = Qin.toFixed(2);
     this.dom.qoutRead.textContent = Qout.toFixed(2);
-
-_updateReadouts(Qin, Qout) {
-  // ... existing code ...
-  
-  // Show pump and outlet valve status in console
-  const pumpStatus = this.pumpOn ? 'ON' : 'OFF';
-  const outletPct = (this.outletValvePos * 100).toFixed(0);
-  console.log(`Pump: ${pumpStatus}, Outlet Valve: ${outletPct}%, Qout: ${Qout.toFixed(2)}`);
-}
+    
+    // Show pump and outlet valve status in console
+    const pumpStatus = this.pumpOn ? 'ON' : 'OFF';
+    const outletPct = (this.outletValvePos * 100).toFixed(0);
     
     // Overflow warning
     this.dom.overflowText.classList.toggle('warn', this.tank.isOverflow());
