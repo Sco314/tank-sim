@@ -341,7 +341,7 @@
   // Visual Updates
   function updateOutletVisual(){
     const flowing = pumpOn && outletValvePos > 0;
-    outletFlowPath?.classList.toggle('on', flowing);
+    <!--outletFlowPath?.classList.toggle('on', flowing);-->
     if (outletFlowPath){
       const dur = 1200 - Math.round(800 * outletValvePos);
       outletFlowPath.style.setProperty('--duration', dur + 'ms');
