@@ -271,25 +271,7 @@ _setupEventListeners() {
     console.log('Quick toggle - valve now:', this.valveOpenFraction);
   }
 
-  _openValvePopup() {
-    // Open the popup with current valve position (maintains last position)
-    console.log('Opening valve popup with current position:', this.valveOpenFraction);
-    
-    if (!this.valvePopup) {
-      console.error('Valve popup not initialized!');
-      return;
-    }
-    
-    if (this.valvePopup.isOpen) {
-      console.log('Popup is already open, closing first...');
-      this.valvePopup.close();
-      setTimeout(() => this.valvePopup.open(this.valveOpenFraction), 400);
-    } else {
-      this.valvePopup.open(this.valveOpenFraction);
-    }
-  }
-
-_onValvePopupChange(openFraction) {
+  _onValvePopupChange(openFraction) {
     // FIXED: This is called live as the valve wheel is turned
     console.log('Valve changed to:', openFraction);
     
