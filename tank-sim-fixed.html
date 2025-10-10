@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Interactive Tank & Valve Simulator</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css">
+
+  <style>
+    /* Grid + Flow Animation */
+    .grid{ grid-template-columns: 1fr; }
+    .flow { stroke-dasharray: 10 12; }
+    .flow.on { animation: dash var(--duration, 600ms) linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -22; } }
+
+    /* Controls Drawer */
+    .controls-toggle{
+      position: fixed; top: 12px; right: 12px; z-index: 1000;
+      background:#172144; color:#e9f0ff; border:1px solid #28366d;
+      padding:10px 14px; border-radius:12px; cursor:pointer;
+    }
+    .controls-toggle:active{ transform: translateY(1px); }
+
+    .controls-drawer{
+      position: fixed; inset: 0; z-index: 999;
+      pointer-events: none;
+    }
+    .controls-drawer::before{
+      content:""; position:absolute; inset:0; background: rgba(0,0,0,.35);
+      opacity:0; transition: opacity .2s ease;
+    }
+    .controls-panel{
+      position: absolute; top:0; right:0; height:100vh;
+      width:min(420px, 92vw); background: var(--card, #121a33);
+      border-left:1px solid #1f2a50; box-shadow: -20px 0 50px rgba(0,0,0,.4);
+      transform: translateX(100%); transition: transform .25s ease;
+      overflow:auto; padding:16px; color: var(--ink, #e9f0ff);
+    }
+    .controls-close{
+      position: sticky; top:0; float:right; margin:-6px -6px 8px 8px;
+      background:transparent; color:var(--ink, #e9f0ff); border:1px solid #28366d;
+      border-radius:10px; padding:6px 10px; cursor:pointer; font-size:20px;
+    }
+    .controls-drawer.open{ pointer-events: auto; }
+    .controls-drawer.open::before{ opacity:1; }
+    .controls-drawer.open .controls-panel{ transform: translateX(0); }
+
+    /* Pump and Valve Interaction */
+    #pump image { pointer-events: all; }
+    #pump { cursor: pointer; }
+    .valve image,
+    .valve text { pointer-events: none; }
+    .valve .valve-hitbox { pointer-events: auto; cursor: pointer; }
+    .ctrl-section[hidden]{ display:none; }
+
+    /* Simple Popout Modal - Matching index.html */
+    .valve-modal-overlay{
+      position: fixed; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,.5); z-index: 1002;
+    }
+    .valve-modal-overlay.open{ display: flex; }
+
+    .valve-modal-container{
+      position: relative; width: min(520px, 92vw);
+      background: #121a33; color: #e9f0ff;
+      border: 1px solid #1f2a50; border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6); padding: 12px;
+    }
+    .valve-modal-close{
+      position: absolute; right: 8px; top: 8px;
+      background: transparent; border: 1px solid #28366d;
+      border-radius: 8px; padding: 4px 8px; cursor: pointer;
+      color: #e9f0ff; font-size: 18px;
+    }
+    .valve-modal-close:hover{ background: #1a2547; }
+    .valve-modal-container iframe{ width: 100%; height: 300px; border: 0; }
+  </style>
+</head>
+
+<body id="id13">
+
+<button id="controlsToggle" class="controls-toggle" aria-controls="controlsDrawer" aria-expanded="false">
+  Controls
+</button>
+  
+<div id="ie7wb" class="app">
+  <div id="i4pt7" class="grid">
+    <!-- Visualization -->
+    <div id="i3bwj" class="card stage">
+      <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img" id="iuele">
+        <title id="title">Tank and Pipe Visualization</title>
+        <desc id="desc">Click the inlet valve to open interactive valve control. Use the slider to adjust outlet flow. The blue rectangle shows the liquid level.</desc>
+        
+        <defs id="ic988">
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1"></path>
+          </pattern>
+          <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7cc8ff"></stop>
+            <stop offset="100%" stop-color="#2d8bd6"></stop>
+          </linearGradient>
+        </defs>
+        
+        <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4"></rect>
+        
+        <!-- INLET -->
+        <g id="inlet">
+          <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+          <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+
+          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open valve control">
+            <g transform="translate(230, 53)">
+              <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125" fill="transparent" stroke="none"/>
+              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+            </g>
+          </g>
+        </g>   
+        
+        <!-- OUTLET -->
+        <g id="outlet">
+          <path id="outletPipe" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="outletFlow" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"/>
+        </g>
+
+        <!-- PUMP -->
+        <g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="true" aria-label="Toggle pump">
+          <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
+        </g>
+
+        <!-- OUTLET VALVE -->
+        <g id="outletValve" class="valve" aria-label="Open outlet valve">
+          <g transform="translate(890,278)">
+            <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125" fill="transparent" stroke="none" tabindex="0" role="button" aria-pressed="true" />
+            <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+          </g>
+        </g>
+        
+        <!-- TANK -->
+        <g id="tank" transform="translate(340, 120)">
+          <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"></rect>
+          <rect id="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)" class="levelRect"></rect>
+          <g id="ticks" stroke="#334a90">
+            <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"></path>
+            <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
+            <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
+            <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
+            <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
+            <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Controls Drawer -->
+    <aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
+      <div class="controls-panel card" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+        <button id="controlsClose" class="controls-close" aria-label="Close controls">×</button>
+
+        <div id="ixaoq">
+          <h1 id="controlsTitle">Controls</h1>
+          <div class="sub">Click the valve in the visualization to open the interactive valve control. Use the button below for quick on/off toggle. Adjust outlet flow to drain the tank. Physics uses a simple mass balance dV/dt = Qin − Qout with a fixed cross-section area.</div>
+          <div id="i3zec" class="controls">
+            <div class="row">
+              <button type="button" id="toggleValve" aria-pressed="false" class="btn toggle">Open Inlet Valve</button>
+              <button type="button" id="resetBtn" class="btn">Reset</button>
+              <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
+            </div>
+            <div class="row">
+              <label for="qout">Outlet flow</label>
+              <input type="range" id="qout" min="0" max="1.2" step="0.01" value="0.35" class="grow"/>
+              <output id="qoutVal">0.35</output>
+            </div>
+            <div class="row">
+              <label for="qin">Inlet flow (max)</label>
+              <input type="range" id="qin" min="0" max="1.5" step="0.01" value="0.80" class="grow"/>
+              <output id="qinVal">0.80</output>
+            </div>
+            <div class="row">
+              <label for="area">Tank area</label>
+              <input type="range" id="area" min="0.5" max="3" step="0.01" value="1.20" class="grow"/>
+              <output id="areaVal">1.20</output>
+            </div>
+            <div id="irdd2" class="kv">
+              <div>Simulation step</div><div><span id="dtMs">16.7</span> ms (dynamic)</div>
+              <div>Tank height (max)</div><div>360 px visual (normalized 1.0)</div>
+              <div>Overflow limit</div><div id="overflowText">100%</div>
+            </div>
+            <p class="small">Tip: For a head-dependent drain, enable "Gravity mode" below. Then Qout = k·√(level). The slider sets k.</p>
+            <div class="row">
+              <label><input type="checkbox" id="gravityMode"/> Gravity mode</label>
+              <input type="range" id="kcoeff" min="0" max="1.5" step="0.01" value="0.60" class="grow"/>
+              <output id="kVal">0.60</output>
+            </div>
+          </div>
+
+          <hr/>
+          <h1>Readouts</h1>
+          <div class="kv">
+            <div>Level</div><div><span id="levelPct">0.0</span>%</div>
+            <div>Volume</div><div><span id="vol">0.000</span> units</div>
+            <div>Qin</div><div><span id="qinRead">0.00</span> units/s</div>
+            <div>Qout</div><div><span id="qoutRead">0.35</span> units/s</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- INLET VALVE POPOUT -->
+<div id="inletModal" class="valve-modal-overlay" aria-hidden="true">
+  <div class="valve-modal-container">
+    <button type="button" aria-label="Close inlet valve control" id="inletModalClose" class="valve-modal-close">×</button>
+    <div style="margin:2px 0 10px;font-weight:600">Inlet Valve Control</div>
+    <iframe id="inletValveIframe" src="valve.html" title="Inlet Valve Control"></iframe>
+  </div>
+</div>
+
+<!-- OUTLET VALVE POPOUT -->
+<div id="outletModal" class="valve-modal-overlay" aria-hidden="true">
+  <div class="valve-modal-container">
+    <button type="button" aria-label="Close outlet valve control" id="outletModalClose" class="valve-modal-close">×</button>
+    <div style="margin:2px 0 10px;font-weight:600">Outlet Valve Control</div>
+    <iframe id="outletValveIframe" src="valve.html#outlet" title="Outlet Valve Control"></iframe>
+  </div>
+</div>
+
+<!-- PUMP POPOUT -->
+<div id="pumpModal" class="valve-modal-overlay" aria-hidden="true">
+  <div class="valve-modal-container">
+    <button type="button" aria-label="Close pump control" id="pumpModalClose" class="valve-modal-close">×</button>
+    <div style="margin:2px 0 10px;font-weight:600">Pump Control</div>
+    <div class="row" style="gap:.5rem; margin-top:10px">
+      <button type="button" id="pumpModalToggle" class="btn toggle" aria-pressed="true">
+        Stop Pump
+      </button>
+    </div>
+    <p class="small" style="margin-top:10px">
+      Outlet flow appears only when the pump is ON and the outlet valve &gt; 0%.
+    </p>
+  </div>
+</div>
+
+<!-- Load JavaScript -->
+<script src="js/ValvePopup.js"></script>
+<script src="js/TankSimulation.js"></script>
+
+<!-- Controls Drawer Script -->
+<script>
+(function(){
+  const drawer   = document.getElementById('controlsDrawer');
+  const panel    = drawer.querySelector('.controls-panel');
+  const toggle   = document.getElementById('controlsToggle');
+  const closeBtn = document.getElementById('controlsClose');
+
+  function openDrawer(){
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden','false');
+    toggle.setAttribute('aria-expanded','true');
+    setTimeout(() => closeBtn.focus(), 0);
+  }
+  function closeDrawer(){
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden','true');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.focus();
+  }
+
+  toggle.addEventListener('click', openDrawer);
+  closeBtn.addEventListener('click', closeDrawer);
+  drawer.addEventListener('click', (e) => {
+    if (!panel.contains(e.target)) closeDrawer();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
+})();
+</script>
+
+<!-- Valve Wiring Script -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const valveEl = document.querySelector('#valve');
+  const toggleBtn = document.querySelector('#toggleValve');
+  const inletFlow = document.getElementById('inletFlow');
+
+  if (!valveEl || !toggleBtn) return;
+
+  function isValveOpenFromButton() {
+    const pressed = toggleBtn.getAttribute('aria-pressed');
+    if (pressed === 'true') return true;
+    if (pressed === 'false') return false;
+    return /close/i.test(toggleBtn.textContent || '');
+  }
+
+  function syncInletFlow() {
+    inletFlow?.classList.toggle('on', isValveOpenFromButton());
+  }
+
+  function toggleFromGraphic() {
+    toggleBtn.click();
+    syncInletFlow();
+  }
+
+  valveEl.addEventListener('click', toggleFromGraphic);
+  valveEl.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFromGraphic(); }
+  });
+  toggleBtn.addEventListener('click', syncInletFlow);
+
+  syncInletFlow();
+});
+</script>
+
+<!-- Main Popout Control Script -->
+<script>
+(() => {
+  // Elements
+  const inletValveHit   = document.querySelector('#valve .valve-hitbox') || document.getElementById('valve');
+  const outletValveHit  = document.querySelector('#outletValve .valve-hitbox') || document.getElementById('outletValve');
+  const pumpEl          = document.getElementById('pump');
+  const outletFlowPath  = document.getElementById('outletFlow');
+
+  // Modals
+  const inletModal      = document.getElementById('inletModal');
+  const inletClose      = document.getElementById('inletModalClose');
+  const inletIframe     = document.getElementById('inletValveIframe');
+
+  const outletModal     = document.getElementById('outletModal');
+  const outletClose     = document.getElementById('outletModalClose');
+  const outletIframe    = document.getElementById('outletValveIframe');
+
+  const pumpModal       = document.getElementById('pumpModal');
+  const pumpClose       = document.getElementById('pumpModalClose');
+  const pumpToggle      = document.getElementById('pumpModalToggle');
+
+  // State
+  let pumpOn = true;
+  let outletValvePos = 1;
+
+  // Modal Helpers
+  function openModal(el){
+    el?.classList.add('open');
+    el?.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(el){
+    el?.classList.remove('open');
+    el?.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+
+  // Visual Updates
+  function updateOutletVisual(){
+    const flowing = pumpOn && outletValvePos > 0;
+    outletFlowPath?.classList.toggle('on', flowing);
+    if (outletFlowPath){
+      const dur = 1200 - Math.round(800 * outletValvePos);
+      outletFlowPath.style.setProperty('--duration', dur + 'ms');
+      outletFlowPath.style.opacity = flowing ? (0.25 + 0.75 * outletValvePos) : 0.15;
+    }
+  }
+
+  function updatePumpUI(){
+    pumpEl?.setAttribute('aria-pressed', String(pumpOn));
+    if (pumpToggle){
+      pumpToggle.setAttribute('aria-pressed', String(pumpOn));
+      pumpToggle.textContent = pumpOn ? 'Stop Pump' : 'Start Pump';
+    }
+  }
+
+  // Setters
+  function setPump(on){
+    pumpOn = !!on;
+    window.simulation?.setPumpFactor?.(pumpOn ? 1 : 0);
+    updatePumpUI();
+    updateOutletVisual();
+  }
+
+  function setOutletValve(pos){
+    outletValvePos = Math.max(0, Math.min(1, pos));
+    document.getElementById('outletValve')?.setAttribute('aria-pressed', String(outletValvePos > 0));
+    window.simulation?.setOutletValve?.(outletValvePos);
+    try { outletIframe?.contentWindow?.postMessage({ type:'valve:set', value: outletValvePos }, '*'); } catch(_) {}
+    updateOutletVisual();
+  }
+
+  // Inlet Valve Popout
+  function openInlet(){
+    openModal(inletModal);
+    setTimeout(() => inletClose?.focus(), 0);
+  }
+  inletValveHit?.addEventListener('click', openInlet);
+  inletValveHit?.addEventListener('keydown', e => { 
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); openInlet(); }
+  });
+  inletClose?.addEventListener('click', () => closeModal(inletModal));
+  inletModal?.addEventListener('click', (e) => { if (e.target === inletModal) closeModal(inletModal); });
+
+  // Outlet Valve Popout
+  function openOutlet(){
+    openModal(outletModal);
+    try { outletIframe?.contentWindow?.postMessage({ type:'valve:set', value: outletValvePos }, '*'); } catch(_){}
+    setTimeout(() => outletClose?.focus(), 0);
+  }
+  outletValveHit?.addEventListener('click', openOutlet);
+  outletValveHit?.addEventListener('keydown', e => { 
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); openOutlet(); }
+  });
+  outletClose?.addEventListener('click', () => closeModal(outletModal));
+  outletModal?.addEventListener('click', (e) => { if (e.target === outletModal) closeModal(outletModal); });
+
+  // Listen for outlet valve changes from iframe
+  window.addEventListener('message', (e) => {
+    if (!outletIframe || e.source !== outletIframe.contentWindow) return;
+    const d = e.data;
+    if (!d || d.type !== 'valve:changed') return;
+    const pos = Math.max(0, Math.min(1, +d.value || 0));
+    setOutletValve(pos);
+  });
+
+  // Pump Popout
+  function openPump(){
+    openModal(pumpModal);
+    setTimeout(() => pumpClose?.focus(), 0);
+  }
+  pumpEl?.addEventListener('click', openPump);
+  pumpEl?.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); setPump(!pumpOn); }
+  });
+  pumpClose?.addEventListener('click', () => closeModal(pumpModal));
+  pumpModal?.addEventListener('click', (e) => { if (e.target === pumpModal) closeModal(pumpModal); });
+  pumpToggle?.addEventListener('click', () => setPump(!pumpOn));
+
+  // Escape key closes any open modal
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (inletModal?.classList.contains('open')) closeModal(inletModal);
+      if (outletModal?.classList.contains('open')) closeModal(outletModal);
+      if (pumpModal?.classList.contains('open')) closeModal(pumpModal);
+    }
+  });
+
+  // Initialize
+  setPump(true);
+  setOutletValve(1);
+})();
+</script>
+
+</body>
+</html>
