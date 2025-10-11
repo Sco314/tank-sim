@@ -1,4 +1,4 @@
-// Controls Drawer Logic (from index.html lines 228–257)
+// Controls Drawer Logic
 (function(){
   const drawer   = document.getElementById('controlsDrawer');
   const panel    = drawer.querySelector('.controls-panel');
@@ -28,11 +28,11 @@
   });
 })();
 
-// Main Modal Control Script (from index.html lines 260–484)
+// Main Modal Control Script
 (() => {
-  // Elements
-  const inletValveHit   = document.querySelector('#valve .valve-hitbox') || document.getElementById('valve');
-  const outletValveHit  = document.querySelector('#outletValve .valve-hitbox') || document.getElementById('outletValve');
+  // Elements - Direct valve/pump element references (no hitboxes)
+  const inletValve      = document.getElementById('valve');
+  const outletValve     = document.getElementById('outletValve');
   const pumpEl          = document.getElementById('pump');
   const outletFlowPath  = document.getElementById('outletFlow');
 
@@ -137,7 +137,7 @@
 
   function setOutletValve(pos, skipIframeUpdate = false){
     outletValvePos = Math.max(0, Math.min(1, pos));
-    document.getElementById('outletValve')?.setAttribute('aria-pressed', String(outletValvePos > 0));
+    outletValve?.setAttribute('aria-pressed', String(outletValvePos > 0));
     window.simulation?.setOutletValve?.(outletValvePos);
     if (!skipIframeUpdate) {
       sendValvePosition(outletIframe, outletValvePos);
@@ -161,8 +161,8 @@
     setTimeout(() => inletClose?.focus(), 0);
   }
 
-  inletValveHit?.addEventListener('click', openInlet);
-  inletValveHit?.addEventListener('keydown', e => {
+  inletValve?.addEventListener('click', openInlet);
+  inletValve?.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); openInlet(); }
   });
   inletClose?.addEventListener('click', () => closeModal(inletModal));
@@ -181,8 +181,8 @@
     setTimeout(() => outletClose?.focus(), 0);
   }
 
-  outletValveHit?.addEventListener('click', openOutlet);
-  outletValveHit?.addEventListener('keydown', e => {
+  outletValve?.addEventListener('click', openOutlet);
+  outletValve?.addEventListener('keydown', e => {
     if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); openOutlet(); }
   });
   outletClose?.addEventListener('click', () => closeModal(outletModal));
