@@ -51,11 +51,28 @@
     .controls-drawer.open .controls-panel{ transform: translateX(0); }
 
     /* Pump and Valve Interaction */
-    #pump image { pointer-events: all; }
     #pump { cursor: pointer; }
-    .valve image,
+    #pump image { 
+      pointer-events: all; 
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+    #pump:hover image {
+      transform: scale(1.08);
+      filter: brightness(1.2) drop-shadow(0 0 8px rgba(31, 212, 214, 0.4));
+    }
+    
+    .valve { cursor: pointer; }
+    .valve image { 
+      pointer-events: all; 
+      cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+    .valve:hover image {
+      transform: scale(1.12);
+      filter: brightness(1.25) drop-shadow(0 0 10px rgba(31, 212, 214, 0.5));
+    }
     .valve text { pointer-events: none; }
-    .valve .valve-hitbox { pointer-events: auto; cursor: pointer; }
     .ctrl-section[hidden]{ display:none; }
 
     /* Modal window styling now in style.css */
@@ -94,7 +111,6 @@
 
           <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open valve control">
             <g transform="translate(230, 53)">
-              <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125" fill="transparent" stroke="none"/>
               <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
             </g>
           </g>
@@ -112,9 +128,8 @@
         </g>
 
         <!-- OUTLET VALVE -->
-        <g id="outletValve" class="valve" aria-label="Open outlet valve">
+        <g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve">
           <g transform="translate(890,278)">
-            <rect class="valve-hitbox" x="-50" y="-50" width="125" height="125" fill="transparent" stroke="none" tabindex="0" role="button" aria-pressed="true" />
             <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
           </g>
         </g>
