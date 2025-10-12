@@ -15,6 +15,7 @@ class ValveManager {
     this._initializeValves();
     this._createModals();
     this._setupEventListeners();
+    this._setupPostMessageListener();
     
     console.log(`ValveManager initialized with ${Object.keys(this.valves).length} valves`);
   }
@@ -87,19 +88,40 @@ class ValveManager {
         // Set initial position
         this._sendValvePosition(iframe, valve.position);
         
-        // Setup onChange callback
+        // Setup onChange callback (direct API - works on web server)
         try {
           if (iframe.contentWindow && iframe.contentWindow.ValveTop) {
             iframe.contentWindow.ValveTop.onChange((pos) => {
               this._onIframePositionChange(key, pos);
             });
-            console.log(`Valve ${key} onChange callback set`);
+            console.log(`✅ Valve ${key} direct onChange callback set`);
           }
         } catch(e) {
-          console.warn(`Could not setup callback for valve ${key}:`, e);
+          console.warn(`⚠️ Direct callback failed for valve ${key}, using postMessage fallback`);
         }
       }, 150);
     });
+  }
+
+  /**
+   * Setup global postMessage listener (fallback for file:// protocol)
+   */
+  _setupPostMessageListener() {
+    window.addEventListener('message', (event) => {
+      // Check if message is from a valve iframe
+      if (event.data && event.data.type === 'valve:changed') {
+        // Find which valve sent this message
+        for (const [key, iframe] of Object.entries(this.iframes)) {
+          if (event.source === iframe.contentWindow) {
+            const position = Math.max(0, Math.min(1, parseFloat(event.data.value) || 0));
+            this._onIframePositionChange(key, position);
+            console.log(`📨 Valve ${key} updated via postMessage: ${(position * 100).toFixed(0)}%`);
+            break;
+          }
+        }
+      }
+    });
+    console.log('✅ PostMessage listener active for valve updates');
   }
 
   /**
@@ -220,18 +242,17 @@ class ValveManager {
 
   /**
    * Called when valve changes
+   * REALISTIC FIELD OPERATION: No visual hints - user must click to check position
    */
   _onValveChange(key, valve) {
-    // Update SVG element state
+    // Update ARIA state for accessibility
     const svgElement = document.querySelector(valve.svgElement);
     if (svgElement) {
       svgElement.setAttribute('aria-pressed', valve.isOpen());
       
-      // Update opacity based on position
-      const image = svgElement.querySelector('image');
-      if (image) {
-        image.setAttribute('opacity', valve.isOpen() ? '1.0' : '0.5');
-      }
+      // REMOVED: No opacity changes
+      // Valves always look the same regardless of position
+      // User must click to check - just like in the field!
     }
     
     console.log(`Valve ${key} changed:`, valve.getInfo());
