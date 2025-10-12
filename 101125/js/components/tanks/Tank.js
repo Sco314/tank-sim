@@ -146,15 +146,26 @@ class Tank extends Component {
   }
 
   /**
-   * Get output flow (pump can't draw more than available)
+   * FIXED: Get output flow (tank supplies what downstream components demand)
    */
   getOutputFlow() {
-    // Calculate how much flow is possible based on current volume
-    // This prevents pumps from drawing from empty tanks
-    const requestedFlow = super.getOutputFlow();
+    if (!this.flowNetwork) return 0;
+    
+    // Tank supplies whatever its output components are demanding
+    // (pumps have already calculated their output in the flow network processing order)
+    let demandedFlow = 0;
+    
+    for (const outputId of this.outputs) {
+      // Check what flow this output component is producing
+      // This works because pumps are processed before tanks in calculateFlows()
+      demandedFlow += this.flowNetwork.getOutputFlow(outputId);
+    }
+    
+    // Limit by available volume (can't pump from empty tank)
     const availableFlow = this.volume * 10; // Max flow = volume * 10 per second
     
-    return Math.min(requestedFlow, availableFlow);
+    // Return the lesser of what's demanded vs what's available
+    return Math.min(demandedFlow, availableFlow);
   }
 
   /**
