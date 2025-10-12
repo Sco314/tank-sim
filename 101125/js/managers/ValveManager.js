@@ -24,15 +24,17 @@ class ValveManager {
    * Initialize all valves from config
    */
   _initializeValves() {
-    for (const [key, cfg] of Object.entries(this.config)) {
-      const valve = new Valve(cfg);
-      this.valves[key] = valve;
-      this.flowNetwork.addComponent(valve);
-      
-      // Setup change callback
-      valve.onChange = (v) => this._onValveChange(key, v);
-    }
+  for (const [key, cfg] of Object.entries(this.config)) {
+    const valve = new Valve({
+      ...cfg,
+      flowNetwork: this.flowNetwork  // ✅ ADD THIS
+    });
+    this.valves[key] = valve;
+    this.flowNetwork.addComponent(valve);
+    
+    valve.onChange = (v) => this._onValveChange(key, v);
   }
+}
 
   /**
    * Create modal for each valve with iframe
