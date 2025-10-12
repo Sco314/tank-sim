@@ -1,284 +1,300 @@
-/**
- * systemConfig.js - System configuration for Phase 4 testing
- * 
- * Now includes Tank component
- */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Interactive Tank & Valve Simulator - Phase 5 Testing</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css">
 
-const SYSTEM_CONFIG = {
+  <!-- Core Architecture (Phase 1) -->
+  <script src="js/core/Component.js" defer></script>
+  <script src="js/core/FlowNetwork.js" defer></script>
+  <script src="js/core/ComponentManager.js" defer></script>
+
+  <!-- Configuration -->
+  <script src="js/config/systemConfig.js" defer></script>
+
+  <!-- Tank Components (Phase 4 - NEW!) -->
+  <script src="js/components/tanks/Tank.js" defer></script>
+
+  <!-- Pump Components (Phase 2) -->
+  <script src="js/components/pumps/Pump.js" defer></script>
+  <script src="js/components/pumps/FixedSpeedPump.js" defer></script>
+  <script src="js/components/pumps/VariableSpeedPump.js" defer></script>
+  <script src="js/components/pumps/ThreeSpeedPump.js" defer></script>
+
+  <!-- Valve Components (Phase 3) -->
+  <script src="js/components/valves/Valve.js" defer></script>
+
+  <!-- Pressure Sensor Components (Phase 5 - NEW!) -->
+  <script src="js/components/sensors/PressureSensor.js" defer></script>
+
+  <!-- Managers -->
+  <script src="js/managers/TankManager.js" defer></script>
+  <script src="js/managers/PumpManager.js" defer></script>
+  <script src="js/managers/ValveManager.js" defer></script>
+  <script src="js/managers/PressureManager.js" defer></script>
+
+  <!-- Initialize System -->
+  <script defer>
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        console.log('=== INITIALIZING SYSTEM ===');
+        
+        if (!window.SYSTEM_CONFIG) {
+          console.error('❌ SYSTEM_CONFIG not loaded');
+          return;
+        }
+        if (!window.ComponentManager) {
+          console.error('❌ ComponentManager not loaded');
+          return;
+        }
+        
+        console.log('✅ All components loaded');
+        
+        window.componentManager = new ComponentManager(SYSTEM_CONFIG);
+        window.componentManager.initialize().then(success => {
+          if (success) {
+            console.log('✅ System initialized successfully');
+            window.componentManager.start();
+            console.log('✅ Simulation started');
+          } else {
+            console.error('❌ System initialization failed');
+          }
+        });
+      }, 500);
+    });
+  </script>
+</head>
+
+<body id="id13">
+
+<button id="controlsToggle" class="controls-toggle" aria-controls="controlsDrawer" aria-expanded="false">
+  Controls
+</button>
   
-  // ============================================================================
-  // TANKS (Phase 4 - NEW!)
-  // ============================================================================
-  tanks: {
-    mainTank: {
-      id: 'tank1',
-      name: 'Main Storage Tank',
-      type: 'tank',
-      
-      // Physical properties
-      area: 1.2,              // Cross-sectional area (m²)
-      maxHeight: 1.0,         // Maximum height (m)
-      // maxVolume calculated as area × maxHeight = 1.2 m³
-      
-      // Initial state
-      initialVolume: 0,       // Start empty
-      
-      // Thresholds for warnings
-      lowThreshold: 0.15,     // Warn when < 15%
-      highThreshold: 0.85,    // Warn when > 85%
-      
-      // Visual properties (matches SVG)
-      svgElement: '#tank',
-      levelRectHeight: 360,   // Height of the level rect in pixels
-      levelRectY: 360,        // Base Y position (top of empty tank)
-      position: [340, 120],
-      
-      // Connections
-      inputs: ['inletValve'],
-      outputs: ['pump1']
-    }
-  },
-  
-  // ============================================================================
-  // PUMPS (Phase 2)
-  // ============================================================================
-  pumps: {
-    mainPump: {
-      id: 'pump1',
-      name: 'Main Centrifugal Pump',
-      type: 'pump',
-      pumpType: 'fixed',
-      
-      capacity: 1.2,
-      efficiency: 0.95,
-      power: 5.5,
-      
-      initialSpeed: 0,
-      
-      // Pump requires minimum tank level to operate
-      requiresMinLevel: 0.05,  // Won't run if tank < 5%
-      
-      cavitation: {
-        enabled: false,
-        triggerTime: 60,
-        duration: 5,
-        flowReduction: 0.3
-      },
-      
-      svgElement: '#pump',
-      position: [790, 460],
-      
-      inputs: ['tank1'],
-      outputs: ['outletValve'],
-      
-      modalTitle: 'Main Pump Control'
-    }
-  },
-  
-  // ============================================================================
-  // VALVES (Phase 3)
-  // ============================================================================
-  valves: {
-    inlet: {
-      id: 'inletValve',
-      name: 'Inlet Valve',
-      type: 'valve',
-      
-      maxFlow: 0.8,
-      initialPosition: 0,
-      responseTime: 0.1,
-      
-      svgElement: '#valve',
-      position: [230, 53],
-      
-      inputs: ['source'],
-      outputs: ['tank1'],
-      
-      modalTitle: 'Inlet Valve Control',
-      iframeUrl: 'valve.html'
-    },
-    
-    outlet: {
-      id: 'outletValve',
-      name: 'Outlet Valve',
-      type: 'valve',
-      
-      maxFlow: 1.2,
-      initialPosition: 1.0,
-      responseTime: 0.1,
-      
-      svgElement: '#outletValve',
-      position: [890, 278],
-      
-      inputs: ['pump1'],
-      outputs: ['drain'],
-      
-      modalTitle: 'Outlet Valve Control',
-      iframeUrl: 'valve.html'
-    }
-  },
-  
-  // ============================================================================
-  // PIPES (Placeholder - Phase 6)
-  // ============================================================================
-  pipes: {},
-  
-  // ============================================================================
-  // PRESSURE SENSORS (Phase 5 - NEW!)
-  // ============================================================================
-  pressureSensors: {
-    tankBottom: {
-      id: 'p1',
-      name: 'Tank Bottom Pressure',
-      type: 'sensor',
-      
-      // Measurement properties
-      range: [0, 2],            // 0-2 bar range
-      units: 'bar',
-      accuracy: 0.01,           // ±0.01 bar
-      
-      // Location
-      measurementPoint: 'tank_bottom',
-      heightOffset: 0,          // At base level
-      
-      // Alarms
-      lowAlarm: null,           // No low alarm
-      highAlarm: 1.5,           // Warn if > 1.5 bar
-      
-      // Connections (reads from tank)
-      inputs: ['tank1'],
-      outputs: [],
-      
-      // Visual
-      svgElement: null,         // No SVG element (status panel only)
-      position: [340, 480]
-    },
-    
-    pumpInlet: {
-      id: 'p2',
-      name: 'Pump Suction Pressure',
-      type: 'sensor',
-      
-      range: [0, 2],
-      units: 'bar',
-      accuracy: 0.01,
-      
-      measurementPoint: 'pump_inlet',
-      heightOffset: 0.5,        // Pump inlet is 0.5m above base
-      
-      lowAlarm: 0.5,            // Warn if suction < 0.5 bar (cavitation risk)
-      highAlarm: null,
-      
-      inputs: ['tank1'],
-      outputs: ['pump1'],
-      
-      svgElement: null,
-      position: [660, 460]
-    },
-    
-    pumpOutlet: {
-      id: 'p3',
-      name: 'Pump Discharge Pressure',
-      type: 'sensor',
-      
-      range: [0, 15],           // Higher range for pump discharge
-      units: 'bar',
-      accuracy: 0.01,
-      
-      measurementPoint: 'pump_outlet',
-      heightOffset: 0.5,
-      
-      lowAlarm: null,
-      highAlarm: 12,            // Warn if discharge > 12 bar
-      
-      inputs: ['pump1'],
-      outputs: ['outletValve'],
-      
-      svgElement: null,
-      position: [815, 460]
-    },
-    
-    systemOutlet: {
-      id: 'p4',
-      name: 'System Outlet Pressure',
-      type: 'sensor',
-      
-      range: [0, 10],
-      units: 'bar',
-      accuracy: 0.01,
-      
-      measurementPoint: 'static',
-      heightOffset: -0.3,       // Outlet is slightly below pump
-      
-      lowAlarm: 1,              // Warn if delivery < 1 bar
-      highAlarm: 8,
-      
-      inputs: ['outletValve'],
-      outputs: ['drain'],
-      
-      svgElement: null,
-      position: [960, 295]
-    }
-  },
-  
-  // ============================================================================
-  // GLOBAL SETTINGS
-  // ============================================================================
-  settings: {
-    timeStep: 0.016,
-    maxTimeStep: 0.1,
-    
-    gravity: 9.81,
-    fluidDensity: 1000,
-    
-    updateInterval: 16,
-    
-    debugMode: true,
-    logFlows: false
+<div id="ie7wb" class="app">
+  <div id="i4pt7" class="grid">
+    <div id="i3bwj" class="card stage">
+      <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img" id="iuele">
+        <title id="title">Tank and Pipe Visualization</title>
+        <desc id="desc">Click components to interact. Tank shows liquid level.</desc>
+        
+        <defs id="ic988">
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1"></path>
+          </pattern>
+          <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7cc8ff"></stop>
+            <stop offset="100%" stop-color="#2d8bd6"></stop>
+          </linearGradient>
+        </defs>
+        
+        <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4"></rect>
+        
+        <!-- INLET -->
+        <g id="inlet">
+          <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+          <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+
+          <!-- INLET VALVE -->
+          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open inlet valve control">
+            <g transform="translate(230, 53)">
+              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+            </g>
+          </g>
+        </g>   
+        
+        <!-- OUTLET -->
+        <g id="outlet">
+          <path id="outletPipe" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="outletFlow" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"/>
+          
+          <!-- OUTLET VALVE -->
+          <g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve control">
+            <g transform="translate(890,278)">
+              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+            </g>
+          </g>
+        </g>
+
+        <!-- PUMP -->
+        <g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle pump">
+          <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
+        </g>
+        
+        <!-- TANK -->
+        <g id="tank" transform="translate(340, 120)">
+          <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"></rect>
+          <rect id="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)" class="levelRect"></rect>
+          <g id="ticks" stroke="#334a90">
+            <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"></path>
+            <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
+            <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
+            <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
+            <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
+            <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Controls Drawer -->
+    <aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
+      <div class="controls-panel card" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+        <button id="controlsClose" class="controls-close" aria-label="Close controls">×</button>
+
+        <div id="ixaoq">
+          <h1 id="controlsTitle">System Controls</h1>
+          <div class="sub">Phase 5 Testing: Pressure sensors now active! Watch pressures change with tank level, pump, and valve positions.</div>
+          
+          <div id="i3zec" class="controls">
+            <div class="row">
+              <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
+              <button type="button" id="resetBtn" class="btn">Reset</button>
+            </div>
+          </div>
+
+          <hr/>
+          <h1>Pressure Sensors</h1>
+          <div class="kv" id="pressureStatus">
+            <div>Tank Bottom</div><div id="p1Pressure">0.00 bar</div>
+            <div>Status</div><div id="p1Status">✅ OK</div>
+            <div>Pump Inlet</div><div id="p2Pressure">0.00 bar</div>
+            <div>Status</div><div id="p2Status">✅ OK</div>
+            <div>Pump Outlet</div><div id="p3Pressure">0.00 bar</div>
+            <div>Status</div><div id="p3Status">✅ OK</div>
+            <div>System Outlet</div><div id="p4Pressure">0.00 bar</div>
+            <div>Status</div><div id="p4Status">✅ OK</div>
+          </div>
+
+          <hr/>
+          <h1>Tank Status</h1>
+          <div class="kv" id="tankStatus">
+            <div>Level</div><div id="tank1Level">0%</div>
+            <div>Volume</div><div id="tank1Volume">0.000 m³</div>
+            <div>Status</div><div id="tank1Status">⚠️ EMPTY</div>
+            <div>Flow In</div><div id="tank1FlowIn">0.00 m³/s</div>
+            <div>Flow Out</div><div id="tank1FlowOut">0.00 m³/s</div>
+          </div>
+
+          <hr/>
+          <h1>Component Status</h1>
+          <div class="kv" id="systemStatus">
+            <div>Pump</div><div id="pumpStatus">Loading...</div>
+            <div>Pump Flow</div><div id="pumpFlow">0.00 m³/s</div>
+            <div>Inlet Valve</div><div id="inletValveStatus">Loading...</div>
+            <div>Outlet Valve</div><div id="outletValveStatus">Loading...</div>
+          </div>
+          
+          <hr/>
+          <h1>Debug</h1>
+          <button type="button" id="debugBtn" class="btn">Show Debug Info</button>
+          <pre id="debugOutput" style="display:none; font-size:10px; max-height:200px; overflow:auto; background:#0e1734; padding:8px; margin-top:8px;"></pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Controls Drawer Script -->
+<script>
+(function(){
+  const drawer   = document.getElementById('controlsDrawer');
+  const panel    = drawer.querySelector('.controls-panel');
+  const toggle   = document.getElementById('controlsToggle');
+  const closeBtn = document.getElementById('controlsClose');
+
+  function openDrawer(){
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden','false');
+    toggle.setAttribute('aria-expanded','true');
+    setTimeout(() => closeBtn.focus(), 0);
   }
-};
-
-// ============================================================================
-// HELPER: Validate configuration
-// ============================================================================
-function validateConfig(config) {
-  const errors = [];
-  
-  // Check for duplicate IDs
-  const allIds = new Set();
-  
-  for (const [category, items] of Object.entries(config)) {
-    if (category === 'settings') continue;
-    
-    for (const [key, item] of Object.entries(items)) {
-      if (allIds.has(item.id)) {
-        errors.push(`Duplicate ID found: ${item.id}`);
-      }
-      allIds.add(item.id);
-    }
+  function closeDrawer(){
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden','true');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.focus();
   }
-  
-  if (errors.length > 0) {
-    console.error('Configuration validation errors:', errors);
-    return false;
-  }
-  
-  console.log('✓ Configuration validated successfully');
-  return true;
-}
 
-// ============================================================================
-// EXPORT
-// ============================================================================
-window.SYSTEM_CONFIG = SYSTEM_CONFIG;
-window.validateConfig = validateConfig;
-
-// Auto-validate on load
-if (validateConfig(SYSTEM_CONFIG)) {
-  console.log('✅ System configuration loaded and validated');
-  console.log('📋 Components:', {
-    tanks: Object.keys(SYSTEM_CONFIG.tanks).length,
-    pumps: Object.keys(SYSTEM_CONFIG.pumps).length,
-    valves: Object.keys(SYSTEM_CONFIG.valves).length
+  toggle.addEventListener('click', openDrawer);
+  closeBtn.addEventListener('click', closeDrawer);
+  drawer.addEventListener('click', (e) => {
+    if (!panel.contains(e.target)) closeDrawer();
   });
-}
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
+  
+  // Pause button
+  const pauseBtn = document.getElementById('pauseBtn');
+  pauseBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      if (window.componentManager.paused) {
+        window.componentManager.resume();
+        pauseBtn.textContent = 'Pause';
+      } else {
+        window.componentManager.pause();
+        pauseBtn.textContent = 'Resume';
+      }
+    }
+  });
+  
+  // Reset button
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      window.componentManager.reset();
+      console.log('System reset');
+    }
+  });
+  
+  // Debug button
+  const debugBtn = document.getElementById('debugBtn');
+  const debugOutput = document.getElementById('debugOutput');
+  debugBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      const info = window.componentManager.getSystemInfo();
+      debugOutput.textContent = JSON.stringify(info, null, 2);
+      debugOutput.style.display = debugOutput.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+  
+  // Update status every second
+  setInterval(() => {
+    if (window.componentManager) {
+      // Update pump status
+      if (window.componentManager.pumpManager) {
+        const pump = window.componentManager.pumpManager.getPump('mainPump');
+        if (pump) {
+          document.getElementById('pumpStatus').textContent = pump.running ? '✅ RUNNING' : '⭕ OFF';
+          document.getElementById('pumpStatus').style.color = pump.running ? '#3ddc97' : '#9bb0ff';
+          document.getElementById('pumpFlow').textContent = pump.getOutputFlow().toFixed(2) + ' m³/s';
+        }
+      }
+      
+      // Update valve status
+      if (window.componentManager.valveManager) {
+        const inletValve = window.componentManager.valveManager.getValve('inlet');
+        const outletValve = window.componentManager.valveManager.getValve('outlet');
+        
+        if (inletValve) {
+          const pct = inletValve.getPositionPercent();
+          document.getElementById('inletValveStatus').textContent = pct + '% open';
+          document.getElementById('inletValveStatus').style.color = pct > 0 ? '#3ddc97' : '#9bb0ff';
+        }
+        
+        if (outletValve) {
+          const pct = outletValve.getPositionPercent();
+          document.getElementById('outletValveStatus').textContent = pct + '% open';
+          document.getElementById('outletValveStatus').style.color = pct > 0 ? '#3ddc97' : '#9bb0ff';
+        }
+      }
+    }
+  }, 1000);
+})();
+</script>
+
+</body>
+</html>
