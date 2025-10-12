@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Interactive Tank & Valve Simulator - Phase 5 Testing</title>
+  <title>Interactive Tank & Valve Simulator - Phase 6 Testing</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="./style.css">
@@ -26,14 +26,18 @@
   <!-- Valve Components (Phase 3) -->
   <script src="js/components/valves/Valve.js" defer></script>
 
-  <!-- Pressure Sensor Components (Phase 5 - NEW!) -->
+  <!-- Pressure Sensor Components (Phase 5) -->
   <script src="js/components/sensors/PressureSensor.js" defer></script>
+
+  <!-- Pipe Components (Phase 6 - NEW!) -->
+  <script src="js/components/pipes/Pipe.js" defer></script>
 
   <!-- Managers -->
   <script src="js/managers/TankManager.js" defer></script>
   <script src="js/managers/PumpManager.js" defer></script>
   <script src="js/managers/ValveManager.js" defer></script>
   <script src="js/managers/PressureManager.js" defer></script>
+  <script src="js/managers/PipeManager.js" defer></script>
 
   <!-- Initialize System -->
   <script defer>
@@ -78,7 +82,7 @@
     <div id="i3bwj" class="card stage">
       <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img" id="iuele">
         <title id="title">Tank and Pipe Visualization</title>
-        <desc id="desc">Click components to interact. Tank shows liquid level.</desc>
+        <desc id="desc">Click components to interact. Watch animated flow!</desc>
         
         <defs id="ic988">
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -146,7 +150,7 @@
 
         <div id="ixaoq">
           <h1 id="controlsTitle">System Controls</h1>
-          <div class="sub">Phase 5 Testing: Pressure sensors now active! Watch pressures change with tank level, pump, and valve positions.</div>
+          <div class="sub">Phase 6 Testing: Flow animations active! Watch the animated dashes flow through pipes based on actual flow rates.</div>
           
           <div id="i3zec" class="controls">
             <div class="row">
@@ -163,6 +167,15 @@
             <div>Status</div><div id="tank1Status">⚠️ EMPTY</div>
             <div>Flow In</div><div id="tank1FlowIn">0.00 m³/s</div>
             <div>Flow Out</div><div id="tank1FlowOut">0.00 m³/s</div>
+          </div>
+
+          <hr/>
+          <h1>Flow Status</h1>
+          <div class="kv" id="flowStatus">
+            <div>Inlet Pipe</div><div id="inletPipeFlow">0.00 m³/s</div>
+            <div>Status</div><div id="inletPipeStatus">⭕ No Flow</div>
+            <div>Outlet Pipe</div><div id="outletPipeFlow">0.00 m³/s</div>
+            <div>Status</div><div id="outletPipeStatus">⭕ No Flow</div>
           </div>
 
           <hr/>
@@ -289,6 +302,40 @@
           const pct = outletValve.getPositionPercent();
           document.getElementById('outletValveStatus').textContent = pct + '% open';
           document.getElementById('outletValveStatus').style.color = pct > 0 ? '#3ddc97' : '#9bb0ff';
+        }
+      }
+      
+      // Update pipe flow status (NEW!)
+      if (window.componentManager.pipeManager) {
+        const inletPipe = window.componentManager.pipeManager.getPipe('inlet');
+        const outletPipe = window.componentManager.pipeManager.getPipe('outlet');
+        
+        if (inletPipe) {
+          const flow = inletPipe.flowRate;
+          document.getElementById('inletPipeFlow').textContent = flow.toFixed(2) + ' m³/s';
+          
+          const statusEl = document.getElementById('inletPipeStatus');
+          if (flow > 0.001) {
+            statusEl.textContent = '💧 Flowing';
+            statusEl.style.color = '#3ddc97';
+          } else {
+            statusEl.textContent = '⭕ No Flow';
+            statusEl.style.color = '#9bb0ff';
+          }
+        }
+        
+        if (outletPipe) {
+          const flow = outletPipe.flowRate;
+          document.getElementById('outletPipeFlow').textContent = flow.toFixed(2) + ' m³/s';
+          
+          const statusEl = document.getElementById('outletPipeStatus');
+          if (flow > 0.001) {
+            statusEl.textContent = '💧 Flowing';
+            statusEl.style.color = '#3ddc97';
+          } else {
+            statusEl.textContent = '⭕ No Flow';
+            statusEl.style.color = '#9bb0ff';
+          }
         }
       }
     }
