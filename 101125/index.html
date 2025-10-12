@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Interactive Tank & Valve Simulator - Phase 4 Testing</title>
+  <title>Interactive Tank & Valve Simulator - Phase 5 Testing</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="./style.css">
@@ -26,10 +26,14 @@
   <!-- Valve Components (Phase 3) -->
   <script src="js/components/valves/Valve.js" defer></script>
 
+  <!-- Pressure Sensor Components (Phase 5 - NEW!) -->
+  <script src="js/components/sensors/PressureSensor.js" defer></script>
+
   <!-- Managers -->
   <script src="js/managers/TankManager.js" defer></script>
   <script src="js/managers/PumpManager.js" defer></script>
   <script src="js/managers/ValveManager.js" defer></script>
+  <script src="js/managers/PressureManager.js" defer></script>
 
   <!-- Initialize System -->
   <script defer>
@@ -142,13 +146,26 @@
 
         <div id="ixaoq">
           <h1 id="controlsTitle">System Controls</h1>
-          <div class="sub">Phase 4 Testing: Tank system now working! Watch the level change as you control valves and pump.</div>
+          <div class="sub">Phase 5 Testing: Pressure sensors now active! Watch pressures change with tank level, pump, and valve positions.</div>
           
           <div id="i3zec" class="controls">
             <div class="row">
               <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
               <button type="button" id="resetBtn" class="btn">Reset</button>
             </div>
+          </div>
+
+          <hr/>
+          <h1>Pressure Sensors</h1>
+          <div class="kv" id="pressureStatus">
+            <div>Tank Bottom</div><div id="p1Pressure">0.00 bar</div>
+            <div>Status</div><div id="p1Status">✅ OK</div>
+            <div>Pump Inlet</div><div id="p2Pressure">0.00 bar</div>
+            <div>Status</div><div id="p2Status">✅ OK</div>
+            <div>Pump Outlet</div><div id="p3Pressure">0.00 bar</div>
+            <div>Status</div><div id="p3Status">✅ OK</div>
+            <div>System Outlet</div><div id="p4Pressure">0.00 bar</div>
+            <div>Status</div><div id="p4Status">✅ OK</div>
           </div>
 
           <hr/>
