@@ -1,7 +1,5 @@
 /**
- * systemConfig.js - System configuration for Phase 5 testing
- * 
- * Now includes Pressure Sensors
+ * systemConfig.js - System configuration with realistic flow rates
  */
 
 const SYSTEM_CONFIG = {
@@ -15,25 +13,21 @@ const SYSTEM_CONFIG = {
       name: 'Main Storage Tank',
       type: 'tank',
       
-      // Physical properties
-      area: 1.2,              // Cross-sectional area (m²)
-      maxHeight: 1.0,         // Maximum height (m)
-      // maxVolume calculated as area × maxHeight = 1.2 m³
+      // INCREASED: Larger tank for longer fill/drain times
+      area: 2.0,              // Cross-sectional area (m²) - was 1.2
+      maxHeight: 1.5,         // Maximum height (m) - was 1.0
+      // maxVolume = 2.0 × 1.5 = 3.0 m³ (was 1.2 m³)
       
-      // Initial state
-      initialVolume: 0,       // Start empty
+      initialVolume: 0,
       
-      // Thresholds for warnings
-      lowThreshold: 0.15,     // Warn when < 15%
-      highThreshold: 0.85,    // Warn when > 85%
+      lowThreshold: 0.15,
+      highThreshold: 0.85,
       
-      // Visual properties (matches SVG)
       svgElement: '#tank',
-      levelRectHeight: 360,   // Height of the level rect in pixels
-      levelRectY: 360,        // Base Y position (top of empty tank)
+      levelRectHeight: 360,
+      levelRectY: 360,
       position: [340, 120],
       
-      // Connections
       inputs: ['inletValve'],
       outputs: ['pump1']
     }
@@ -49,14 +43,13 @@ const SYSTEM_CONFIG = {
       type: 'pump',
       pumpType: 'fixed',
       
-      capacity: 1.2,
+      // REDUCED: Smaller pump capacity for longer drain times
+      capacity: 0.5,          // Max flow rate (m³/s) - was 1.2
       efficiency: 0.95,
       power: 5.5,
       
       initialSpeed: 0,
-      
-      // Pump requires minimum tank level to operate
-      requiresMinLevel: 0.05,  // Won't run if tank < 5%
+      requiresMinLevel: 0.05,
       
       cavitation: {
         enabled: false,
@@ -84,14 +77,15 @@ const SYSTEM_CONFIG = {
       name: 'Inlet Valve',
       type: 'valve',
       
-      maxFlow: 0.8,
+      // REDUCED: Smaller inlet flow for longer fill times
+      maxFlow: 0.3,           // Max flow rate (m³/s) - was 0.8
       initialPosition: 0,
       responseTime: 0.1,
       
       svgElement: '#valve',
       position: [230, 53],
       
-      inputs: [],
+      inputs: [],             // No source component (valve generates flow)
       outputs: ['tank1'],
       
       modalTitle: 'Inlet Valve Control',
@@ -103,7 +97,8 @@ const SYSTEM_CONFIG = {
       name: 'Outlet Valve',
       type: 'valve',
       
-      maxFlow: 1.2,
+      // REDUCED: Match pump capacity
+      maxFlow: 0.6,           // Max flow rate (m³/s) - was 1.2
       initialPosition: 1.0,
       responseTime: 0.1,
       
@@ -119,7 +114,7 @@ const SYSTEM_CONFIG = {
   },
   
   // ============================================================================
-  // PRESSURE SENSORS (Phase 5 - NEW!)
+  // PRESSURE SENSORS (Phase 5)
   // ============================================================================
   pressureSensors: {
     tankBottom: {
@@ -127,25 +122,20 @@ const SYSTEM_CONFIG = {
       name: 'Tank Bottom Pressure',
       type: 'sensor',
       
-      // Measurement properties
-      range: [0, 2],            // 0-2 bar range
+      range: [0, 2],
       units: 'bar',
-      accuracy: 0.01,           // ±0.01 bar
+      accuracy: 0.01,
       
-      // Location
       measurementPoint: 'tank_bottom',
-      heightOffset: 0,          // At base level
+      heightOffset: 0,
       
-      // Alarms
-      lowAlarm: null,           // No low alarm
-      highAlarm: 1.5,           // Warn if > 1.5 bar
+      lowAlarm: null,
+      highAlarm: 1.5,
       
-      // Connections (reads from tank)
       inputs: ['tank1'],
       outputs: [],
       
-      // Visual
-      svgElement: null,         // No SVG element (status panel only)
+      svgElement: null,
       position: [340, 480]
     },
     
@@ -159,9 +149,9 @@ const SYSTEM_CONFIG = {
       accuracy: 0.01,
       
       measurementPoint: 'pump_inlet',
-      heightOffset: 0.5,        // Pump inlet is 0.5m above base
+      heightOffset: 0.5,
       
-      lowAlarm: 0.5,            // Warn if suction < 0.5 bar (cavitation risk)
+      lowAlarm: 0.5,
       highAlarm: null,
       
       inputs: ['tank1'],
@@ -176,7 +166,7 @@ const SYSTEM_CONFIG = {
       name: 'Pump Discharge Pressure',
       type: 'sensor',
       
-      range: [0, 15],           // Higher range for pump discharge
+      range: [0, 15],
       units: 'bar',
       accuracy: 0.01,
       
@@ -184,7 +174,7 @@ const SYSTEM_CONFIG = {
       heightOffset: 0.5,
       
       lowAlarm: null,
-      highAlarm: 12,            // Warn if discharge > 12 bar
+      highAlarm: 12,
       
       inputs: ['pump1'],
       outputs: ['outletValve'],
@@ -203,9 +193,9 @@ const SYSTEM_CONFIG = {
       accuracy: 0.01,
       
       measurementPoint: 'static',
-      heightOffset: -0.3,       // Outlet is slightly below pump
+      heightOffset: -0.3,
       
-      lowAlarm: 1,              // Warn if delivery < 1 bar
+      lowAlarm: 1,
       highAlarm: 8,
       
       inputs: ['outletValve'],
@@ -217,7 +207,7 @@ const SYSTEM_CONFIG = {
   },
   
   // ============================================================================
-  // PIPES (Placeholder - Phase 6)
+  // PIPES (Phase 6)
   // ============================================================================
   pipes: {},
   
@@ -244,7 +234,6 @@ const SYSTEM_CONFIG = {
 function validateConfig(config) {
   const errors = [];
   
-  // Check for duplicate IDs
   const allIds = new Set();
   
   for (const [category, items] of Object.entries(config)) {
