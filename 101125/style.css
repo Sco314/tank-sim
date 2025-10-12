@@ -1,0 +1,503 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+:root {
+  --gjs-t-color-primary: #cf549e;
+  --gjs-t-color-secondary: #b9227d;
+  --gjs-t-color-accent: #ffb347;
+  --gjs-t-color-success: #28a745;
+  --gjs-t-color-warning: #ffc107;
+  --gjs-t-color-error: #dc3545;
+  --bg: #0b1020;
+  --card: #121a33;
+  --ink: #e9f0ff;
+  --muted: #9bb0ff;
+  --accent: #7cc8ff;
+  --ok: #3ddc97;
+  --danger: #ff6b6b;
+}
+
+.gjs-t-body {
+  background-color: inherit;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.75rem;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.gjs-t-h1 {
+  color: var(--gjs-t-color-secondary);
+  font-size: 1.5rem;
+  line-height: 2.5rem;
+}
+
+.gjs-t-h2 {
+  color: #601843;
+  font-size: 1.2rem;
+  line-height: 1.75rem;
+}
+
+.gjs-t-button {
+  background-color: var(--gjs-t-color-primary);
+  color: white;
+  border-radius: 0.3rem;
+}
+
+.gjs-t-link {
+  color: var(--gjs-t-color-primary);
+  text-decoration: underline;
+}
+
+.gjs-t-border {
+  border-radius: 0.3rem;
+  border-color: #e0e0e0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(1200px 800px at 80% -10%, #1b2752 0%, var(--bg) 60%);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.app {
+  width: min(1100px, 95vw);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid #1f2a50;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+h1 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+button,
+input[type=range] {
+  accent-color: var(--accent);
+}
+
+.controls {
+  display: grid;
+  gap: 14px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.row .grow {
+  flex: 1;
+}
+
+.btn {
+  background: #172144;
+  color: var(--ink);
+  border: 1px solid #28366d;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.toggle[aria-pressed="true"] {
+  background: #0e2e1f;
+  border-color: #1d6f4b;
+  color: #d6ffee;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kv div:nth-child(odd) {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ============================================================================
+   FLOW ANIMATIONS
+   ============================================================================ */
+
+.flow {
+  stroke-dasharray: 10 12;
+}
+
+.flow.on {
+  animation: dash var(--duration, 600ms) linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+/* ============================================================================
+   CONTROLS DRAWER
+   ============================================================================ */
+
+.controls-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: #172144;
+  color: #e9f0ff;
+  border: 1px solid #28366d;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.controls-toggle:active {
+  transform: translateY(1px);
+}
+
+.controls-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.controls-drawer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.controls-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(420px, 92vw);
+  background: var(--card, #121a33);
+  border-left: 1px solid #1f2a50;
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  overflow: auto;
+  padding: 16px;
+  color: var(--ink, #e9f0ff);
+}
+
+.controls-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -6px -6px 8px 8px;
+  background: transparent;
+  color: var(--ink, #e9f0ff);
+  border: 1px solid #28366d;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.controls-drawer.open {
+  pointer-events: auto;
+}
+
+.controls-drawer.open::before {
+  opacity: 1;
+}
+
+.controls-drawer.open .controls-panel {
+  transform: translateX(0);
+}
+
+/* ============================================================================
+   PUMP AND VALVE INTERACTION
+   ============================================================================ */
+
+/* Pump Styles */
+#pump {
+  cursor: pointer;
+  outline: none; /* Remove focus rectangle flash */
+}
+
+#pump:focus {
+  outline: none; /* Remove focus rectangle */
+}
+
+#pump:focus-visible {
+  outline: 2px solid rgba(31, 212, 214, 0.6); /* Keyboard navigation only */
+  outline-offset: 4px;
+}
+
+#pump image {
+  pointer-events: all;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+#pump:hover image {
+  transform: scale(1.08);
+  filter: brightness(1.2) drop-shadow(0 0 8px rgba(31, 212, 214, 0.4));
+}
+
+/* Valve Styles */
+.valve {
+  cursor: pointer;
+  outline: none; /* Remove focus rectangle flash */
+  transform: none !important;
+}
+
+.valve:focus {
+  outline: none; /* Remove focus rectangle */
+}
+
+.valve:focus-visible {
+  outline: 2px solid rgba(31, 212, 214, 0.6); /* Keyboard navigation only */
+  outline-offset: 4px;
+}
+
+.valve:hover {
+  transform: none !important;
+}
+
+.valve:active {
+  transform: none !important;
+}
+
+.valve image {
+  pointer-events: all;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.valve:hover image {
+  transform: scale(1.12);
+  filter: brightness(1.25) drop-shadow(0 0 10px rgba(31, 212, 214, 0.5));
+}
+
+.valve text {
+  pointer-events: none;
+}
+
+.valve .valve-bg {
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+}
+
+.valve:hover .valve-bg {
+  opacity: 1 !important;
+  stroke-width: 3;
+}
+
+.valve:active .valve-bg {
+  fill: #2a3f7a !important;
+}
+
+.ctrl-section[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+   TANK AND LEVEL
+   ============================================================================ */
+
+.levelRect {
+  transition: height 120ms linear, y 120ms linear;
+}
+
+.warn {
+  color: var(--danger);
+}
+
+/* ============================================================================
+   MODAL STYLES
+   ============================================================================ */
+
+.valve-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.valve-modal-overlay.open {
+  display: flex;
+  opacity: 1;
+}
+
+.valve-modal-container {
+  position: relative;
+  width: min(600px, 90vw);
+  height: min(600px, 90vh);
+  background: #0b1330;
+  border-radius: 16px;
+  border: 2px solid #1fd4d6;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.valve-modal-overlay.open .valve-modal-container {
+  transform: scale(1);
+}
+
+.valve-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 107, 107, 0.9);
+  border: 2px solid #ff8787;
+  border-radius: 50%;
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.valve-modal-close:hover {
+  background: rgba(255, 107, 107, 1);
+  transform: scale(1.1);
+}
+
+.valve-modal-title {
+  padding: 16px 24px;
+  background: rgba(31, 212, 214, 0.1);
+  border-bottom: 1px solid #1fd4d6;
+  color: #e9f0ff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.valve-modal-container iframe {
+  width: 100%;
+  height: calc(100% - 60px);
+  border: none;
+  display: block;
+}
+
+/* ============================================================================
+   SPECIFIC ELEMENT IDS
+   ============================================================================ */
+
+#i8u9j {
+  min-width: 128px;
+}
+
+#qoutVal {
+  width: 64px;
+  text-align: right;
+}
+
+#id1ii {
+  min-width: 128px;
+}
+
+#qinVal {
+  width: 64px;
+  text-align: right;
+}
+
+#iiezj {
+  min-width: 128px;
+}
+
+#areaVal {
+  width: 64px;
+  text-align: right;
+}
+
+#irdd2 {
+  margin-top: 10px;
+}
+
+#iaxfc5 {
+  margin: 8px 0 0;
+}
+
+#kVal {
+  width: 64px;
+  text-align: right;
+}
+
+#i3zec {
+  margin-top: 12px;
+}
+
+#ir0ydi {
+  border-color: #22305f;
+  opacity: 0.5;
+  margin: 14px 0;
+}
+
+#iuele {
+  margin: 0;
+}

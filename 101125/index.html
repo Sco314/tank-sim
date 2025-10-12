@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Interactive Tank & Valve Simulator - Phase 3 Testing</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="./style.css">
+
+  <!-- Core Architecture (Phase 1) -->
+  <script src="js/core/Component.js" defer></script>
+  <script src="js/core/FlowNetwork.js" defer></script>
+  <script src="js/core/ComponentManager.js" defer></script>
+
+  <!-- Configuration -->
+  <script src="js/config/systemConfig.js" defer></script>
+
+  <!-- Pump Components (Phase 2) -->
+  <script src="js/components/pumps/Pump.js" defer></script>
+  <script src="js/components/pumps/FixedSpeedPump.js" defer></script>
+  <script src="js/components/pumps/VariableSpeedPump.js" defer></script>
+  <script src="js/components/pumps/ThreeSpeedPump.js" defer></script>
+
+  <!-- Valve Components (Phase 3) -->
+  <script src="js/components/valves/Valve.js" defer></script>
+
+  <!-- Managers -->
+  <script src="js/managers/PumpManager.js" defer></script>
+  <script src="js/managers/ValveManager.js" defer></script>
+
+  <!-- Initialize System -->
+  <script defer>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Wait for all scripts to load
+      setTimeout(() => {
+        console.log('=== INITIALIZING SYSTEM ===');
+        
+        // Check if all required classes are loaded
+        if (!window.SYSTEM_CONFIG) {
+          console.error('❌ SYSTEM_CONFIG not loaded');
+          return;
+        }
+        if (!window.ComponentManager) {
+          console.error('❌ ComponentManager not loaded');
+          return;
+        }
+        
+        console.log('✅ All components loaded');
+        
+        // Initialize the component manager
+        window.componentManager = new ComponentManager(SYSTEM_CONFIG);
+        window.componentManager.initialize().then(success => {
+          if (success) {
+            console.log('✅ System initialized successfully');
+            window.componentManager.start();
+            console.log('✅ Simulation started');
+          } else {
+            console.error('❌ System initialization failed');
+          }
+        });
+      }, 500); // Wait 500ms for all deferred scripts to load
+    });
+  </script>
+</head>
+
+<body id="id13">
+
+<button id="controlsToggle" class="controls-toggle" aria-controls="controlsDrawer" aria-expanded="false">
+  Controls
+</button>
+  
+<div id="ie7wb" class="app">
+  <div id="i4pt7" class="grid">
+    <div id="i3bwj" class="card stage">
+      <svg viewBox="0 0 1000 600" aria-labelledby="title desc" role="img" id="iuele">
+        <title id="title">Tank and Pipe Visualization</title>
+        <desc id="desc">Click components to interact. Tank shows liquid level.</desc>
+        
+        <defs id="ic988">
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1"></path>
+          </pattern>
+          <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7cc8ff"></stop>
+            <stop offset="100%" stop-color="#2d8bd6"></stop>
+          </linearGradient>
+        </defs>
+        
+        <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4"></rect>
+        
+        <!-- INLET -->
+        <g id="inlet">
+          <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+          <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+
+          <!-- INLET VALVE (Phase 3 - functional) -->
+          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open inlet valve control">
+            <g transform="translate(230, 53)">
+              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+            </g>
+          </g>
+        </g>   
+        
+        <!-- OUTLET -->
+        <g id="outlet">
+          <path id="outletPipe" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="outletFlow" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"/>
+          
+          <!-- OUTLET VALVE (Phase 3 - functional) -->
+          <g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve control">
+            <g transform="translate(890,278)">
+              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+            </g>
+          </g>
+        </g>
+
+        <!-- PUMP (Fixed Speed) -->
+        <g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle pump">
+          <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
+        </g>
+        
+        <!-- TANK -->
+        <g id="tank" transform="translate(340, 120)">
+          <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"></rect>
+          <rect id="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)" class="levelRect"></rect>
+          <g id="ticks" stroke="#334a90">
+            <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"></path>
+            <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
+            <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
+            <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
+            <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
+            <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Controls Drawer -->
+    <aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
+      <div class="controls-panel card" role="dialog" aria-modal="true" aria-labelledby="controlsTitle">
+        <button id="controlsClose" class="controls-close" aria-label="Close controls">×</button>
+
+        <div id="ixaoq">
+          <h1 id="controlsTitle">System Controls</h1>
+          <div class="sub">Phase 3 Testing: Click valves to open interactive wheel control. Click pump to control it. System now has pumps + valves working!</div>
+          
+          <div id="i3zec" class="controls">
+            <div class="row">
+              <button type="button" id="pauseBtn" aria-pressed="false" class="btn">Pause</button>
+              <button type="button" id="resetBtn" class="btn">Reset</button>
+            </div>
+          </div>
+
+          <hr/>
+          <h1>System Status</h1>
+          <div class="kv" id="systemStatus">
+            <div>Pump Status</div><div id="pumpStatus">Loading...</div>
+            <div>Pump Flow</div><div id="pumpFlow">0.00 m³/s</div>
+            <div>Pump Runtime</div><div id="pumpRuntime">0s</div>
+            <div>Inlet Valve</div><div id="inletValveStatus">Loading...</div>
+            <div>Outlet Valve</div><div id="outletValveStatus">Loading...</div>
+          </div>
+          
+          <hr/>
+          <h1>Debug</h1>
+          <button type="button" id="debugBtn" class="btn">Show Debug Info</button>
+          <pre id="debugOutput" style="display:none; font-size:10px; max-height:200px; overflow:auto; background:#0e1734; padding:8px; margin-top:8px;"></pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Controls Drawer Script -->
+<script>
+(function(){
+  const drawer   = document.getElementById('controlsDrawer');
+  const panel    = drawer.querySelector('.controls-panel');
+  const toggle   = document.getElementById('controlsToggle');
+  const closeBtn = document.getElementById('controlsClose');
+
+  function openDrawer(){
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden','false');
+    toggle.setAttribute('aria-expanded','true');
+    setTimeout(() => closeBtn.focus(), 0);
+  }
+  function closeDrawer(){
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden','true');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.focus();
+  }
+
+  toggle.addEventListener('click', openDrawer);
+  closeBtn.addEventListener('click', closeDrawer);
+  drawer.addEventListener('click', (e) => {
+    if (!panel.contains(e.target)) closeDrawer();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+  });
+  
+  // Pause button
+  const pauseBtn = document.getElementById('pauseBtn');
+  pauseBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      if (window.componentManager.paused) {
+        window.componentManager.resume();
+        pauseBtn.textContent = 'Pause';
+      } else {
+        window.componentManager.pause();
+        pauseBtn.textContent = 'Resume';
+      }
+    }
+  });
+  
+  // Reset button
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      window.componentManager.reset();
+      console.log('System reset');
+    }
+  });
+  
+  // Debug button
+  const debugBtn = document.getElementById('debugBtn');
+  const debugOutput = document.getElementById('debugOutput');
+  debugBtn?.addEventListener('click', () => {
+    if (window.componentManager) {
+      const info = window.componentManager.getSystemInfo();
+      debugOutput.textContent = JSON.stringify(info, null, 2);
+      debugOutput.style.display = debugOutput.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+  
+  // Update status every second
+  setInterval(() => {
+    if (window.componentManager) {
+      // Update pump status
+      if (window.componentManager.pumpManager) {
+        const pump = window.componentManager.pumpManager.getPump('mainPump');
+        if (pump) {
+          document.getElementById('pumpStatus').textContent = pump.running ? '✅ RUNNING' : '⭕ OFF';
+          document.getElementById('pumpStatus').style.color = pump.running ? '#3ddc97' : '#9bb0ff';
+          document.getElementById('pumpFlow').textContent = pump.getOutputFlow().toFixed(2) + ' m³/s';
+          document.getElementById('pumpRuntime').textContent = Math.floor(pump.runTime) + 's';
+        }
+      }
+      
+      // Update valve status
+      if (window.componentManager.valveManager) {
+        const inletValve = window.componentManager.valveManager.getValve('inlet');
+        const outletValve = window.componentManager.valveManager.getValve('outlet');
+        
+        if (inletValve) {
+          const pct = inletValve.getPositionPercent();
+          document.getElementById('inletValveStatus').textContent = pct + '% open';
+          document.getElementById('inletValveStatus').style.color = pct > 0 ? '#3ddc97' : '#9bb0ff';
+        }
+        
+        if (outletValve) {
+          const pct = outletValve.getPositionPercent();
+          document.getElementById('outletValveStatus').textContent = pct + '% open';
+          document.getElementById('outletValveStatus').style.color = pct > 0 ? '#3ddc97' : '#9bb0ff';
+        }
+      }
+    }
+  }, 1000);
+})();
+</script>
+
+</body>
+</html>

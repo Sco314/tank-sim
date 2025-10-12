@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OS&Y Gate Valve – Top View (Indicators auto-hide)</title>
+<style>
+  :root{
+    --bg:#0b1330;
+    --cyan:#1fd4d6;
+    --metal:#8a9199;
+    --dark:#4a5058;
+    --open: 0;            /* 0..1 */
+    --turns: 8;           /* travel turns */
+    --cw-to-close: 1;     /* 1=CW closes (CCW opens) */
+  }
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:#c9d1d9;
+    font:14px/1.4 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display:grid; place-items:center;
+  }
+  .wrap{ position:relative; width:min(520px, 96vw); height:min(520px, 96vh); display:grid; place-items:center; }
+
+  .valve{ position:relative; width:400px; aspect-ratio:1; }
+  svg{ width:100%; height:100%; display:block; }
+
+  /* wheel rotation - 25% larger (r=90 -> r=112.5) */
+  .handwheel{ transform-origin: 250px 250px;
+    transform: rotate(calc(var(--cw-to-close) * var(--open) * var(--turns) * -1turn)); }
+
+  /* progress ring – hidden by default, fades in while interacting */
+  .progress{ transform-origin: 250px 250px; opacity:0; transition:opacity .2s ease; }
+  .progress.on{ opacity:.95; }
+
+  /* HUD (percent chip) – hidden until interacting */
+  .hud{ 
+    position:absolute; left:50%; top:-22px;
+    transform:translateX(-50%) translateY(8px);
+    opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease;
+  }
+  .hud.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* Centered, larger bubble */
+  .percent{ 
+    background:#1a2840; border:1px solid #2d3f5f; border-radius:999px; 
+    padding:.9rem 1.8rem;
+    font-size:32px; font-weight:600; color:#e6f8ff; line-height:1;
+    box-shadow:0 2px 10px rgba(0,0,0,.25);
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 220px;
+  }
+  .percent b{ font-weight:700; }
+
+  /* drag overlay to spin by hand or click to show indicators */
+  .drag-overlay{ position:absolute; inset:0; cursor:grab; }
+  .drag-overlay.dragging{ cursor:grabbing; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="valve" id="valve">
+
+    <!-- Top-view valve -->
+    <svg viewBox="0 0 500 500" aria-labelledby="title" id="svg">
+      <title id="title">Top view OS&amp;Y gate valve</title>
+      <defs>
+        <linearGradient id="metalGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#a8adb5"/>
+          <stop offset="50%" stop-color="#7a8088"/>
+          <stop offset="100%" stop-color="#5a6169"/>
+        </linearGradient>
+        <radialGradient id="bonnetGrad" cx="0.5" cy="0.5">
+          <stop offset="0%" stop-color="#9fa5ad"/>
+          <stop offset="70%" stop-color="#7a8088"/>
+          <stop offset="100%" stop-color="#5a6169"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Body with details -->
+      <g id="body">
+        <!-- Left pipe connection -->
+        <rect x="30" y="220" width="150" height="60" rx="8" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="2"/>
+        <circle cx="60" cy="250" r="18" fill="none" stroke="#3a4048" stroke-width="2"/>
+        
+        <!-- Right pipe connection -->
+        <rect x="320" y="220" width="150" height="60" rx="8" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="2"/>
+        <circle cx="440" cy="250" r="18" fill="none" stroke="#3a4048" stroke-width="2"/>
+        
+        <!-- Center body -->
+        <rect x="180" y="180" width="140" height="140" rx="12" fill="url(#metalGrad)" stroke="#4a5058" stroke-width="3"/>
+        
+        <!-- Bonnet flange -->
+        <circle cx="250" cy="250" r="85" fill="url(#bonnetGrad)" stroke="#4a5058" stroke-width="2"/>
+        <circle cx="250" cy="250" r="75" fill="none" stroke="#3a4048" stroke-width="1"/>
+        
+        <!-- Bolt holes (8 positions) -->
+        <circle cx="250" cy="170" r="6" fill="#2a3038"/>
+        <circle cx="250" cy="330" r="6" fill="#2a3038"/>
+        <circle cx="170" cy="250" r="6" fill="#2a3038"/>
+        <circle cx="330" cy="250" r="6" fill="#2a3038"/>
+        <circle cx="200" cy="200" r="6" fill="#2a3038"/>
+        <circle cx="300" cy="200" r="6" fill="#2a3038"/>
+        <circle cx="200" cy="300" r="6" fill="#2a3038"/>
+        <circle cx="300" cy="300" r="6" fill="#2a3038"/>
+      </g>
+
+      <!-- Progress ring (25% larger: r=104 -> r=130) -->
+      <g class="progress" id="progressGroup" aria-hidden="true">
+        <circle id="progressTrack" cx="250" cy="250" r="130" fill="none" stroke="rgba(31,212,214,.12)" stroke-width="6"/>
+        <circle id="progressArc"   cx="250" cy="250" r="130" fill="none" stroke="var(--cyan)" stroke-width="6"
+                stroke-linecap="round" stroke-dasharray="0 1"/>
+      </g>
+
+      <!-- Wheel (25% larger: r=90 -> r=112.5, spokes scaled proportionally) -->
+      <g class="handwheel">
+        <!-- Outer rim -->
+        <circle cx="250" cy="250" r="112.5" fill="none" stroke="var(--cyan)" stroke-width="12"/>
+        
+        <!-- 3 spokes (scaled 25% larger) -->
+        <line x1="250" y1="250" x2="250" y2="142.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="250" y1="250" x2="343.75" y2="302.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        <line x1="250" y1="250" x2="156.25" y2="302.5" stroke="var(--cyan)" stroke-width="10" stroke-linecap="round"/>
+        
+        <!-- Center hub (scaled 25% larger) -->
+        <circle cx="250" cy="250" r="31.25" fill="url(#bonnetGrad)"/>
+        <circle cx="250" cy="250" r="22.5" fill="#6b7179"/>
+        <circle cx="250" cy="250" r="15" fill="#4a5058"/>
+      </g>
+    </svg>
+
+    <!-- Percent HUD -->
+    <div class="hud" id="hud">
+      <div class="percent">Open: <b id="pct">0%</b></div>
+    </div>
+
+    <!-- Drag/Click overlay -->
+    <div class="drag-overlay" id="drag"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const root   = document.documentElement;
+  const pctEl  = document.getElementById('pct');
+  const overlay= document.getElementById('drag');
+  const hud    = document.getElementById('hud');
+  const progressArc   = document.getElementById('progressArc');
+  const progressGroup = document.getElementById('progressGroup');
+
+  const TOTAL_TURNS = parseFloat(getComputedStyle(root).getPropertyValue('--turns')) || 8;
+  const R = 130; // Updated to match new radius
+  const C = 2 * Math.PI * R;
+  progressArc.setAttribute('stroke-dasharray', `${C} ${C}`);
+
+  let hideTimer = null;
+  function showIndicators() {
+    hud.classList.add('on');
+    progressGroup.classList.add('on');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideIndicators, 5000);
+  }
+  function hideIndicators(){ hud.classList.remove('on'); progressGroup.classList.remove('on'); }
+
+  function setProgress(f){ progressArc.setAttribute('stroke-dashoffset', C * (1 - f)); }
+  function getOpen(){ return parseFloat(getComputedStyle(root).getPropertyValue('--open')) || 0; }
+  function setOpenFraction(f){
+    f = Math.max(0, Math.min(1, f));
+    root.style.setProperty('--open', f);
+    pctEl.textContent = Math.round(f*100) + '%';
+    setProgress(f);
+    showIndicators();
+    ValveTop._onChange?.(f);
+  }
+
+  // CLICK (no drag) -> show indicators for 10s
+  overlay.addEventListener('click', () => { showIndicators(); });
+
+  // DRAG to rotate
+  overlay.addEventListener('pointerdown', onDragStart);
+  function onDragStart(e){
+    overlay.setPointerCapture(e.pointerId);
+    overlay.classList.add('dragging');
+    showIndicators();
+    const box = overlay.getBoundingClientRect();
+    const cx = box.left + box.width/2, cy = box.top + box.height/2;
+    let prevA = Math.atan2(e.clientY - cy, e.clientX - cx);
+    let f = getOpen();
+    function move(ev){
+      const a = Math.atan2(ev.clientY - cy, ev.clientX - cx);
+      let d = a - prevA;
+      if(d >  Math.PI) d -= 2*Math.PI;
+      if(d < -Math.PI) d += 2*Math.PI;
+      prevA = a;
+      const dir = parseFloat(getComputedStyle(root).getPropertyValue('--cw-to-close')) || 1;
+      f -= dir * d / (2*Math.PI) / TOTAL_TURNS;
+      setOpenFraction(f);
+    }
+    function end(){
+      overlay.releasePointerCapture(e.pointerId);
+      overlay.classList.remove('dragging');
+      overlay.removeEventListener('pointermove', move);
+      overlay.removeEventListener('pointerup', end);
+      overlay.removeEventListener('pointercancel', end);
+      showIndicators();
+    }
+    overlay.addEventListener('pointermove', move);
+    overlay.addEventListener('pointerup', end);
+    overlay.addEventListener('pointercancel', end);
+  }
+
+  // API
+  window.ValveTop = {
+    set:(f)=> setOpenFraction(f),
+    open:()=> setOpenFraction(1),
+    close:()=> setOpenFraction(0),
+    onChange:(fn)=> (ValveTop._onChange = fn)
+  };
+
+  // init
+  setProgress(0);
+})();
+</script>
+</body>
+</html>
