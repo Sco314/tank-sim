@@ -209,7 +209,28 @@ const SYSTEM_CONFIG = {
   // ============================================================================
   // PIPES (Phase 6)
   // ============================================================================
-  pipes: {},
+ pipes: {
+  inlet: {
+    id: 'inletPipe',
+    name: 'Inlet Pipe',
+    type: 'pipe',
+    diameter: 0.05,
+    length: 1.0,
+    svgElement: '#inletFlow',
+    inputs: ['inletValve'],
+    outputs: ['tank1']
+  },
+  outlet: {
+    id: 'outletPipe', 
+    name: 'Outlet Pipe',
+    type: 'pipe',
+    diameter: 0.05,
+    length: 2.0,
+    svgElement: '#outletFlow',
+    inputs: ['pump1'],
+    outputs: ['outletValve']
+  }
+},
   
   // ============================================================================
   // GLOBAL SETTINGS
