@@ -10,6 +10,12 @@ class Component {
     this.type = config.type; // 'tank', 'pump', 'valve', 'pipe', 'sensor'
     this.name = config.name || this.id;
     
+    // CRITICAL FIX: Store flowNetwork reference
+    // Tank.update() needs this to call flowNetwork.getInputFlow()
+    // Pipe.getOutputFlow() needs this to read flow
+    // PressureSensor needs this to find connected components
+    this.flowNetwork = config.flowNetwork || null;
+    
     // Flow connections
     this.inputs = config.inputs || []; // Array of component IDs
     this.outputs = config.outputs || []; // Array of component IDs
