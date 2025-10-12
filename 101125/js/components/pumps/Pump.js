@@ -123,20 +123,38 @@ class Pump extends Component {
   }
 
   /**
-   * Get current output flow rate
+   * CRITICAL FIX: Get current output flow (respects downstream valve constraints)
    */
   getOutputFlow() {
     if (!this.running) return 0;
     
-    // Base flow calculation
-    let flow = this.capacity * this.speed * this.efficiency;
+    // Calculate what pump can produce
+    let pumpCapacity = this.capacity * this.speed * this.efficiency;
     
     // Apply cavitation reduction if active
     if (this.cavitation.active) {
-      flow *= this.cavitation.flowReduction;
+      pumpCapacity *= this.cavitation.flowReduction;
     }
     
-    return flow;
+    // CRITICAL: Check downstream valve constraints
+    // Pump output is limited by valves in the discharge path
+    if (this.flowNetwork && this.outputs.length > 0) {
+      for (const outputId of this.outputs) {
+        const outputComponent = this.flowNetwork.getComponent(outputId);
+        
+        if (outputComponent && outputComponent.type === 'valve') {
+          // Valve constrains flow based on its position
+          const valveMaxFlow = outputComponent.maxFlow * outputComponent.position;
+          
+          // Pump cannot output more than valve allows
+          pumpCapacity = Math.min(pumpCapacity, valveMaxFlow);
+          
+          console.log(`Pump constrained by ${outputComponent.name}: ${valveMaxFlow.toFixed(3)} m³/s`);
+        }
+      }
+    }
+    
+    return pumpCapacity;
   }
 
   /**
