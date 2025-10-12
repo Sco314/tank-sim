@@ -1,7 +1,7 @@
 /**
- * Pump.js - Base pump component
+ * Pump.js - Base pump component with proper flow constraints
  * 
- * All pump types inherit from this base class.
+ * Pump flow is limited by BOTH upstream (tank) AND downstream (valve)
  */
 
 class Pump extends Component {
@@ -9,44 +9,40 @@ class Pump extends Component {
     super(config);
     
     this.type = 'pump';
-    this.pumpType = config.pumpType || 'fixed'; // 'fixed', 'variable', '3-speed'
+    this.pumpType = config.pumpType || 'fixed';
     
     // Physical properties
-    this.capacity = config.capacity || 1.0; // Max flow rate (m³/s)
-    this.efficiency = config.efficiency || 0.95; // 0-1
-    this.power = config.power || 0; // kW (optional)
+    this.capacity = config.capacity || 1.0;
+    this.efficiency = config.efficiency || 0.95;
+    this.power = config.power || 0;
     
     // Operating state
     this.running = false;
-    this.speed = config.initialSpeed || 0; // 0-1 or discrete speeds
-    this.requiresMinLevel = config.requiresMinLevel || 0; // Won't run if source < this level
+    this.speed = config.initialSpeed || 0;
+    this.requiresMinLevel = config.requiresMinLevel || 0;
     
-    // Cavitation feature (background system issue)
+    // Cavitation
     this.cavitation = {
       enabled: config.cavitation?.enabled || false,
-      triggerTime: config.cavitation?.triggerTime || 60, // seconds (null = at startup)
-      duration: config.cavitation?.duration || 5, // seconds
-      flowReduction: config.cavitation?.flowReduction || 0.3, // flow reduced to 30%
+      triggerTime: config.cavitation?.triggerTime || 60,
+      duration: config.cavitation?.duration || 5,
+      flowReduction: config.cavitation?.flowReduction || 0.3,
       active: false,
       startTime: null,
       elapsedTime: 0
     };
     
     // Tracking
-    this.runTime = 0; // Total runtime in seconds
-    this.startCount = 0; // Number of times started
+    this.runTime = 0;
+    this.startCount = 0;
   }
 
-  /**
-   * Start the pump
-   */
   start() {
     if (this.running) return;
     
     this.running = true;
     this.startCount++;
     
-    // Check if cavitation triggers at startup
     if (this.cavitation.enabled && this.cavitation.triggerTime === null) {
       this._startCavitation();
     }
@@ -55,9 +51,6 @@ class Pump extends Component {
     console.log(`${this.name} started (start count: ${this.startCount})`);
   }
 
-  /**
-   * Stop the pump
-   */
   stop() {
     if (!this.running) return;
     
@@ -69,25 +62,16 @@ class Pump extends Component {
     console.log(`${this.name} stopped`);
   }
 
-  /**
-   * Set pump speed (0-1 for variable, discrete for 3-speed)
-   */
   setSpeed(speed) {
     this.speed = Math.max(0, Math.min(1, speed));
     this.notifyChange();
   }
 
-  /**
-   * Check if pump can run (source has enough fluid)
-   */
   canRun(sourceLevel) {
-    if (sourceLevel === undefined) return true; // No level check
+    if (sourceLevel === undefined) return true;
     return sourceLevel >= this.requiresMinLevel;
   }
 
-  /**
-   * Start cavitation
-   */
   _startCavitation() {
     if (!this.cavitation.enabled) return;
     
@@ -96,22 +80,17 @@ class Pump extends Component {
     console.warn(`⚠️ ${this.name} CAVITATION STARTED!`);
   }
 
-  /**
-   * Update cavitation state
-   */
   _updateCavitation(dt) {
     if (!this.cavitation.enabled || !this.running) return;
     
     this.cavitation.elapsedTime += dt;
     
-    // Check if cavitation should start (time-based trigger)
     if (!this.cavitation.active && 
         this.cavitation.triggerTime !== null && 
         this.cavitation.elapsedTime >= this.cavitation.triggerTime) {
       this._startCavitation();
     }
     
-    // Check if cavitation should end
     if (this.cavitation.active) {
       const cavitationDuration = (performance.now() - this.cavitation.startTime) / 1000;
       if (cavitationDuration >= this.cavitation.duration) {
@@ -123,43 +102,63 @@ class Pump extends Component {
   }
 
   /**
-   * CRITICAL FIX: Get current output flow (respects downstream valve constraints)
+   * CRITICAL FIX: Pump output limited by BOTH tank supply AND outlet valve
    */
   getOutputFlow() {
     if (!this.running) return 0;
     
-    // Calculate what pump can produce
-    let pumpCapacity = this.capacity * this.speed * this.efficiency;
+    // Start with pump's rated capacity
+    let maxFlow = this.capacity * this.speed * this.efficiency;
     
-    // Apply cavitation reduction if active
+    // Apply cavitation if active
     if (this.cavitation.active) {
-      pumpCapacity *= this.cavitation.flowReduction;
+      maxFlow *= this.cavitation.flowReduction;
     }
     
-    // CRITICAL: Check downstream valve constraints
-    // Pump output is limited by valves in the discharge path
-    if (this.flowNetwork && this.outputs.length > 0) {
-      for (const outputId of this.outputs) {
-        const outputComponent = this.flowNetwork.getComponent(outputId);
+    if (!this.flowNetwork) return maxFlow;
+    
+    // CONSTRAINT 1: Check upstream (tank) - can it supply enough?
+    let availableFromTank = Infinity;
+    
+    for (const inputId of this.inputs) {
+      const inputComponent = this.flowNetwork.getComponent(inputId);
+      
+      if (inputComponent && inputComponent.type === 'tank') {
+        // Calculate how much tank can supply (based on current volume)
+        const tankVolume = inputComponent.volume || 0;
+        availableFromTank = Math.min(availableFromTank, tankVolume * 10); // Max 10x volume per second
         
-        if (outputComponent && outputComponent.type === 'valve') {
-          // Valve constrains flow based on its position
-          const valveMaxFlow = outputComponent.maxFlow * outputComponent.position;
-          
-          // Pump cannot output more than valve allows
-          pumpCapacity = Math.min(pumpCapacity, valveMaxFlow);
-          
-          console.log(`Pump constrained by ${outputComponent.name}: ${valveMaxFlow.toFixed(3)} m³/s`);
+        // Check minimum level requirement
+        if (inputComponent.level < this.requiresMinLevel) {
+          console.warn(`${this.name} stopped - tank level below minimum`);
+          return 0;
         }
       }
     }
     
-    return pumpCapacity;
+    // CONSTRAINT 2: Check downstream (outlet valve) - can it pass flow?
+    let maxThroughValve = Infinity;
+    
+    for (const outputId of this.outputs) {
+      const outputComponent = this.flowNetwork.getComponent(outputId);
+      
+      if (outputComponent && outputComponent.type === 'valve') {
+        // Valve limits flow based on position
+        const valveFlow = outputComponent.maxFlow * outputComponent.position;
+        maxThroughValve = Math.min(maxThroughValve, valveFlow);
+        
+        if (valveFlow < maxFlow) {
+          console.log(`${this.name} constrained by ${outputComponent.name}: ${valveFlow.toFixed(3)} m³/s`);
+        }
+      }
+    }
+    
+    // Pump output = minimum of all constraints
+    const actualFlow = Math.min(maxFlow, availableFromTank, maxThroughValve);
+    
+    return actualFlow;
   }
 
-  /**
-   * Update pump state
-   */
   update(dt) {
     if (!this.running) return;
     
@@ -167,9 +166,6 @@ class Pump extends Component {
     this._updateCavitation(dt);
   }
 
-  /**
-   * Reset pump
-   */
   reset() {
     super.reset();
     this.running = false;
@@ -181,9 +177,6 @@ class Pump extends Component {
     this.cavitation.elapsedTime = 0;
   }
 
-  /**
-   * Get pump info
-   */
   getInfo() {
     return {
       ...super.getInfo(),
