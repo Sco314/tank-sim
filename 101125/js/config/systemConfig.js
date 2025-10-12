@@ -91,7 +91,7 @@ const SYSTEM_CONFIG = {
       svgElement: '#valve',
       position: [230, 53],
       
-      inputs: ['source'],
+      inputs: [],
       outputs: ['tank1'],
       
       modalTitle: 'Inlet Valve Control',
