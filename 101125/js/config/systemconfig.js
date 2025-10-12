@@ -1,54 +1,79 @@
 /**
- * systemConfig.js - System configuration for Phase 2 testing
+ * systemConfig.js - System configuration for Phase 4 testing
  * 
- * Minimal config to test fixed speed pump
+ * Now includes Tank component
  */
 
 const SYSTEM_CONFIG = {
   
   // ============================================================================
-  // PUMPS (Phase 2 Testing)
+  // TANKS (Phase 4 - NEW!)
+  // ============================================================================
+  tanks: {
+    mainTank: {
+      id: 'tank1',
+      name: 'Main Storage Tank',
+      type: 'tank',
+      
+      // Physical properties
+      area: 1.2,              // Cross-sectional area (m²)
+      maxHeight: 1.0,         // Maximum height (m)
+      // maxVolume calculated as area × maxHeight = 1.2 m³
+      
+      // Initial state
+      initialVolume: 0,       // Start empty
+      
+      // Thresholds for warnings
+      lowThreshold: 0.15,     // Warn when < 15%
+      highThreshold: 0.85,    // Warn when > 85%
+      
+      // Visual properties (matches SVG)
+      svgElement: '#tank',
+      levelRectHeight: 360,   // Height of the level rect in pixels
+      levelRectY: 360,        // Base Y position (top of empty tank)
+      position: [340, 120],
+      
+      // Connections
+      inputs: ['inletValve'],
+      outputs: ['pump1']
+    }
+  },
+  
+  // ============================================================================
+  // PUMPS (Phase 2)
   // ============================================================================
   pumps: {
     mainPump: {
       id: 'pump1',
       name: 'Main Centrifugal Pump',
       type: 'pump',
-      pumpType: 'fixed',     // Testing fixed speed pump
+      pumpType: 'fixed',
       
-      // Physical properties
-      capacity: 1.2,         // Max flow rate (m³/s)
-      efficiency: 0.95,      // 0-1
-      power: 5.5,            // kW
+      capacity: 1.2,
+      efficiency: 0.95,
+      power: 5.5,
       
-      // Operating parameters
-      initialSpeed: 0,       // Start OFF
+      initialSpeed: 0,
       
-      // Cavitation feature (disabled for basic testing)
+      // Pump requires minimum tank level to operate
+      requiresMinLevel: 0.05,  // Won't run if tank < 5%
+      
       cavitation: {
-        enabled: false,      // Set to true to test cavitation
-        triggerTime: 60,     // Cavitate after 60 seconds
-        duration: 5,         // Lasts 5 seconds
-        flowReduction: 0.3   // Flow reduced to 30%
+        enabled: false,
+        triggerTime: 60,
+        duration: 5,
+        flowReduction: 0.3
       },
       
-      // Visual properties
       svgElement: '#pump',
       position: [790, 460],
       
-      // Connections
       inputs: ['tank1'],
-      outputs: ['drain'],
+      outputs: ['outletValve'],
       
-      // UI
       modalTitle: 'Main Pump Control'
     }
   },
-  
-  // ============================================================================
-  // TANKS (Placeholder - not implemented yet)
-  // ============================================================================
-  tanks: {},
   
   // ============================================================================
   // VALVES (Phase 3)
@@ -59,22 +84,16 @@ const SYSTEM_CONFIG = {
       name: 'Inlet Valve',
       type: 'valve',
       
-      // Physical properties
-      maxFlow: 0.8,           // Max flow rate when fully open (m³/s)
+      maxFlow: 0.8,
+      initialPosition: 0,
+      responseTime: 0.1,
       
-      // Operating parameters
-      initialPosition: 0,     // 0 = closed, 1 = fully open
-      responseTime: 0.1,      // Time to change position (seconds)
-      
-      // Visual properties
       svgElement: '#valve',
       position: [230, 53],
       
-      // Connections
-      inputs: ['source'],     // Special: 'source' = infinite supply
+      inputs: ['source'],
       outputs: ['tank1'],
       
-      // UI
       modalTitle: 'Inlet Valve Control',
       iframeUrl: 'valve.html'
     },
@@ -85,14 +104,14 @@ const SYSTEM_CONFIG = {
       type: 'valve',
       
       maxFlow: 1.2,
-      initialPosition: 1.0,   // Starts fully open
+      initialPosition: 1.0,
       responseTime: 0.1,
       
       svgElement: '#outletValve',
       position: [890, 278],
       
       inputs: ['pump1'],
-      outputs: ['drain'],     // Special: 'drain' = infinite sink
+      outputs: ['drain'],
       
       modalTitle: 'Outlet Valve Control',
       iframeUrl: 'valve.html'
@@ -100,12 +119,12 @@ const SYSTEM_CONFIG = {
   },
   
   // ============================================================================
-  // PIPES (Placeholder - not implemented yet)
+  // PIPES (Placeholder - Phase 6)
   // ============================================================================
   pipes: {},
   
   // ============================================================================
-  // PRESSURE SENSORS (Placeholder - not implemented yet)
+  // PRESSURE SENSORS (Placeholder - Phase 5)
   // ============================================================================
   pressureSensors: {},
   
@@ -113,20 +132,16 @@ const SYSTEM_CONFIG = {
   // GLOBAL SETTINGS
   // ============================================================================
   settings: {
-    // Simulation
-    timeStep: 0.016,          // Target dt (60 FPS)
-    maxTimeStep: 0.1,         // Cap dt to prevent instability
+    timeStep: 0.016,
+    maxTimeStep: 0.1,
     
-    // Physics
-    gravity: 9.81,            // m/s²
-    fluidDensity: 1000,       // kg/m³ (water)
+    gravity: 9.81,
+    fluidDensity: 1000,
     
-    // UI
-    updateInterval: 16,       // Update UI every 16ms (60 FPS)
+    updateInterval: 16,
     
-    // Debug
-    debugMode: true,          // Show debug info in console
-    logFlows: false           // Log flow rates to console
+    debugMode: true,
+    logFlows: false
   }
 };
 
@@ -169,8 +184,8 @@ window.validateConfig = validateConfig;
 if (validateConfig(SYSTEM_CONFIG)) {
   console.log('✅ System configuration loaded and validated');
   console.log('📋 Components:', {
-    pumps: Object.keys(SYSTEM_CONFIG.pumps).length,
     tanks: Object.keys(SYSTEM_CONFIG.tanks).length,
+    pumps: Object.keys(SYSTEM_CONFIG.pumps).length,
     valves: Object.keys(SYSTEM_CONFIG.valves).length
   });
 }
