@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Interactive Tank & Valve Simulator - Phase 3 Testing</title>
+  <title>Interactive Tank & Valve Simulator - Phase 4 Testing</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="./style.css">
@@ -14,6 +14,9 @@
   <!-- Configuration -->
   <script src="js/config/systemConfig.js" defer></script>
 
+  <!-- Tank Components (Phase 4 - NEW!) -->
+  <script src="js/components/tanks/Tank.js" defer></script>
+
   <!-- Pump Components (Phase 2) -->
   <script src="js/components/pumps/Pump.js" defer></script>
   <script src="js/components/pumps/FixedSpeedPump.js" defer></script>
@@ -24,17 +27,16 @@
   <script src="js/components/valves/Valve.js" defer></script>
 
   <!-- Managers -->
+  <script src="js/managers/TankManager.js" defer></script>
   <script src="js/managers/PumpManager.js" defer></script>
   <script src="js/managers/ValveManager.js" defer></script>
 
   <!-- Initialize System -->
   <script defer>
     window.addEventListener('DOMContentLoaded', () => {
-      // Wait for all scripts to load
       setTimeout(() => {
         console.log('=== INITIALIZING SYSTEM ===');
         
-        // Check if all required classes are loaded
         if (!window.SYSTEM_CONFIG) {
           console.error('❌ SYSTEM_CONFIG not loaded');
           return;
@@ -46,7 +48,6 @@
         
         console.log('✅ All components loaded');
         
-        // Initialize the component manager
         window.componentManager = new ComponentManager(SYSTEM_CONFIG);
         window.componentManager.initialize().then(success => {
           if (success) {
@@ -57,7 +58,7 @@
             console.error('❌ System initialization failed');
           }
         });
-      }, 500); // Wait 500ms for all deferred scripts to load
+      }, 500);
     });
   </script>
 </head>
@@ -92,7 +93,7 @@
           <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
           <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
 
-          <!-- INLET VALVE (Phase 3 - functional) -->
+          <!-- INLET VALVE -->
           <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open inlet valve control">
             <g transform="translate(230, 53)">
               <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
@@ -105,7 +106,7 @@
           <path id="outletPipe" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
           <path id="outletFlow" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"/>
           
-          <!-- OUTLET VALVE (Phase 3 - functional) -->
+          <!-- OUTLET VALVE -->
           <g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve control">
             <g transform="translate(890,278)">
               <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
@@ -113,7 +114,7 @@
           </g>
         </g>
 
-        <!-- PUMP (Fixed Speed) -->
+        <!-- PUMP -->
         <g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle pump">
           <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
         </g>
@@ -141,7 +142,7 @@
 
         <div id="ixaoq">
           <h1 id="controlsTitle">System Controls</h1>
-          <div class="sub">Phase 3 Testing: Click valves to open interactive wheel control. Click pump to control it. System now has pumps + valves working!</div>
+          <div class="sub">Phase 4 Testing: Tank system now working! Watch the level change as you control valves and pump.</div>
           
           <div id="i3zec" class="controls">
             <div class="row">
@@ -151,11 +152,20 @@
           </div>
 
           <hr/>
-          <h1>System Status</h1>
+          <h1>Tank Status</h1>
+          <div class="kv" id="tankStatus">
+            <div>Level</div><div id="tank1Level">0%</div>
+            <div>Volume</div><div id="tank1Volume">0.000 m³</div>
+            <div>Status</div><div id="tank1Status">⚠️ EMPTY</div>
+            <div>Flow In</div><div id="tank1FlowIn">0.00 m³/s</div>
+            <div>Flow Out</div><div id="tank1FlowOut">0.00 m³/s</div>
+          </div>
+
+          <hr/>
+          <h1>Component Status</h1>
           <div class="kv" id="systemStatus">
-            <div>Pump Status</div><div id="pumpStatus">Loading...</div>
+            <div>Pump</div><div id="pumpStatus">Loading...</div>
             <div>Pump Flow</div><div id="pumpFlow">0.00 m³/s</div>
-            <div>Pump Runtime</div><div id="pumpRuntime">0s</div>
             <div>Inlet Valve</div><div id="inletValveStatus">Loading...</div>
             <div>Outlet Valve</div><div id="outletValveStatus">Loading...</div>
           </div>
@@ -244,7 +254,6 @@
           document.getElementById('pumpStatus').textContent = pump.running ? '✅ RUNNING' : '⭕ OFF';
           document.getElementById('pumpStatus').style.color = pump.running ? '#3ddc97' : '#9bb0ff';
           document.getElementById('pumpFlow').textContent = pump.getOutputFlow().toFixed(2) + ' m³/s';
-          document.getElementById('pumpRuntime').textContent = Math.floor(pump.runTime) + 's';
         }
       }
       
