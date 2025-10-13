@@ -102,7 +102,8 @@ class Pump extends Component {
   }
 
   /**
-   * CRITICAL FIX: Pump output limited by BOTH tank supply AND outlet valve
+   * FIXED: Pump output limited by BOTH tank supply AND outlet valve
+   * Now looks THROUGH pipes to find actual tanks and valves
    */
   getOutputFlow() {
     if (!this.running) return 0;
@@ -121,34 +122,36 @@ class Pump extends Component {
     let availableFromTank = Infinity;
     
     for (const inputId of this.inputs) {
-      const inputComponent = this.flowNetwork.getComponent(inputId);
+      // Look through pipes to find the actual tank
+      const tank = this._findUpstreamComponent(inputId, 'tank');
       
-      if (inputComponent && inputComponent.type === 'tank') {
+      if (tank) {
         // Calculate how much tank can supply (based on current volume)
-        const tankVolume = inputComponent.volume || 0;
-        availableFromTank = Math.min(availableFromTank, tankVolume * 10); // Max 10x volume per second
+        const tankVolume = tank.volume || 0;
+        availableFromTank = Math.min(availableFromTank, tankVolume * 10);
         
         // Check minimum level requirement
-        if (inputComponent.level < this.requiresMinLevel) {
+        if (tank.level < this.requiresMinLevel) {
           console.warn(`${this.name} stopped - tank level below minimum`);
           return 0;
         }
       }
     }
     
-    // CONSTRAINT 2: Check downstream (outlet valve) - can it pass flow?
+    // CONSTRAINT 2: Check downstream (outlet valve)
     let maxThroughValve = Infinity;
     
     for (const outputId of this.outputs) {
-      const outputComponent = this.flowNetwork.getComponent(outputId);
+      // Look through pipes to find the actual valve
+      const valve = this._findDownstreamComponent(outputId, 'valve');
       
-      if (outputComponent && outputComponent.type === 'valve') {
+      if (valve) {
         // Valve limits flow based on position
-        const valveFlow = outputComponent.maxFlow * outputComponent.position;
+        const valveFlow = valve.maxFlow * valve.position;
         maxThroughValve = Math.min(maxThroughValve, valveFlow);
         
         if (valveFlow < maxFlow) {
-          console.log(`${this.name} constrained by ${outputComponent.name}: ${valveFlow.toFixed(3)} m³/s`);
+          console.log(`${this.name} constrained by ${valve.name}: ${valveFlow.toFixed(3)} m³/s`);
         }
       }
     }
@@ -157,6 +160,52 @@ class Pump extends Component {
     const actualFlow = Math.min(maxFlow, availableFromTank, maxThroughValve);
     
     return actualFlow;
+  }
+
+  /**
+   * Helper: Find upstream component by type (looks through pipes)
+   */
+  _findUpstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    // Found it!
+    if (component.type === targetType) return component;
+    
+    // If it's a pipe, look further upstream
+    if (component.type === 'pipe' && component.inputs && component.inputs.length > 0) {
+      for (const inputId of component.inputs) {
+        const result = this._findUpstreamComponent(inputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Helper: Find downstream component by type (looks through pipes)
+   */
+  _findDownstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    // Found it!
+    if (component.type === targetType) return component;
+    
+    // If it's a pipe, look further downstream
+    if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
+      for (const outputId of component.outputs) {
+        const result = this._findDownstreamComponent(outputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
   }
 
   update(dt) {
