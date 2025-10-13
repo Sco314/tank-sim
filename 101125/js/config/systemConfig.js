@@ -282,7 +282,7 @@ const SYSTEM_CONFIG = {
       svgElement: null,
       
       inputs: ['tank1'],
-      outputs: ['pump1']
+      outputs: []
     },
     
     pumpOutlet: {
@@ -298,7 +298,7 @@ const SYSTEM_CONFIG = {
       svgElement: null,
       
       inputs: ['pump1'],
-      outputs: ['outletValve']
+      outputs: []
     },
     
     systemOutlet: {
@@ -314,7 +314,7 @@ const SYSTEM_CONFIG = {
       svgElement: null,
       
       inputs: ['outletValve'],
-      outputs: ['drain']
+      outputs: []
     }
   },
   
