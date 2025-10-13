@@ -107,29 +107,30 @@ class FlowNetwork {
     // Clear existing flows
     this.flows.clear();
 
-    // Process in order: sources -> valves -> pumps -> tanks -> drains
-    const order = ['source', 'valve', 'pump', 'tank', 'drain', 'sensor'];
+calculateFlows(dt) {
+  this.flows.clear();
+
+  // ✅ Add 'pipe' between valve and pump
+  const order = ['source', 'valve', 'pipe', 'pump', 'tank', 'drain', 'sensor'];
+  
+  for (const type of order) {
+    const components = this.getComponentsByType(type);
     
-    for (const type of order) {
-      const components = this.getComponentsByType(type);
+    for (const component of components) {
+      if (!component.enabled) continue;
       
-      for (const component of components) {
-        if (!component.enabled) continue;
+      const outputFlow = component.getOutputFlow();
+      
+      if (component.outputs && component.outputs.length > 0) {
+        const flowPerOutput = outputFlow / component.outputs.length;
         
-        // Calculate output flow for this component
-        const outputFlow = component.getOutputFlow();
-        
-        // Distribute flow to all outputs
-        if (component.outputs && component.outputs.length > 0) {
-          const flowPerOutput = outputFlow / component.outputs.length;
-          
-          for (const outputId of component.outputs) {
-            this.setFlow(component.id, outputId, flowPerOutput);
-          }
+        for (const outputId of component.outputs) {
+          this.setFlow(component.id, outputId, flowPerOutput);
         }
       }
     }
   }
+}
 
   /**
    * Update all components in the network
