@@ -93,7 +93,6 @@ class ProcessDesigner {
     });
     
     console.log('✅ Component library UI initialized');
-  }
 
   /**
    * Setup search functionality
