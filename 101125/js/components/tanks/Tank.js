@@ -1,7 +1,7 @@
 /**
  * Tank.js - Tank component with mass balance
  * 
- * Tank checks for downstream demand before outputting
+ * Tank is PASSIVE - pump creates the tank->pump flow
  */
 
 class Tank extends Component {
@@ -49,45 +49,12 @@ class Tank extends Component {
     }
   }
 
-/**
- * Tank is PASSIVE - doesn't generate flow
- */
-getOutputFlow() {
-  return 0; // Tank never processed in calculateFlows
-}
-  
-  // No demand = no output
-  if (!hasDemand) return 0;
-  
-  // REALISTIC LIMIT: Tank can supply 50% of its volume per second
-  // This means minimum 2 seconds to drain from any level
-  // For a 3 m³ tank at 50% (1.5 m³), max output = 0.75 m³/s
-  const maxRealisticRate = this.volume * 0.5;
-  
-  return Math.max(0, maxRealisticRate);
-}
-
   /**
-   * Helper: Find downstream component through pipes
+   * Tank is PASSIVE - doesn't create flow
+   * Pump will create tank->pump flow when it runs
    */
-  _findDownstreamComponent(startId, targetType) {
-    if (!this.flowNetwork) return null;
-    
-    const component = this.flowNetwork.getComponent(startId);
-    if (!component) return null;
-    
-    // Found it!
-    if (component.type === targetType) return component;
-    
-    // If it's a pipe, look further downstream
-    if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
-      for (const outputId of component.outputs) {
-        const result = this._findDownstreamComponent(outputId, targetType);
-        if (result) return result;
-      }
-    }
-    
-    return null;
+  getOutputFlow() {
+    return 0;
   }
 
   /**
