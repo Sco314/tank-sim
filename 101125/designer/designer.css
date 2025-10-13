@@ -454,3 +454,65 @@ body {
 .properties-content::-webkit-scrollbar-thumb:hover {
   background: var(--secondary);
 }
+
+/* Connection Lines */
+.connection-line {
+  cursor: pointer;
+  transition: stroke-width 0.2s;
+}
+
+.connection-line:hover {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.4));
+}
+
+/* Properties Panel Connections */
+.connections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.btn-remove {
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-remove:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.empty-text {
+  color: var(--text-light);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
