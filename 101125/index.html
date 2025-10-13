@@ -6,42 +6,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <link rel="stylesheet" href="./style.css">
 
-  <!-- Core Architecture (Phase 1) -->
-  <script src="js/core/Component.js" defer></script>
-  <script src="js/core/FlowNetwork.js" defer></script>
-  <script src="js/core/ComponentManager.js" defer></script>
+<!-- Core Architecture -->
+<script src="js/core/Component.js" defer></script>
+<script src="js/core/FlowNetwork.js" defer></script>
+<script src="js/core/ComponentManager.js" defer></script>
 
-  <!-- Configuration -->
-  <script src="js/config/systemConfig.js" defer></script>
+<!-- Boundary Components (NEW!) -->
+<script src="js/components/sources/Feed.js" defer></script>
+<script src="js/components/sinks/Drain.js" defer></script>
 
-  <!-- Boundary Components -->
-  <script src="js/components/sources/Feed.js" defer></script>
-  <script src="js/components/sinks/Drain.js" defer></script>
-  
-  <!-- Tank Components (Phase 4) -->
-  <script src="js/components/tanks/Tank.js" defer></script>
+<!-- Tank Components -->
+<script src="js/components/tanks/Tank.js" defer></script>
 
-  <!-- Pump Components (Phase 2) -->
-  <script src="js/components/pumps/Pump.js" defer></script>
-  <script src="js/components/pumps/FixedSpeedPump.js" defer></script>
-  <script src="js/components/pumps/VariableSpeedPump.js" defer></script>
-  <script src="js/components/pumps/ThreeSpeedPump.js" defer></script>
+<!-- Pump Components -->
+<script src="js/components/pumps/Pump.js" defer></script>
+<script src="js/components/pumps/FixedSpeedPump.js" defer></script>
 
-  <!-- Valve Components (Phase 3) -->
-  <script src="js/components/valves/Valve.js" defer></script>
+<!-- Valve Components -->
+<script src="js/components/valves/Valve.js" defer></script>
 
-  <!-- Pressure Sensor Components (Phase 5) -->
-  <script src="js/components/sensors/PressureSensor.js" defer></script>
+<!-- Pipe Components -->
+<script src="js/components/pipes/Pipe.js" defer></script>
 
-  <!-- Pipe Components (Phase 6) -->
-  <script src="js/components/pipes/Pipe.js" defer></script>
+<!-- Sensor Components -->
+<script src="js/components/sensors/PressureSensor.js" defer></script>
 
-  <!-- Managers -->
-  <script src="js/managers/TankManager.js" defer></script>
-  <script src="js/managers/PumpManager.js" defer></script>
-  <script src="js/managers/ValveManager.js" defer></script>
-  <script src="js/managers/PressureManager.js" defer></script>
-  <script src="js/managers/PipeManager.js" defer></script>
+<!-- Managers -->
+<script src="js/managers/TankManager.js" defer></script>
+<script src="js/managers/PumpManager.js" defer></script>
+<script src="js/managers/ValveManager.js" defer></script>
+<script src="js/managers/PipeManager.js" defer></script>
+<script src="js/managers/PressureManager.js" defer></script>
+
+<!-- Configuration (MUST be after all components) -->
+<script src="js/config/systemConfig.js" defer></script>
 
   <!-- Initialize System -->
   <script defer>
