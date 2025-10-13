@@ -95,53 +95,70 @@
         </defs>
         
         <rect x="0" y="0" width="1000" height="600" fill="url(#grid)" opacity="0.4"></rect>
-        
-        <!-- INLET -->
-        <g id="inlet">
-          <path d="M 80 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
-          <path id="inletFlow" d="M 80 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
 
-          <!-- INLET VALVE -->
-          <g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open inlet valve control">
-            <g transform="translate(230, 53)">
-              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
-            </g>
-          </g>
-        </g>   
-        
-        <!-- OUTLET -->
-        <g id="outlet">
-          <path id="outletPipe" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-          <path id="outletFlow" d="M 660 460 H 815 V 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"/>
-          
-          <!-- OUTLET VALVE -->
-          <g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve control">
-            <g transform="translate(890,278)">
-              <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
-            </g>
-          </g>
-        </g>
+<!-- SECTION 1: SOURCE TO INLET VALVE -->
+<g id="sourceToInlet">
+  <path d="M 80 70 H 220" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe1Flow" d="M 80 70 H 220" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
 
-        <!-- PUMP -->
-        <g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle pump">
-          <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
-        </g>
+<!-- INLET VALVE -->
+<g id="valve" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="Open inlet valve control">
+  <g transform="translate(230, 53)">
+    <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+  </g>
+</g>
+
+<!-- SECTION 2: INLET VALVE TO TANK TOP -->
+<g id="inletToTank">
+  <path d="M 240 70 H 380 V 125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe2Flow" d="M 240 70 H 380 V 125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+
+<!-- TANK -->
+<g id="tank" transform="translate(340, 120)">
+  <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"></rect>
+  <rect id="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)" class="levelRect"></rect>
+  <g id="ticks" stroke="#334a90">
+    <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"></path>
+    <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
+    <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
+    <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
+    <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
+    <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
+  </g>
+</g>
+
+<!-- SECTION 3: TANK BOTTOM TO PUMP INLET -->
+<g id="tankToPump">
+  <path d="M 660 460 H 770" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe3Flow" d="M 660 460 H 770" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+
+<!-- PUMP -->
+<g id="pump" class="pump" transform="translate(790,460)" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle pump">
+  <image href="https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png" x="-20" y="-130" width="230" height="230" />
+</g>
+
+<!-- SECTION 4: PUMP OUTLET TO OUTLET VALVE -->
+<g id="pumpToOutlet">
+  <path d="M 810 460 V 295 H 880" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></path>
+  <path id="pipe4Flow" d="M 810 460 V 295 H 880" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" class="flow"></path>
+</g>
+
+<!-- OUTLET VALVE -->
+<g id="outletValve" class="valve" tabindex="0" role="button" aria-pressed="true" aria-label="Open outlet valve control">
+  <g transform="translate(890,278)">
+    <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+  </g>
+</g>
+
+<!-- SECTION 5: OUTLET VALVE TO DRAIN -->
+<g id="outletToDrain">
+  <path d="M 900 295 H 960" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe5Flow" d="M 900 295 H 960" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
         
-        <!-- TANK -->
-        <g id="tank" transform="translate(340, 120)">
-          <rect x="0" y="0" width="320" height="360" rx="18" fill="#0e1734" stroke="#2a3d78" stroke-width="4"></rect>
-          <rect id="levelRect" x="6" y="360" width="308" height="0" fill="url(#liquid)" class="levelRect"></rect>
-          <g id="ticks" stroke="#334a90">
-            <path d="M0 60 h-14 M0 120 h-14 M0 180 h-14 M0 240 h-14 M0 300 h-14"></path>
-            <text x="-20" y="66" text-anchor="end" fill="#9bb0ff" font-size="12">80%</text>
-            <text x="-20" y="126" text-anchor="end" fill="#9bb0ff" font-size="12">60%</text>
-            <text x="-20" y="186" text-anchor="end" fill="#9bb0ff" font-size="12">40%</text>
-            <text x="-20" y="246" text-anchor="end" fill="#9bb0ff" font-size="12">20%</text>
-            <text x="-20" y="306" text-anchor="end" fill="#9bb0ff" font-size="12">0%</text>
-          </g>
-        </g>
-      </svg>
-    </div>
 
     <!-- Controls Drawer -->
     <aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
