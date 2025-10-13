@@ -55,37 +55,22 @@ class Pipe extends Component {
   /**
    * Calculate flow rate through pipe
    */
-  getOutputFlow() {
-    // Pipe doesn't generate flow, it just conducts it
-    // Flow is determined by connected components
-    if (!this.flowNetwork) return 0;
-    
-    return this.flowNetwork.getInputFlow(this.id);
-  }
+ getOutputFlow() {
+  // Pipes DON'T create flow - they just conduct it
+  return 0; // Never processed in calculateFlows anyway
+}
 
-  /**
-   * Update pipe state
-   */
-  update(dt) {
-    // Get flow from network
-    if (this.flowNetwork) {
-      this.flowRate = this.flowNetwork.getInputFlow(this.id);
-    }
-    
-    // Calculate velocity: v = Q / A (where A = π r²)
-    const area = Math.PI * Math.pow(this.diameter / 2, 2);
-    this.velocity = area > 0 ? this.flowRate / area : 0;
-    
-    // Calculate animation speed based on flow rate
-    // Faster flow = faster animation
-    if (this.flowRate > 0) {
-      // Map flow rate to animation speed (0.2 to 2.0)
-      const normalizedFlow = Math.min(1, this.flowRate / 1.0); // Normalize to 0-1
-      this.animationSpeed = this.minSpeed + (normalizedFlow * (this.maxSpeed - this.minSpeed));
-    } else {
-      this.animationSpeed = 0;
-    }
+update(dt) {
+  if (!this.flowNetwork) return;
+  
+  // Read flow between the components we connect
+  // Example: pipe2 connects inletValve->tank1
+  if (this.inputs.length > 0 && this.outputs.length > 0) {
+    this.flowRate = this.flowNetwork.getFlow(this.inputs[0], this.outputs[0]);
   }
+  
+  // ... rest of update (velocity, etc.)
+}
 
   /**
    * Render flow animation
