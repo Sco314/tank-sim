@@ -74,8 +74,8 @@ class FlowNetwork {
   calculateFlows(dt) {
   this.flows.clear();
   
-  // Remove 'tank' - tanks are passive accumulators, not flow generators
-  const order = ['source', 'valve', 'pipe', 'pump', 'drain', 'sensor'];
+  // Add 'tank' back - tanks need to create output flows
+  const order = ['source', 'valve', 'pipe', 'tank', 'pump', 'drain', 'sensor'];
   
   for (const type of order) {
     const components = this.getComponentsByType(type);
