@@ -1,24 +1,22 @@
 /**
  * Component.js - Base class for all system components
  * 
- * All components (tanks, pumps, valves, pipes) inherit from this.
+ * All components (tanks, pumps, valves, pipes, feeds, drains) inherit from this.
+ * Supports boundary components with no inputs (feeds) or no outputs (drains).
  */
 
 class Component {
   constructor(config) {
     this.id = config.id;
-    this.type = config.type; // 'tank', 'pump', 'valve', 'pipe', 'sensor'
+    this.type = config.type; // 'tank', 'pump', 'valve', 'pipe', 'sensor', 'feed', 'drain'
     this.name = config.name || this.id;
     
-    // CRITICAL FIX: Store flowNetwork reference
-    // Tank.update() needs this to call flowNetwork.getInputFlow()
-    // Pipe.getOutputFlow() needs this to read flow
-    // PressureSensor needs this to find connected components
+    // CRITICAL: Store flowNetwork reference
     this.flowNetwork = config.flowNetwork || null;
     
     // Flow connections
-    this.inputs = config.inputs || []; // Array of component IDs
-    this.outputs = config.outputs || []; // Array of component IDs
+    this.inputs = config.inputs || [];
+    this.outputs = config.outputs || [];
     
     // Visual
     this.svgElement = config.svgElement || null;
@@ -31,7 +29,68 @@ class Component {
     // Callbacks
     this.onChange = null; // Called when component changes
     
+    // Validate configuration
+    this._validateConfiguration();
+    
     console.log(`Component created: ${this.type} - ${this.id}`);
+  }
+
+  /**
+   * Validate component configuration
+   * Relaxed for boundary components (feeds can have no inputs, drains can have no outputs)
+   */
+  _validateConfiguration() {
+    // Check for required fields
+    if (!this.id) {
+      console.error('Component must have an ID');
+      return;
+    }
+    
+    if (!this.type) {
+      console.error(`Component ${this.id} must have a type`);
+      return;
+    }
+    
+    // Boundary components have relaxed validation
+    if (this.isBoundary()) {
+      if (this.type === 'feed' || this.type === 'source') {
+        // Feeds/sources should have NO inputs, but must have outputs
+        if (this.inputs.length > 0) {
+          console.warn(`${this.type} ${this.id} should not have inputs (boundary condition)`);
+        }
+        if (this.outputs.length === 0) {
+          console.warn(`${this.type} ${this.id} has no outputs - will not supply flow to anything`);
+        }
+      } else if (this.type === 'drain' || this.type === 'sink') {
+        // Drains/sinks should have NO outputs, but must have inputs
+        if (this.outputs.length > 0) {
+          console.warn(`${this.type} ${this.id} should not have outputs (boundary condition)`);
+        }
+        if (this.inputs.length === 0) {
+          console.warn(`${this.type} ${this.id} has no inputs - will not receive flow from anything`);
+        }
+      }
+    } else {
+      // Non-boundary components should generally have both inputs and outputs
+      // (though some exceptions like sensors might only have inputs)
+      if (this.inputs.length === 0 && this.type !== 'sensor') {
+        console.warn(`${this.type} ${this.id} has no inputs - may not receive flow`);
+      }
+      if (this.outputs.length === 0 && this.type !== 'sensor') {
+        console.warn(`${this.type} ${this.id} has no outputs - may not supply flow`);
+      }
+    }
+  }
+
+  /**
+   * Check if this component is a boundary node (source or sink)
+   * Override in subclasses or check type
+   */
+  isBoundary() {
+    return this.type === 'feed' || 
+           this.type === 'source' || 
+           this.type === 'drain' || 
+           this.type === 'sink';
   }
 
   /**
@@ -103,6 +162,7 @@ class Component {
       type: this.type,
       name: this.name,
       enabled: this.enabled,
+      isBoundary: this.isBoundary(),
       inputs: this.inputs,
       outputs: this.outputs,
       state: this.state
@@ -123,6 +183,7 @@ class Component {
   destroy() {
     this.onChange = null;
     this.svgElement = null;
+    this.flowNetwork = null;
   }
 }
 
