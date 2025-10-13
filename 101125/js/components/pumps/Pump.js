@@ -1,7 +1,7 @@
 /**
  * Pump.js - Base pump component with proper flow constraints
  * 
- * Pump flow is limited by BOTH upstream (tank) AND downstream (valve)
+ * Pump reads available supply from tank and constrains by valve position
  */
 
 class Pump extends Component {
@@ -102,8 +102,10 @@ class Pump extends Component {
   }
 
   /**
-   * FIXED: Pump output limited by BOTH tank supply AND outlet valve
-   * Now looks THROUGH pipes to find actual tanks and valves
+   * SMART OUTPUT: Pump constrains flow based on:
+   * 1. Available supply from tank (read from network)
+   * 2. Pump capacity
+   * 3. Downstream valve position
    */
   getOutputFlow() {
     if (!this.running) return 0;
@@ -118,46 +120,39 @@ class Pump extends Component {
     
     if (!this.flowNetwork) return maxFlow;
     
-    // CONSTRAINT 1: Check upstream (tank) - can it supply enough?
-    let availableFromTank = Infinity;
+    // CONSTRAINT 1: Read what tank is actually supplying
+    // (Tank already calculated and created tank->pipe3 flow)
+    const tankSupply = this.flowNetwork.getInputFlow(this.id);
     
-    for (const inputId of this.inputs) {
-      // Look through pipes to find the actual tank
-      const tank = this._findUpstreamComponent(inputId, 'tank');
-      
-      if (tank) {
-        // Calculate how much tank can supply (based on current volume)
-        const tankVolume = tank.volume || 0;
-        availableFromTank = Math.min(availableFromTank, tankVolume * 10);
-        
-        // Check minimum level requirement
-        if (tank.level < this.requiresMinLevel) {
-          console.warn(`${this.name} stopped - tank level below minimum`);
-          return 0;
-        }
-      }
+    // Also check minimum level requirement
+    const tank = this._findUpstreamComponent(this.inputs[0], 'tank');
+    if (tank && tank.level < this.requiresMinLevel) {
+      console.warn(`${this.name} stopped - tank level below minimum`);
+      return 0;
     }
     
-    // CONSTRAINT 2: Check downstream (outlet valve)
-    let maxThroughValve = Infinity;
+    // CONSTRAINT 2: Check downstream valve position
+    let valveLimit = Infinity;
     
     for (const outputId of this.outputs) {
-      // Look through pipes to find the actual valve
       const valve = this._findDownstreamComponent(outputId, 'valve');
       
       if (valve) {
-        // Valve limits flow based on position
         const valveFlow = valve.maxFlow * valve.position;
-        maxThroughValve = Math.min(maxThroughValve, valveFlow);
-        
-        if (valveFlow < maxFlow) {
-          console.log(`${this.name} constrained by ${valve.name}: ${valveFlow.toFixed(3)} m³/s`);
-        }
+        valveLimit = Math.min(valveLimit, valveFlow);
       }
     }
     
     // Pump output = minimum of all constraints
-    const actualFlow = Math.min(maxFlow, availableFromTank, maxThroughValve);
+    const actualFlow = Math.min(maxFlow, tankSupply, valveLimit);
+    
+    // Debug logging when constrained
+    if (this.running && actualFlow < maxFlow * 0.99) {
+      const constraints = [];
+      if (tankSupply < maxFlow) constraints.push(`tank supply=${tankSupply.toFixed(2)}`);
+      if (valveLimit < maxFlow) constraints.push(`valve limit=${valveLimit.toFixed(2)}`);
+      console.log(`${this.name} constrained: ${constraints.join(', ')} → ${actualFlow.toFixed(2)} m³/s`);
+    }
     
     return actualFlow;
   }
@@ -171,10 +166,8 @@ class Pump extends Component {
     const component = this.flowNetwork.getComponent(startId);
     if (!component) return null;
     
-    // Found it!
     if (component.type === targetType) return component;
     
-    // If it's a pipe, look further upstream
     if (component.type === 'pipe' && component.inputs && component.inputs.length > 0) {
       for (const inputId of component.inputs) {
         const result = this._findUpstreamComponent(inputId, targetType);
@@ -194,10 +187,8 @@ class Pump extends Component {
     const component = this.flowNetwork.getComponent(startId);
     if (!component) return null;
     
-    // Found it!
     if (component.type === targetType) return component;
     
-    // If it's a pipe, look further downstream
     if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
       for (const outputId of component.outputs) {
         const result = this._findDownstreamComponent(outputId, targetType);
