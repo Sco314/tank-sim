@@ -1,6 +1,21 @@
 /**
  * systemConfig.js - System configuration with realistic flow rates
  */
+// Component template make expansion easier 
+const COMPONENT_TEMPLATES = {
+  pump: {
+    fixed: { pumpType: 'fixed', capacity: 1.0, efficiency: 0.95 },
+    variable: { pumpType: 'variable', capacity: 1.0, minSpeed: 0.1 },
+    threeSpeed: { pumpType: '3-speed', speeds: [0.3, 0.6, 1.0] }
+  },
+  valve: {
+    standard: { maxFlow: 0.5, responseTime: 0.1 }
+  },
+  tank: {
+    small: { area: 1.0, maxHeight: 1.0 },
+    large: { area: 2.0, maxHeight: 1.5 }
+  }
+};
 
 const SYSTEM_CONFIG = {
   
