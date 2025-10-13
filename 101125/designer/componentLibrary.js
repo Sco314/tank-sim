@@ -178,6 +178,11 @@ const CATEGORIES = {
   }
 };
 
+// Verify export
+console.log('✅ componentLibrary.js loaded');
+console.log('📦 Components available:', Object.keys(COMPONENT_LIBRARY));
+console.log('📁 Categories:', Object.keys(CATEGORIES));
+
 // Export for use in designer
 window.COMPONENT_LIBRARY = COMPONENT_LIBRARY;
 window.CATEGORIES = CATEGORIES;
