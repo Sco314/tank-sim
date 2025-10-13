@@ -107,30 +107,29 @@ class FlowNetwork {
     // Clear existing flows
     this.flows.clear();
 
-calculateFlows(dt) {
-  this.flows.clear();
-
-  // ✅ Add 'pipe' between valve and pump
-  const order = ['source', 'valve', 'pipe', 'pump', 'tank', 'drain', 'sensor'];
-  
-  for (const type of order) {
-    const components = this.getComponentsByType(type);
+    // CRITICAL FIX: Add 'pipe' to the processing order
+    const order = ['source', 'valve', 'pipe', 'pump', 'tank', 'drain', 'sensor'];
     
-    for (const component of components) {
-      if (!component.enabled) continue;
+    for (const type of order) {
+      const components = this.getComponentsByType(type);
       
-      const outputFlow = component.getOutputFlow();
-      
-      if (component.outputs && component.outputs.length > 0) {
-        const flowPerOutput = outputFlow / component.outputs.length;
+      for (const component of components) {
+        if (!component.enabled) continue;
         
-        for (const outputId of component.outputs) {
-          this.setFlow(component.id, outputId, flowPerOutput);
+        // Calculate output flow for this component
+        const outputFlow = component.getOutputFlow();
+        
+        // Distribute flow to all outputs
+        if (component.outputs && component.outputs.length > 0) {
+          const flowPerOutput = outputFlow / component.outputs.length;
+          
+          for (const outputId of component.outputs) {
+            this.setFlow(component.id, outputId, flowPerOutput);
+          }
         }
       }
     }
   }
-}
 
   /**
    * Update all components in the network
@@ -167,23 +166,13 @@ calculateFlows(dt) {
     for (const component of this.components.values()) {
       // Check if all inputs exist
       for (const inputId of component.inputs) {
-        if (this.components.has(inputId)) {
+        if (this.components.has(inputId) || inputId === 'source') {
           validConnections++;
         } else {
           console.warn(`Component ${component.id} has invalid input: ${inputId}`);
           invalidConnections++;
         }
       }
-
-// Check if all inputs exist
-for (const inputId of component.inputs) {
-  if (this.components.has(inputId) || inputId === 'source') {  // ← Add source
-    validConnections++;
-  } else {
-    console.warn(`Component ${component.id} has invalid input: ${inputId}`);
-    invalidConnections++;
-  }
-}
       
       // Check if all outputs exist
       for (const outputId of component.outputs) {
