@@ -1,7 +1,7 @@
 /**
  * Tank.js - Tank component with mass balance
  * 
- * Tank is PASSIVE - outputs what it CAN supply, pump constrains actual flow
+ * Tank checks for downstream demand before outputting
  */
 
 class Tank extends Component {
@@ -50,13 +50,52 @@ class Tank extends Component {
   }
 
   /**
-   * SIMPLE OUTPUT: Tank outputs what it CAN supply based on volume
-   * Pump downstream will constrain based on valve position
+   * Tank outputs based on downstream demand
+   * Only outputs if pump is running downstream
    */
   getOutputFlow() {
-    // Tank outputs maximum available flow based on current volume
-    // Rate limited to prevent instant drainage (10x volume per second)
+    if (!this.flowNetwork) return 0;
+    
+    // Check if there's demand downstream (is pump running?)
+    let hasDemand = false;
+    
+    for (const outputId of this.outputs) {
+      const pump = this._findDownstreamComponent(outputId, 'pump');
+      if (pump && pump.running) {
+        hasDemand = true;
+        break;
+      }
+    }
+    
+    // No demand = no output
+    if (!hasDemand) return 0;
+    
+    // Tank can supply up to 10x its current volume per second
+    // (Rate limiting prevents instant drainage)
     return Math.max(0, this.volume * 10);
+  }
+
+  /**
+   * Helper: Find downstream component through pipes
+   */
+  _findDownstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    // Found it!
+    if (component.type === targetType) return component;
+    
+    // If it's a pipe, look further downstream
+    if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
+      for (const outputId of component.outputs) {
+        const result = this._findDownstreamComponent(outputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
   }
 
   /**
