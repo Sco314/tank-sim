@@ -1,7 +1,5 @@
 /**
- * ComponentManager.js - Master orchestrator for all component managers
- * 
- * Coordinates: ValveManager, PumpManager, TankManager, PipeManager, PressureManager
+ * ComponentManager.js - Master orchestrator with boundary component support
  */
 
 class ComponentManager {
@@ -9,12 +7,16 @@ class ComponentManager {
     this.config = config;
     this.flowNetwork = new FlowNetwork();
     
-    // Component managers (initialized later)
+    // Component managers
     this.valveManager = null;
     this.pumpManager = null;
     this.tankManager = null;
     this.pipeManager = null;
     this.pressureManager = null;
+    
+    // Boundary components (no managers needed - simple instantiation)
+    this.feeds = {};
+    this.drains = {};
     
     // Simulation state
     this.running = false;
@@ -31,15 +33,22 @@ class ComponentManager {
     console.log('Initializing component managers...');
     
     try {
-      // Initialize managers in order
+      // CRITICAL: Initialize in correct order
+      // 1. Boundary conditions first
+      await this._initializeBoundaries();
+      
+      // 2. Physical components
       await this._initializeTanks();
       await this._initializePumps();
       await this._initializeValves();
-      await this._initializePipes();
-      await this._initializePressureSensors();
       
-      // Build flow network
+      // 3. Sensors and visual elements
+      await this._initializePressureSensors();
+      await this._initializePipes();
+      
+      // Build and validate flow network
       this.flowNetwork.buildFromConfig(this.config);
+      this.flowNetwork.verifyIntegrity();
       
       console.log('All component managers initialized successfully');
       return true;
@@ -47,6 +56,33 @@ class ComponentManager {
       console.error('Failed to initialize component managers:', error);
       return false;
     }
+  }
+
+  /**
+   * Initialize boundary conditions (feeds and drains)
+   */
+  async _initializeBoundaries() {
+    // Initialize feeds
+    if (this.config.feeds && window.Feed) {
+      for (const [key, cfg] of Object.entries(this.config.feeds)) {
+        const feed = new Feed(cfg);
+        this.feeds[key] = feed;
+        this.flowNetwork.addComponent(feed);
+        console.log(`✓ Feed created: ${feed.id}`);
+      }
+    }
+    
+    // Initialize drains
+    if (this.config.drains && window.Drain) {
+      for (const [key, cfg] of Object.entries(this.config.drains)) {
+        const drain = new Drain(cfg);
+        this.drains[key] = drain;
+        this.flowNetwork.addComponent(drain);
+        console.log(`✓ Drain created: ${drain.id}`);
+      }
+    }
+    
+    console.log('✓ Boundary components ready');
   }
 
   /**
@@ -80,13 +116,13 @@ class ComponentManager {
   }
 
   /**
-   * Initialize pipe manager
+   * Initialize pipe manager (VISUAL ONLY)
    */
   async _initializePipes() {
     if (!this.config.pipes || !window.PipeManager) return;
     
     this.pipeManager = new PipeManager(this.config.pipes, this.flowNetwork);
-    console.log('✓ PipeManager ready');
+    console.log('✓ PipeManager ready (visual only)');
   }
 
   /**
@@ -151,7 +187,7 @@ class ComponentManager {
     if (!this.running) return;
     
     const now = performance.now();
-    const dt = Math.min(0.1, (now - this.lastTime) / 1000); // Cap at 100ms
+    const dt = Math.min(0.1, (now - this.lastTime) / 1000);
     this.lastTime = now;
     
     if (!this.paused) {
@@ -181,40 +217,26 @@ class ComponentManager {
     if (this.pipeManager) this.pipeManager.reset();
     if (this.pressureManager) this.pressureManager.reset();
     
+    // Reset boundaries
+    for (const feed of Object.values(this.feeds)) {
+      feed.reset();
+    }
+    for (const drain of Object.values(this.drains)) {
+      drain.reset();
+    }
+    
     console.log('All components reset');
   }
 
   /**
-   * Get component by ID (searches all managers)
+   * Get component by ID
    */
   getComponent(id) {
     return this.flowNetwork.getComponent(id);
   }
 
   /**
-   * Get all components of a type
-   */
-  getComponentsByType(type) {
-    return this.flowNetwork.getComponentsByType(type);
-  }
-
-  /**
-   * Get manager by type
-   */
-  getManager(type) {
-    const managers = {
-      tank: this.tankManager,
-      pump: this.pumpManager,
-      valve: this.valveManager,
-      pipe: this.pipeManager,
-      pressure: this.pressureManager
-    };
-    
-    return managers[type] || null;
-  }
-
-  /**
-   * Get system info for debugging
+   * Get system info
    */
   getSystemInfo() {
     return {
@@ -222,9 +244,11 @@ class ComponentManager {
       paused: this.paused,
       network: this.flowNetwork.getNetworkInfo(),
       managers: {
+        feeds: Object.keys(this.feeds).length,
         tanks: this.tankManager ? Object.keys(this.tankManager.tanks || {}).length : 0,
         pumps: this.pumpManager ? Object.keys(this.pumpManager.pumps || {}).length : 0,
         valves: this.valveManager ? Object.keys(this.valveManager.valves || {}).length : 0,
+        drains: Object.keys(this.drains).length,
         pipes: this.pipeManager ? Object.keys(this.pipeManager.pipes || {}).length : 0,
         pressureSensors: this.pressureManager ? Object.keys(this.pressureManager.sensors || {}).length : 0
       }
@@ -242,6 +266,13 @@ class ComponentManager {
     if (this.valveManager) this.valveManager.destroy();
     if (this.pipeManager) this.pipeManager.destroy();
     if (this.pressureManager) this.pressureManager.destroy();
+    
+    for (const feed of Object.values(this.feeds)) {
+      feed.destroy();
+    }
+    for (const drain of Object.values(this.drains)) {
+      drain.destroy();
+    }
     
     this.flowNetwork.clear();
     
