@@ -107,55 +107,54 @@ class Pump extends Component {
    * 2. Pump capacity
    * 3. Downstream valve position
    */
-  getOutputFlow() {
-    if (!this.running) return 0;
-    
-    // Start with pump's rated capacity
-    let maxFlow = this.capacity * this.speed * this.efficiency;
-    
-    // Apply cavitation if active
-    if (this.cavitation.active) {
-      maxFlow *= this.cavitation.flowReduction;
-    }
-    
-    if (!this.flowNetwork) return maxFlow;
-    
-    // CONSTRAINT 1: Read what tank is actually supplying
-    // (Tank already calculated and created tank->pipe3 flow)
-    const tankSupply = this.flowNetwork.getInputFlow(this.id);
-    
-    // Also check minimum level requirement
-    const tank = this._findUpstreamComponent(this.inputs[0], 'tank');
-    if (tank && tank.level < this.requiresMinLevel) {
-      console.warn(`${this.name} stopped - tank level below minimum`);
-      return 0;
-    }
-    
-    // CONSTRAINT 2: Check downstream valve position
-    let valveLimit = Infinity;
-    
-    for (const outputId of this.outputs) {
-      const valve = this._findDownstreamComponent(outputId, 'valve');
+getOutputFlow() {
+  if (!this.running) return 0;
+  
+  let maxFlow = this.capacity * this.speed * this.efficiency;
+  
+  if (this.cavitation.active) {
+    maxFlow *= this.cavitation.flowReduction;
+  }
+  
+  if (!this.flowNetwork) return maxFlow;
+  
+  // CONSTRAINT 1: Check tank availability
+  let availableFromTank = Infinity;
+  let tankComponent = null;
+  
+  for (const inputId of this.inputs) {
+    const tank = this._findUpstreamComponent(inputId, 'tank');
+    if (tank) {
+      tankComponent = tank;
+      // Tank can supply based on current volume (50% per second max)
+      availableFromTank = Math.min(availableFromTank, tank.volume * 0.5);
       
-      if (valve) {
-        const valveFlow = valve.maxFlow * valve.position;
-        valveLimit = Math.min(valveLimit, valveFlow);
+      if (tank.level < this.requiresMinLevel) {
+        console.warn(`${this.name} stopped - tank level below minimum`);
+        return 0;
       }
     }
-    
-    // Pump output = minimum of all constraints
-    const actualFlow = Math.min(maxFlow, tankSupply, valveLimit);
-    
-    // Debug logging when constrained
-    if (this.running && actualFlow < maxFlow * 0.99) {
-      const constraints = [];
-      if (tankSupply < maxFlow) constraints.push(`tank supply=${tankSupply.toFixed(2)}`);
-      if (valveLimit < maxFlow) constraints.push(`valve limit=${valveLimit.toFixed(2)}`);
-      console.log(`${this.name} constrained: ${constraints.join(', ')} → ${actualFlow.toFixed(2)} m³/s`);
-    }
-    
-    return actualFlow;
   }
+  
+  // CONSTRAINT 2: Check valve
+  let valveLimit = Infinity;
+  for (const outputId of this.outputs) {
+    const valve = this._findDownstreamComponent(outputId, 'valve');
+    if (valve) {
+      valveLimit = Math.min(valveLimit, valve.maxFlow * valve.position);
+    }
+  }
+  
+  // Actual flow = minimum of all constraints
+  const actualFlow = Math.min(maxFlow, availableFromTank, valveLimit);
+  
+  // CRITICAL: Create the tank->pump flow so tank drains correctly
+  if (tankComponent && actualFlow > 0) {
+    this.flowNetwork.setFlow(tankComponent.id, this.id, actualFlow);
+  }
+  
+  return actualFlow;
+}
 
   /**
    * Helper: Find upstream component by type (looks through pipes)
