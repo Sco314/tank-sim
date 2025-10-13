@@ -28,8 +28,8 @@ const SYSTEM_CONFIG = {
       levelRectY: 360,
       position: [340, 120],
       
-      inputs: ['inletValve'],
-      outputs: ['pump1']
+      inputs: ['pipe2'],
+      outputs: ['pipe3']
     }
   },
   
@@ -61,8 +61,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#pump',
       position: [790, 460],
       
-      inputs: ['tank1'],
-      outputs: ['outletPipe'],
+      inputs: ['pipe3'],
+      outputs: ['pipe4'],
       
       modalTitle: 'Main Pump Control'
     }
@@ -85,8 +85,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#valve',
       position: [230, 53],
       
-      inputs: [],             // No source component (valve generates flow) source from outside source
-      outputs: ['inletPipe'],
+      inputs: ['pipe1'],             // No source component (valve generates flow) source from outside source
+      outputs: ['pipe2'],
       
       modalTitle: 'Inlet Valve Control',
       iframeUrl: 'valve.html'
@@ -105,8 +105,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#outletValve',
       position: [890, 278],
       
-      inputs: ['outletPipe'],
-      outputs: ['drain'],
+      inputs: ['pipe4'],
+      outputs: ['pipe5'],
       
       modalTitle: 'Outlet Valve Control',
       iframeUrl: 'valve.html'
