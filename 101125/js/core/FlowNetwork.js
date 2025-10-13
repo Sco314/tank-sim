@@ -72,23 +72,25 @@ class FlowNetwork {
   }
 
   calculateFlows(dt) {
-    this.flows.clear();
-    const order = ['source', 'valve', 'pipe', 'pump', 'tank', 'drain', 'sensor'];
-    
-    for (const type of order) {
-      const components = this.getComponentsByType(type);
-      for (const component of components) {
-        if (!component.enabled) continue;
-        const outputFlow = component.getOutputFlow();
-        if (component.outputs && component.outputs.length > 0) {
-          const flowPerOutput = outputFlow / component.outputs.length;
-          for (const outputId of component.outputs) {
-            this.setFlow(component.id, outputId, flowPerOutput);
-          }
+  this.flows.clear();
+  
+  // Remove 'tank' - tanks are passive accumulators, not flow generators
+  const order = ['source', 'valve', 'pipe', 'pump', 'drain', 'sensor'];
+  
+  for (const type of order) {
+    const components = this.getComponentsByType(type);
+    for (const component of components) {
+      if (!component.enabled) continue;
+      const outputFlow = component.getOutputFlow();
+      if (component.outputs && component.outputs.length > 0) {
+        const flowPerOutput = outputFlow / component.outputs.length;
+        for (const outputId of component.outputs) {
+          this.setFlow(component.id, outputId, flowPerOutput);
         }
       }
     }
   }
+}
 
   updateComponents(dt) {
     for (const component of this.components.values()) {
