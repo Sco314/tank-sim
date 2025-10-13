@@ -779,32 +779,19 @@ class ProcessDesigner {
   /**
    * Export configuration
    */
-  exportConfig() {
-    const config = {
-      components: Array.from(this.components.values()).map(comp => ({
-        id: comp.id,
-        type: comp.type,
-        name: comp.name,
-        key: comp.key,
-        position: [comp.x, comp.y],
-        config: comp.config
-      })),
-      connections: this.connections
-    };
-    
-    console.log('Exported config:', config);
-    
-    // Download as JSON
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sim-config.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    alert('Configuration exported as sim-config.json!');
-  }
+exportConfig() {
+  // Update stats
+  document.getElementById('exportCompCount').textContent = this.components.size;
+  document.getElementById('exportConnCount').textContent = this.connections.length;
+  
+  // Show modal
+  const modal = document.getElementById('exportModal');
+  modal.classList.add('open');
+  
+  // Focus sim name input
+  setTimeout(() => {
+    document.getElementById('simNameInput').select();
+  }, 100);
 }
 
 // Initialize designer when DOM is ready
