@@ -53,27 +53,34 @@ class Tank extends Component {
    * Tank outputs based on downstream demand
    * Only outputs if pump is running downstream
    */
-  getOutputFlow() {
-    if (!this.flowNetwork) return 0;
-    
-    // Check if there's demand downstream (is pump running?)
-    let hasDemand = false;
-    
-    for (const outputId of this.outputs) {
-      const pump = this._findDownstreamComponent(outputId, 'pump');
-      if (pump && pump.running) {
-        hasDemand = true;
-        break;
-      }
+  /**
+ * Tank outputs based on downstream demand
+ * Rate limited to prevent unrealistic instant drainage
+ */
+getOutputFlow() {
+  if (!this.flowNetwork) return 0;
+  
+  // Check if there's demand downstream (is pump running?)
+  let hasDemand = false;
+  
+  for (const outputId of this.outputs) {
+    const pump = this._findDownstreamComponent(outputId, 'pump');
+    if (pump && pump.running) {
+      hasDemand = true;
+      break;
     }
-    
-    // No demand = no output
-    if (!hasDemand) return 0;
-    
-    // Tank can supply up to 10x its current volume per second
-    // (Rate limiting prevents instant drainage)
-    return Math.max(0, this.volume * 10);
   }
+  
+  // No demand = no output
+  if (!hasDemand) return 0;
+  
+  // REALISTIC LIMIT: Tank can supply 50% of its volume per second
+  // This means minimum 2 seconds to drain from any level
+  // For a 3 m³ tank at 50% (1.5 m³), max output = 0.75 m³/s
+  const maxRealisticRate = this.volume * 0.5;
+  
+  return Math.max(0, maxRealisticRate);
+}
 
   /**
    * Helper: Find downstream component through pipes
