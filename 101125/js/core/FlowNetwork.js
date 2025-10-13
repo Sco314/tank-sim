@@ -71,11 +71,11 @@ class FlowNetwork {
     return total;
   }
 
-  calculateFlows(dt) {
+calculateFlows(dt) {
   this.flows.clear();
   
-  // Add 'tank' back - tanks need to create output flows
-  const order = ['source', 'valve', 'pipe', 'tank', 'pump', 'drain', 'sensor'];
+  // Tank removed - pump will pull from tank, not tank pushing to pump
+  const order = ['source', 'valve', 'pipe', 'pump', 'drain', 'sensor'];
   
   for (const type of order) {
     const components = this.getComponentsByType(type);
