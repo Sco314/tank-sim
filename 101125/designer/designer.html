@@ -121,5 +121,51 @@
   <script src="componentLibrary.js"></script>
   <script src="designer.js"></script>
 
+<!-- Export Modal -->
+<div id="exportModal" class="modal-overlay">
+  <div class="modal-container">
+    <button class="modal-close" id="exportModalClose">×</button>
+    <h2>📦 Export Simulator</h2>
+    
+    <div class="modal-content">
+      <div class="form-group">
+        <label for="simNameInput">Simulator Name</label>
+        <input type="text" id="simNameInput" class="form-input" placeholder="My Process Simulator" value="My Simulator">
+        <small>Used for titles and folder names</small>
+      </div>
+      
+      <div class="export-preview">
+        <h3>Files to Export:</h3>
+        <ul>
+          <li>✅ <code>systemConfig.js</code> - Component configuration</li>
+          <li>✅ <code>index.html</code> - Simulator interface</li>
+          <li>✅ <code>README.md</code> - Setup instructions</li>
+        </ul>
+      </div>
+      
+      <div class="export-stats">
+        <h3>Your Design:</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-value" id="exportCompCount">0</span>
+            <span class="stat-label">Components</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="exportConnCount">0</span>
+            <span class="stat-label">Connections</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="exportCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="exportConfirmBtn">📥 Export Files</button>
+    </div>
+  </div>
+</div>
+
+<script src="exporter.js"></script>
+  
 </body>
 </html>
