@@ -209,26 +209,60 @@ const SYSTEM_CONFIG = {
   // ============================================================================
   // PIPES (Phase 6)
   // ============================================================================
- pipes: {
-  inlet: {
-    id: 'inletPipe',
-    name: 'Inlet Pipe',
+  pipes: {
+  sourceToInlet: {
+    id: 'pipe1',
+    name: 'Source to Inlet Valve',
+    type: 'pipe',
+    diameter: 0.05,
+    length: 0.5,
+    svgElement: '#pipe1Flow',
+    inputs: ['source'],
+    outputs: ['inletValve']
+  },
+  
+  inletToTank: {
+    id: 'pipe2',
+    name: 'Inlet Valve to Tank',
     type: 'pipe',
     diameter: 0.05,
     length: 1.0,
-    svgElement: '#inletFlow',
+    svgElement: '#pipe2Flow',
     inputs: ['inletValve'],
     outputs: ['tank1']
   },
-  outlet: {
-    id: 'outletPipe', 
-    name: 'Outlet Pipe',
+  
+  tankToPump: {
+    id: 'pipe3',
+    name: 'Tank to Pump',
     type: 'pipe',
     diameter: 0.05,
-    length: 2.0,
-    svgElement: '#outletFlow',
+    length: 0.5,
+    svgElement: '#pipe3Flow',
+    inputs: ['tank1'],
+    outputs: ['pump1']
+  },
+  
+  pumpToOutlet: {
+    id: 'pipe4',
+    name: 'Pump to Outlet Valve',
+    type: 'pipe',
+    diameter: 0.05,
+    length: 1.5,
+    svgElement: '#pipe4Flow',
     inputs: ['pump1'],
     outputs: ['outletValve']
+  },
+  
+  outletToDrain: {
+    id: 'pipe5',
+    name: 'Outlet Valve to Drain',
+    type: 'pipe',
+    diameter: 0.05,
+    length: 0.5,
+    svgElement: '#pipe5Flow',
+    inputs: ['outletValve'],
+    outputs: ['drain']
   }
 },
   
