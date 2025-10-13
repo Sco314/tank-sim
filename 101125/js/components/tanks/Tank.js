@@ -1,7 +1,7 @@
 /**
  * Tank.js - Tank component with mass balance
  * 
- * Tank is now passive - pumps PULL from it
+ * Tank is PASSIVE - outputs what it CAN supply, pump constrains actual flow
  */
 
 class Tank extends Component {
@@ -47,6 +47,16 @@ class Tank extends Component {
     if (!this.levelRect) {
       console.warn(`Level rect not found for tank ${this.name}`);
     }
+  }
+
+  /**
+   * SIMPLE OUTPUT: Tank outputs what it CAN supply based on volume
+   * Pump downstream will constrain based on valve position
+   */
+  getOutputFlow() {
+    // Tank outputs maximum available flow based on current volume
+    // Rate limited to prevent instant drainage (10x volume per second)
+    return Math.max(0, this.volume * 10);
   }
 
   /**
@@ -116,53 +126,6 @@ class Tank extends Component {
   isHigh() {
     return this.level > this.highThreshold;
   }
-
-  // SIMPLIFIED: Tank just reports what it theoretically could supply
-  // Pumps are responsible for only taking what they can actually use
-  // Tank outputs based on downstream pump demand
-getOutputFlow() {
-  if (!this.flowNetwork) return 0;
-  
-  // Tank is passive - check what downstream is pulling
-  let demand = 0;
-  
-  for (const outputId of this.outputs) {
-    // Look through pipes to find downstream pump
-    const pump = this._findDownstreamComponent(outputId, 'pump');
-    
-    if (pump && pump.running) {
-      // Pump is pulling - use its calculated output
-      demand += pump.getOutputFlow();
-    }
-  }
-  
-  // Can only supply what we have (with max rate limit)
-  const maxRate = this.volume * 10; // Prevent instant drainage
-  return Math.min(demand, maxRate);
-}
-
-/**
- * Helper: Find downstream component through pipes
- */
-_findDownstreamComponent(startId, targetType) {
-  if (!this.flowNetwork) return null;
-  
-  const component = this.flowNetwork.getComponent(startId);
-  if (!component) return null;
-  
-  // Found it!
-  if (component.type === targetType) return component;
-  
-  // If it's a pipe, look further downstream
-  if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
-    for (const outputId of component.outputs) {
-      const result = this._findDownstreamComponent(outputId, targetType);
-      if (result) return result;
-    }
-  }
-  
-  return null;
-}
 
   setVolume(volume) {
     this.volume = Math.max(0, Math.min(this.maxVolume, volume));
