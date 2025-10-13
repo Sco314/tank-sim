@@ -173,6 +173,16 @@ class FlowNetwork {
           invalidConnections++;
         }
       }
+
+// Check if all inputs exist
+for (const inputId of component.inputs) {
+  if (this.components.has(inputId) || inputId === 'source') {  // ← Add source
+    validConnections++;
+  } else {
+    console.warn(`Component ${component.id} has invalid input: ${inputId}`);
+    invalidConnections++;
+  }
+}
       
       // Check if all outputs exist
       for (const outputId of component.outputs) {
