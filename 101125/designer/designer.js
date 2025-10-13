@@ -24,6 +24,7 @@ class ProcessDesigner {
     this.tempConnectionLine = null;
     
     this._initializeLibrary();
+    this._setupSearch();
     this._setupEventListeners();
     this._updateStats();
     
@@ -82,6 +83,43 @@ _initializeLibrary() {
     
     libraryContent.appendChild(categoryEl);
   }
+
+/**
+ * Setup search functionality
+ */
+_setupSearch() {
+  const searchInput = document.getElementById('searchComponents');
+  
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    
+    // Show all if query is empty
+    if (!query) {
+      document.querySelectorAll('.component-item').forEach(item => {
+        item.style.display = 'flex';
+      });
+      document.querySelectorAll('.component-category').forEach(cat => {
+        cat.style.display = 'block';
+      });
+      return;
+    }
+    
+    // Filter components
+    document.querySelectorAll('.component-item').forEach(item => {
+      const name = item.querySelector('.component-name').textContent.toLowerCase();
+      const desc = item.querySelector('.component-desc').textContent.toLowerCase();
+      const matches = name.includes(query) || desc.includes(query);
+      item.style.display = matches ? 'flex' : 'none';
+    });
+    
+    // Hide empty categories
+    document.querySelectorAll('.component-category').forEach(category => {
+      const hasVisibleItems = Array.from(category.querySelectorAll('.component-item'))
+        .some(item => item.style.display !== 'none');
+      category.style.display = hasVisibleItems ? 'block' : 'none';
+    });
+  });
+}
   
   // Category toggle handlers
   libraryContent.querySelectorAll('.category-header').forEach(header => {
