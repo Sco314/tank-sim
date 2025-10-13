@@ -76,8 +76,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#pump',
       position: [790, 460],
       
-      inputs: ['pipe3'],
-      outputs: ['pipe4'],
+      inputs: ['inletValve'],
+      outputs: ['pump1'],
       
       modalTitle: 'Main Pump Control'
     }
@@ -100,8 +100,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#valve',
       position: [230, 53],
       
-      inputs: ['pipe1'],             // No source component (valve generates flow) source from outside source
-      outputs: ['pipe2'],
+      inputs: [''],             // No source component (valve generates flow) source from outside source
+      outputs: ['tank1'],
       
       modalTitle: 'Inlet Valve Control',
       iframeUrl: 'valve.html'
@@ -120,8 +120,8 @@ const SYSTEM_CONFIG = {
       svgElement: '#outletValve',
       position: [890, 278],
       
-      inputs: ['pipe4'],
-      outputs: ['pipe5'],
+      inputs: ['pump1'],
+      outputs: ['drain'],
       
       modalTitle: 'Outlet Valve Control',
       iframeUrl: 'valve.html'
