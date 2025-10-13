@@ -1,0 +1,297 @@
+{
+  "components": [
+    {
+      "id": "comp_2",
+      "type": "feed",
+      "name": "Feed 3",
+      "key": "feed",
+      "position": [
+        140,
+        280
+      ],
+      "config": {
+        "type": "feed",
+        "supplyPressure": 3,
+        "maxFlow": null,
+        "temperature": 20,
+        "inputs": [],
+        "outputs": [
+          "comp_6"
+        ]
+      }
+    },
+    {
+      "id": "comp_6",
+      "type": "tank",
+      "name": "Tank 7",
+      "key": "tank",
+      "position": [
+        360,
+        240
+      ],
+      "config": {
+        "type": "tank",
+        "area": 2.5,
+        "maxHeight": 1.2,
+        "initialVolume": 0,
+        "inputs": [
+          "comp_7",
+          "comp_2",
+          "comp_16"
+        ],
+        "outputs": [
+          "comp_14"
+        ]
+      }
+    },
+    {
+      "id": "comp_7",
+      "type": "feed",
+      "name": "Feed 8",
+      "key": "feed",
+      "position": [
+        140,
+        180
+      ],
+      "config": {
+        "type": "feed",
+        "supplyPressure": 3,
+        "maxFlow": null,
+        "temperature": 20,
+        "inputs": [],
+        "outputs": [
+          "comp_6"
+        ]
+      }
+    },
+    {
+      "id": "comp_10",
+      "type": "valve",
+      "name": "Control Valve 11",
+      "key": "valve",
+      "position": [
+        780,
+        40
+      ],
+      "config": {
+        "type": "valve",
+        "maxFlow": 0.5,
+        "initialPosition": 0,
+        "responseTime": 0.1,
+        "inputs": [
+          "comp_15"
+        ],
+        "outputs": [
+          "comp_11"
+        ]
+      }
+    },
+    {
+      "id": "comp_11",
+      "type": "tank",
+      "name": "Tank 12",
+      "key": "tank",
+      "position": [
+        780,
+        240
+      ],
+      "config": {
+        "type": "tank",
+        "area": 2.5,
+        "maxHeight": 1.2,
+        "initialVolume": 0,
+        "inputs": [
+          "comp_14",
+          "comp_10"
+        ],
+        "outputs": [
+          "comp_13"
+        ]
+      }
+    },
+    {
+      "id": "comp_12",
+      "type": "drain",
+      "name": "Drain 13",
+      "key": "drain",
+      "position": [
+        1120,
+        240
+      ],
+      "config": {
+        "type": "drain",
+        "ambientPressure": 1,
+        "maxCapacity": null,
+        "inputs": [
+          "comp_13"
+        ],
+        "outputs": []
+      }
+    },
+    {
+      "id": "comp_13",
+      "type": "pump",
+      "name": "Fixed Speed Pump 14",
+      "key": "fixedPump",
+      "position": [
+        960,
+        240
+      ],
+      "config": {
+        "type": "pump",
+        "pumpType": "fixed",
+        "capacity": 0.5,
+        "efficiency": 0.95,
+        "inputs": [
+          "comp_11"
+        ],
+        "outputs": [
+          "comp_12"
+        ]
+      }
+    },
+    {
+      "id": "comp_14",
+      "type": "pump",
+      "name": "Fixed Speed Pump 15",
+      "key": "fixedPump",
+      "position": [
+        500,
+        240
+      ],
+      "config": {
+        "type": "pump",
+        "pumpType": "fixed",
+        "capacity": 0.5,
+        "efficiency": 0.95,
+        "inputs": [
+          "comp_6",
+          "comp_17"
+        ],
+        "outputs": [
+          "comp_11"
+        ]
+      }
+    },
+    {
+      "id": "comp_15",
+      "type": "feed",
+      "name": "Feed 16",
+      "key": "feed",
+      "position": [
+        640,
+        40
+      ],
+      "config": {
+        "type": "feed",
+        "supplyPressure": 3,
+        "maxFlow": null,
+        "temperature": 20,
+        "inputs": [],
+        "outputs": [
+          "comp_10"
+        ]
+      }
+    },
+    {
+      "id": "comp_16",
+      "type": "sensor",
+      "name": "Pressure Sensor 17",
+      "key": "pressureSensor",
+      "position": [
+        360,
+        140
+      ],
+      "config": {
+        "type": "sensor",
+        "measurementPoint": "static",
+        "range": [
+          0,
+          10
+        ],
+        "alarmLow": 0.5,
+        "alarmHigh": 8,
+        "inputs": [],
+        "outputs": [
+          "comp_6"
+        ]
+      }
+    },
+    {
+      "id": "comp_17",
+      "type": "sensor",
+      "name": "Pressure Sensor 18",
+      "key": "pressureSensor",
+      "position": [
+        500,
+        140
+      ],
+      "config": {
+        "type": "sensor",
+        "measurementPoint": "static",
+        "range": [
+          0,
+          10
+        ],
+        "alarmLow": 0.5,
+        "alarmHigh": 8,
+        "inputs": [],
+        "outputs": [
+          "comp_14"
+        ]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_5",
+      "from": "comp_7",
+      "to": "comp_6"
+    },
+    {
+      "id": "conn_6",
+      "from": "comp_2",
+      "to": "comp_6"
+    },
+    {
+      "id": "conn_9",
+      "from": "comp_6",
+      "to": "comp_14"
+    },
+    {
+      "id": "conn_10",
+      "from": "comp_14",
+      "to": "comp_11"
+    },
+    {
+      "id": "conn_12",
+      "from": "comp_15",
+      "to": "comp_10"
+    },
+    {
+      "id": "conn_13",
+      "from": "comp_10",
+      "to": "comp_11"
+    },
+    {
+      "id": "conn_14",
+      "from": "comp_11",
+      "to": "comp_13"
+    },
+    {
+      "id": "conn_15",
+      "from": "comp_13",
+      "to": "comp_12"
+    },
+    {
+      "id": "conn_16",
+      "from": "comp_16",
+      "to": "comp_6"
+    },
+    {
+      "id": "conn_17",
+      "from": "comp_17",
+      "to": "comp_14"
+    }
+  ]
+}
