@@ -87,7 +87,6 @@ class ProcessDesigner {
         items.classList.toggle('collapsed');
         header.querySelector('.category-toggle').textContent = items.classList.contains('collapsed') ? '▶' : '▼';
       });
-    });
     
     libraryContent.querySelectorAll('.component-item').forEach(item => {
       item.addEventListener('dragstart', (e) => this._onDragStart(e));
