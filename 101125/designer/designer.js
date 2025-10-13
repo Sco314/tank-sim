@@ -9,8 +9,8 @@ class ProcessDesigner {
     this.connectionsLayer = document.getElementById('connectionsLayer');
     this.gridRect = document.getElementById('gridRect');
     
-    this.components = new Map(); // id -> component data
-    this.connections = []; // array of {from, to, fromPort, toPort}
+    this.components = new Map();
+    this.connections = [];
     this.selectedComponent = null;
     this.nextId = 1;
     this.nextConnectionId = 1;
@@ -18,7 +18,6 @@ class ProcessDesigner {
     this.gridSize = 20;
     this.snapToGrid = true;
     
-    // Tool states
     this.currentTool = 'select';
     this.connectionStart = null;
     this.tempConnectionLine = null;
@@ -34,112 +33,26 @@ class ProcessDesigner {
   /**
    * Initialize component library UI
    */
-_initializeLibrary() {
-  const libraryContent = document.getElementById('libraryContent');
-  
-  // Check if library data exists
-  if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
-    console.error('❌ Component library not loaded!');
-    libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load. Check console.</p>';
-    return;
-  }
-  
-  console.log('✅ Component library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
-  
-  // Group components by category
-  const categorized = {};
-  for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
-    const category = component.category;
-    if (!categorized[category]) {
-      categorized[category] = [];
-    }
-    categorized[category].push({ key, ...component });
-  }
-  
-  // Build category UI
-  for (const [categoryKey, categoryInfo] of Object.entries(CATEGORIES)) {
-    if (!categorized[categoryKey]) continue;
+  _initializeLibrary() {
+    const libraryContent = document.getElementById('libraryContent');
     
-    const categoryEl = document.createElement('div');
-    categoryEl.className = 'component-category';
-    categoryEl.innerHTML = `
-      <div class="category-header" data-category="${categoryKey}">
-        <span class="category-icon">${categoryInfo.icon}</span>
-        <span class="category-name">${categoryInfo.name}</span>
-        <span class="category-toggle">▼</span>
-      </div>
-      <div class="category-items" data-category="${categoryKey}">
-        ${categorized[categoryKey].map(comp => `
-          <div class="component-item" draggable="true" data-component="${comp.key}">
-            <div class="component-icon">${comp.icon}</div>
-            <div class="component-info">
-              <span class="component-name">${comp.name}</span>
-              <span class="component-desc">${comp.description}</span>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-    
-    libraryContent.appendChild(categoryEl);
-  }
-
-/**
- * Setup search functionality
- */
-_setupSearch() {
-  const searchInput = document.getElementById('searchComponents');
-  
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    
-    // Show all if query is empty
-    if (!query) {
-      document.querySelectorAll('.component-item').forEach(item => {
-        item.style.display = 'flex';
-      });
-      document.querySelectorAll('.component-category').forEach(cat => {
-        cat.style.display = 'block';
-      });
+    if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
+      console.error('❌ Component library not loaded!');
+      libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load.</p>';
       return;
     }
     
-    // Filter components
-    document.querySelectorAll('.component-item').forEach(item => {
-      const name = item.querySelector('.component-name').textContent.toLowerCase();
-      const desc = item.querySelector('.component-desc').textContent.toLowerCase();
-      const matches = name.includes(query) || desc.includes(query);
-      item.style.display = matches ? 'flex' : 'none';
-    });
+    console.log('✅ Component library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
     
-    // Hide empty categories
-    document.querySelectorAll('.component-category').forEach(category => {
-      const hasVisibleItems = Array.from(category.querySelectorAll('.component-item'))
-        .some(item => item.style.display !== 'none');
-      category.style.display = hasVisibleItems ? 'block' : 'none';
-    });
-  });
-}
-  
-  // Category toggle handlers
-  libraryContent.querySelectorAll('.category-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const category = header.dataset.category;
-      const items = libraryContent.querySelector(`.category-items[data-category="${category}"]`);
-      items.classList.toggle('collapsed');
-      header.querySelector('.category-toggle').textContent = items.classList.contains('collapsed') ? '▶' : '▼';
-    });
-  });
-  
-  // Drag start handlers
-  libraryContent.querySelectorAll('.component-item').forEach(item => {
-    item.addEventListener('dragstart', (e) => this._onDragStart(e));
-  });
-  
-  console.log('✅ Component library UI initialized');
-}
+    const categorized = {};
+    for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
+      const category = component.category;
+      if (!categorized[category]) {
+        categorized[category] = [];
+      }
+      categorized[category].push({ key, ...component });
+    }
     
-    // Build category UI
     for (const [categoryKey, categoryInfo] of Object.entries(CATEGORIES)) {
       if (!categorized[categoryKey]) continue;
       
@@ -167,7 +80,6 @@ _setupSearch() {
       libraryContent.appendChild(categoryEl);
     }
     
-    // Category toggle handlers
     libraryContent.querySelectorAll('.category-header').forEach(header => {
       header.addEventListener('click', () => {
         const category = header.dataset.category;
@@ -177,9 +89,44 @@ _setupSearch() {
       });
     });
     
-    // Drag start handlers
     libraryContent.querySelectorAll('.component-item').forEach(item => {
       item.addEventListener('dragstart', (e) => this._onDragStart(e));
+    });
+    
+    console.log('✅ Component library UI initialized');
+  }
+
+  /**
+   * Setup search functionality
+   */
+  _setupSearch() {
+    const searchInput = document.getElementById('searchComponents');
+    
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      
+      if (!query) {
+        document.querySelectorAll('.component-item').forEach(item => {
+          item.style.display = 'flex';
+        });
+        document.querySelectorAll('.component-category').forEach(cat => {
+          cat.style.display = 'block';
+        });
+        return;
+      }
+      
+      document.querySelectorAll('.component-item').forEach(item => {
+        const name = item.querySelector('.component-name').textContent.toLowerCase();
+        const desc = item.querySelector('.component-desc').textContent.toLowerCase();
+        const matches = name.includes(query) || desc.includes(query);
+        item.style.display = matches ? 'flex' : 'none';
+      });
+      
+      document.querySelectorAll('.component-category').forEach(category => {
+        const hasVisibleItems = Array.from(category.querySelectorAll('.component-item'))
+          .some(item => item.style.display !== 'none');
+        category.style.display = hasVisibleItems ? 'block' : 'none';
+      });
     });
   }
 
@@ -187,11 +134,9 @@ _setupSearch() {
    * Setup event listeners
    */
   _setupEventListeners() {
-    // Canvas drop
     this.canvas.addEventListener('dragover', (e) => e.preventDefault());
     this.canvas.addEventListener('drop', (e) => this._onDrop(e));
     
-    // Canvas mouse tracking
     this.canvas.addEventListener('mousemove', (e) => {
       this._updateMousePos(e);
       if (this.currentTool === 'connect' && this.connectionStart) {
@@ -199,63 +144,59 @@ _setupSearch() {
       }
     });
     
-    // Canvas click for connection tool
     this.canvas.addEventListener('click', (e) => {
       if (this.currentTool === 'connect') {
         this._handleConnectionClick(e);
       }
     });
     
-    // Grid toggle
     document.getElementById('gridToggle').addEventListener('change', (e) => {
       this.gridRect.classList.toggle('hidden', !e.target.checked);
     });
     
-    // Snap toggle
     document.getElementById('snapToggle').addEventListener('change', (e) => {
       this.snapToGrid = e.target.checked;
     });
     
-    // Tool buttons
     document.getElementById('selectTool').addEventListener('click', () => this.setTool('select'));
     document.getElementById('connectTool').addEventListener('click', () => this.setTool('connect'));
     
-    // Clear button
     document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
-    
-    // Export button
     document.getElementById('exportBtn').addEventListener('click', () => this.exportConfig());
-
-// Export modal handlers
-const exportModal = document.getElementById('exportModal');
-const exportModalClose = document.getElementById('exportModalClose');
-const exportCancelBtn = document.getElementById('exportCancelBtn');
-const exportConfirmBtn = document.getElementById('exportConfirmBtn');
-
-const closeExportModal = () => {
-  exportModal.classList.remove('open');
-};
-
-exportModalClose.addEventListener('click', closeExportModal);
-exportCancelBtn.addEventListener('click', closeExportModal);
-exportModal.addEventListener('click', (e) => {
-  if (e.target === exportModal) closeExportModal();
-});
-
-exportConfirmBtn.addEventListener('click', () => {
-  const simName = document.getElementById('simNameInput').value || 'My Simulator';
-  const exporter = new SimulatorExporter(this);
-  exporter.exportSimulator(simName);
-  closeExportModal();
-});
-
-// Escape key closes modal
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && exportModal.classList.contains('open')) {
-    closeExportModal();
-  }
-});
     
+    // Export modal handlers
+    const exportModal = document.getElementById('exportModal');
+    const exportModalClose = document.getElementById('exportModalClose');
+    const exportCancelBtn = document.getElementById('exportCancelBtn');
+    const exportConfirmBtn = document.getElementById('exportConfirmBtn');
+
+    const closeExportModal = () => {
+      exportModal.classList.remove('open');
+      setTimeout(() => {
+        exportModal.style.display = 'none';
+      }, 300);
+    };
+
+    exportModalClose.addEventListener('click', closeExportModal);
+    exportCancelBtn.addEventListener('click', closeExportModal);
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) closeExportModal();
+    });
+
+    exportConfirmBtn.addEventListener('click', () => {
+      const simName = document.getElementById('simNameInput').value || 'My Simulator';
+      const exporter = new SimulatorExporter(this);
+      exporter.exportSimulator(simName);
+      closeExportModal();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (exportModal.classList.contains('open')) {
+          closeExportModal();
+        }
+      }
+    });
   }
 
   /**
@@ -264,16 +205,13 @@ window.addEventListener('keydown', (e) => {
   setTool(tool) {
     this.currentTool = tool;
     
-    // Cancel ongoing connection
     if (tool !== 'connect' && this.connectionStart) {
       this._cancelConnection();
     }
     
-    // Update UI
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(`${tool}Tool`).classList.add('active');
     
-    // Update cursor
     this.canvas.style.cursor = tool === 'connect' ? 'crosshair' : 'default';
     
     console.log(`Tool changed to: ${tool}`);
@@ -283,7 +221,6 @@ window.addEventListener('keydown', (e) => {
    * Handle connection tool clicks
    */
   _handleConnectionClick(e) {
-    // Check if clicked on a component
     const target = e.target.closest('.canvas-component');
     if (!target) {
       this._cancelConnection();
@@ -294,21 +231,18 @@ window.addEventListener('keydown', (e) => {
     const component = this.components.get(componentId);
     
     if (!this.connectionStart) {
-      // Start connection - check if component can output
       if (!this._canOutput(component)) {
         alert(`${component.name} cannot have outputs (it's a ${component.type})`);
         return;
       }
       this._startConnection(componentId);
     } else {
-      // Complete connection - check if component can input
       if (!this._canInput(component)) {
         alert(`${component.name} cannot have inputs (it's a ${component.type})`);
         this._cancelConnection();
         return;
       }
       
-      // Validate connection
       if (componentId === this.connectionStart) {
         alert('Cannot connect component to itself');
         this._cancelConnection();
@@ -326,7 +260,6 @@ window.addEventListener('keydown', (e) => {
     this.connectionStart = componentId;
     const component = this.components.get(componentId);
     
-    // Create temporary line
     this.tempConnectionLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.tempConnectionLine.setAttribute('stroke', '#4f46e5');
     this.tempConnectionLine.setAttribute('stroke-width', '3');
@@ -361,7 +294,6 @@ window.addEventListener('keydown', (e) => {
     const fromComp = this.components.get(this.connectionStart);
     const toComp = this.components.get(toComponentId);
     
-    // Check if connection already exists
     const exists = this.connections.some(conn => 
       conn.from === this.connectionStart && conn.to === toComponentId
     );
@@ -372,14 +304,12 @@ window.addEventListener('keydown', (e) => {
       return;
     }
     
-    // Add to outputs/inputs
     if (!fromComp.config.outputs) fromComp.config.outputs = [];
     if (!toComp.config.inputs) toComp.config.inputs = [];
     
     fromComp.config.outputs.push(toComponentId);
     toComp.config.inputs.push(this.connectionStart);
     
-    // Create connection
     const connection = {
       id: `conn_${this.nextConnectionId++}`,
       from: this.connectionStart,
@@ -389,7 +319,6 @@ window.addEventListener('keydown', (e) => {
     this.connections.push(connection);
     this._renderConnection(connection);
     
-    // Update properties if either component is selected
     if (this.selectedComponent === this.connectionStart || this.selectedComponent === toComponentId) {
       this._showProperties(this.selectedComponent);
     }
@@ -428,7 +357,6 @@ window.addEventListener('keydown', (e) => {
     path.setAttribute('fill', 'none');
     path.setAttribute('marker-end', 'url(#arrowhead)');
     
-    // Create arrowhead marker if not exists
     if (!document.getElementById('arrowhead')) {
       const defs = this.canvas.querySelector('defs');
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
@@ -445,7 +373,6 @@ window.addEventListener('keydown', (e) => {
     this._updateConnectionPath(connection);
     this.connectionsLayer.appendChild(path);
     
-    // Click to delete
     path.addEventListener('click', (e) => {
       if (this.currentTool === 'select') {
         e.stopPropagation();
@@ -457,7 +384,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Update connection path (called when components move)
+   * Update connection path
    */
   _updateConnectionPath(connection) {
     const fromComp = this.components.get(connection.from);
@@ -471,7 +398,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Create SVG path for connection (curved)
+   * Create SVG path for connection
    */
   _createConnectionPath(x1, y1, x2, y2) {
     const dx = x2 - x1;
@@ -479,7 +406,6 @@ window.addEventListener('keydown', (e) => {
     const dist = Math.sqrt(dx * dx + dy * dy);
     const curve = Math.min(dist * 0.3, 100);
     
-    // Cubic bezier curve
     return `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
   }
 
@@ -490,7 +416,6 @@ window.addEventListener('keydown', (e) => {
     const connection = this.connections.find(c => c.id === connectionId);
     if (!connection) return;
     
-    // Remove from component configs
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
     
@@ -501,14 +426,11 @@ window.addEventListener('keydown', (e) => {
       toComp.config.inputs = toComp.config.inputs.filter(id => id !== connection.from);
     }
     
-    // Remove from connections array
     this.connections = this.connections.filter(c => c.id !== connectionId);
     
-    // Remove visual element
     const pathEl = this.canvas.querySelector(`[data-connection-id="${connectionId}"]`);
     pathEl?.remove();
     
-    // Update properties if relevant component is selected
     if (this.selectedComponent === connection.from || this.selectedComponent === connection.to) {
       this._showProperties(this.selectedComponent);
     }
@@ -540,7 +462,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Drop handler - create component on canvas
+   * Drop handler
    */
   _onDrop(e) {
     e.preventDefault();
@@ -548,17 +470,14 @@ window.addEventListener('keydown', (e) => {
     const componentKey = e.dataTransfer.getData('componentKey');
     if (!componentKey) return;
     
-    // Get canvas coordinates
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const x = ((e.clientX - rect.left) / rect.width) * viewBox.width;
     const y = ((e.clientY - rect.top) / rect.height) * viewBox.height;
     
-    // Snap to grid
     const finalX = this.snapToGrid ? Math.round(x / this.gridSize) * this.gridSize : x;
     const finalY = this.snapToGrid ? Math.round(y / this.gridSize) * this.gridSize : y;
     
-    // Create component
     this.addComponent(componentKey, finalX, finalY);
   }
 
@@ -603,7 +522,6 @@ window.addEventListener('keydown', (e) => {
     group.setAttribute('data-id', component.id);
     group.setAttribute('transform', `translate(${component.x}, ${component.y})`);
     
-    // Component body
     const body = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     body.classList.add('component-body');
     body.setAttribute('x', -40);
@@ -614,14 +532,12 @@ window.addEventListener('keydown', (e) => {
     body.style.fill = template.color + '20';
     body.style.stroke = template.color;
     
-    // Component icon
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     icon.classList.add('component-icon-text');
     icon.setAttribute('x', 0);
     icon.setAttribute('y', 10);
     icon.textContent = template.icon;
     
-    // Component label
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.classList.add('component-label');
     label.setAttribute('x', 0);
@@ -632,7 +548,6 @@ window.addEventListener('keydown', (e) => {
     group.appendChild(icon);
     group.appendChild(label);
     
-    // Click handler
     group.addEventListener('click', (e) => {
       if (this.currentTool === 'select') {
         e.stopPropagation();
@@ -640,7 +555,6 @@ window.addEventListener('keydown', (e) => {
       }
     });
     
-    // Drag handler
     let isDragging = false;
     let startX, startY;
     
@@ -670,7 +584,6 @@ window.addEventListener('keydown', (e) => {
       component.y = newY;
       group.setAttribute('transform', `translate(${newX}, ${newY})`);
       
-      // Update connected paths
       this.connections.forEach(conn => {
         if (conn.from === component.id || conn.to === component.id) {
           this._updateConnectionPath(conn);
@@ -686,26 +599,23 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Select component and show properties
+   * Select component
    */
   selectComponent(id) {
-    // Deselect previous
     if (this.selectedComponent) {
       const prevEl = this.canvas.querySelector(`[data-id="${this.selectedComponent}"]`);
       prevEl?.classList.remove('selected');
     }
     
-    // Select new
     this.selectedComponent = id;
     const el = this.canvas.querySelector(`[data-id="${id}"]`);
     el?.classList.add('selected');
     
-    // Show properties
     this._showProperties(id);
   }
 
   /**
-   * Show component properties panel
+   * Show component properties
    */
   _showProperties(id) {
     const component = this.components.get(id);
@@ -713,10 +623,6 @@ window.addEventListener('keydown', (e) => {
     
     const template = COMPONENT_LIBRARY[component.key];
     const propertiesContent = document.getElementById('propertiesContent');
-    
-    // Get available components for dropdowns
-    const availableComponents = Array.from(this.components.values())
-      .filter(c => c.id !== id);
     
     const canInput = this._canInput(component);
     const canOutput = this._canOutput(component);
@@ -785,14 +691,12 @@ window.addEventListener('keydown', (e) => {
       </div>
     `;
     
-    // Update handlers
     propertiesContent.querySelectorAll('.property-input').forEach(input => {
       input.addEventListener('input', (e) => {
         const propName = e.target.dataset.property;
         const value = input.type === 'number' ? parseFloat(e.target.value) : e.target.value;
         component.config[propName] = value;
         
-        // Update label if name changed
         if (propName === 'name') {
           component.name = value;
           const el = this.canvas.querySelector(`[data-id="${id}"] .component-label`);
@@ -801,7 +705,6 @@ window.addEventListener('keydown', (e) => {
       });
     });
     
-    // Remove input connections
     propertiesContent.querySelectorAll('[data-remove-input]').forEach(btn => {
       btn.addEventListener('click', () => {
         const inputId = btn.dataset.removeInput;
@@ -810,7 +713,6 @@ window.addEventListener('keydown', (e) => {
       });
     });
     
-    // Remove output connections
     propertiesContent.querySelectorAll('[data-remove-output]').forEach(btn => {
       btn.addEventListener('click', () => {
         const outputId = btn.dataset.removeOutput;
@@ -819,7 +721,6 @@ window.addEventListener('keydown', (e) => {
       });
     });
     
-    // Delete component button
     const deleteBtn = propertiesContent.querySelector('#deleteComponent');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', () => {
@@ -831,23 +732,19 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Delete a component
+   * Delete component
    */
   deleteComponent(id) {
-    // Delete all connected connections
     const relatedConnections = this.connections.filter(conn => 
       conn.from === id || conn.to === id
     );
     relatedConnections.forEach(conn => this.deleteConnection(conn.id));
     
-    // Remove from map
     this.components.delete(id);
     
-    // Remove visual element
     const el = this.canvas.querySelector(`[data-id="${id}"]`);
     el?.remove();
     
-    // Clear selection
     if (this.selectedComponent === id) {
       this.selectedComponent = null;
       document.getElementById('propertiesContent').innerHTML = `
@@ -873,7 +770,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   /**
-   * Update statistics display
+   * Update statistics
    */
   _updateStats() {
     document.getElementById('componentCount').textContent = `Components: ${this.components.size}`;
@@ -903,22 +800,30 @@ window.addEventListener('keydown', (e) => {
   /**
    * Export configuration
    */
-exportConfig() {
-  // Update stats
-  document.getElementById('exportCompCount').textContent = this.components.size;
-  document.getElementById('exportConnCount').textContent = this.connections.length;
-  
-  // Show modal
-  const modal = document.getElementById('exportModal');
-  modal.classList.add('open');
-  
-  // Focus sim name input
-  setTimeout(() => {
-    document.getElementById('simNameInput').select();
-  }, 100);
+  exportConfig() {
+    if (this.components.size === 0) {
+      alert('⚠️ No components to export!\n\nAdd some components first.');
+      return;
+    }
+    
+    document.getElementById('exportCompCount').textContent = this.components.size;
+    document.getElementById('exportConnCount').textContent = this.connections.length;
+    
+    const modal = document.getElementById('exportModal');
+    modal.style.display = 'flex';
+    setTimeout(() => {
+      modal.classList.add('open');
+    }, 10);
+    
+    setTimeout(() => {
+      const input = document.getElementById('simNameInput');
+      input.select();
+      input.focus();
+    }, 100);
+  }
 }
 
-// Initialize designer when DOM is ready
+// Initialize
 window.addEventListener('DOMContentLoaded', () => {
   window.designer = new ProcessDesigner();
   console.log('✅ Designer ready!');
