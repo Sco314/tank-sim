@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Process Simulator Designer</title>
+  <link rel="stylesheet" href="designer.css">
+</head>
+<body>
+  
+  <!-- Header -->
+  <header class="designer-header">
+    <div class="header-left">
+      <h1>🔧 Process Simulator Designer</h1>
+      <span class="version">v1.0 - Phase 8.0</span>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-secondary" id="clearBtn">Clear Canvas</button>
+      <button class="btn btn-secondary" id="importBtn">Import Config</button>
+      <button class="btn btn-primary" id="exportBtn">Export Sim</button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="designer-layout">
+    
+    <!-- Left Panel: Component Library -->
+    <aside class="library-panel">
+      <div class="panel-header">
+        <h2>📦 Component Library</h2>
+        <input type="text" id="searchComponents" placeholder="Search components..." class="search-input">
+      </div>
+      
+      <div class="library-content" id="libraryContent">
+        <!-- Component categories will be injected here -->
+      </div>
+    </aside>
+
+    <!-- Center: Canvas -->
+    <main class="canvas-container">
+      <div class="canvas-toolbar">
+        <button class="tool-btn active" id="selectTool" title="Select">
+          <span class="icon">👆</span> Select
+        </button>
+        <button class="tool-btn" id="panTool" title="Pan">
+          <span class="icon">✋</span> Pan
+        </button>
+        <button class="tool-btn" id="connectTool" title="Connect">
+          <span class="icon">🔗</span> Connect
+        </button>
+        <div class="toolbar-divider"></div>
+        <button class="tool-btn" id="zoomIn" title="Zoom In">
+          <span class="icon">🔍+</span>
+        </button>
+        <button class="tool-btn" id="zoomOut" title="Zoom Out">
+          <span class="icon">🔍−</span>
+        </button>
+        <button class="tool-btn" id="zoomReset" title="Reset Zoom">
+          <span class="icon">⊡</span> 100%
+        </button>
+        <div class="toolbar-divider"></div>
+        <label class="grid-toggle">
+          <input type="checkbox" id="gridToggle" checked>
+          <span>Show Grid</span>
+        </label>
+        <label class="snap-toggle">
+          <input type="checkbox" id="snapToggle" checked>
+          <span>Snap to Grid</span>
+        </label>
+      </div>
+
+      <svg id="canvas" class="canvas" viewBox="0 0 1200 800">
+        <!-- Grid pattern -->
+        <defs>
+          <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
+          </pattern>
+          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="100" height="100" fill="url(#smallGrid)"/>
+            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d0d0d0" stroke-width="1"/>
+          </pattern>
+        </defs>
+        
+        <!-- Grid background -->
+        <rect id="gridRect" width="100%" height="100%" fill="url(#grid)" class="grid-layer"/>
+        
+        <!-- Connections layer -->
+        <g id="connectionsLayer"></g>
+        
+        <!-- Components layer -->
+        <g id="componentsLayer"></g>
+      </svg>
+
+      <!-- Canvas Info -->
+      <div class="canvas-info">
+        <span id="componentCount">Components: 0</span>
+        <span class="divider">|</span>
+        <span id="connectionCount">Connections: 0</span>
+        <span class="divider">|</span>
+        <span id="mousePos">X: 0, Y: 0</span>
+      </div>
+    </main>
+
+    <!-- Right Panel: Properties -->
+    <aside class="properties-panel">
+      <div class="panel-header">
+        <h2>⚙️ Properties</h2>
+      </div>
+      
+      <div class="properties-content" id="propertiesContent">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>Select a component to edit its properties</p>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="componentLibrary.js"></script>
+  <script src="designer.js"></script>
+
+</body>
+</html>
