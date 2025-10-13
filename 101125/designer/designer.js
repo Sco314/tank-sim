@@ -132,6 +132,37 @@ class ProcessDesigner {
     
     // Export button
     document.getElementById('exportBtn').addEventListener('click', () => this.exportConfig());
+
+// Export modal handlers
+const exportModal = document.getElementById('exportModal');
+const exportModalClose = document.getElementById('exportModalClose');
+const exportCancelBtn = document.getElementById('exportCancelBtn');
+const exportConfirmBtn = document.getElementById('exportConfirmBtn');
+
+const closeExportModal = () => {
+  exportModal.classList.remove('open');
+};
+
+exportModalClose.addEventListener('click', closeExportModal);
+exportCancelBtn.addEventListener('click', closeExportModal);
+exportModal.addEventListener('click', (e) => {
+  if (e.target === exportModal) closeExportModal();
+});
+
+exportConfirmBtn.addEventListener('click', () => {
+  const simName = document.getElementById('simNameInput').value || 'My Simulator';
+  const exporter = new SimulatorExporter(this);
+  exporter.exportSimulator(simName);
+  closeExportModal();
+});
+
+// Escape key closes modal
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && exportModal.classList.contains('open')) {
+    closeExportModal();
+  }
+});
+    
   }
 
   /**
