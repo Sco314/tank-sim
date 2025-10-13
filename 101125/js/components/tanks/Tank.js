@@ -117,17 +117,52 @@ class Tank extends Component {
     return this.level > this.highThreshold;
   }
 
-  /**
-   * SIMPLIFIED: Tank just reports what it theoretically could supply
-   * Pumps are responsible for only taking what they can actually use
-   */
-  getOutputFlow() {
-    if (!this.flowNetwork) return 0;
+  // SIMPLIFIED: Tank just reports what it theoretically could supply
+  // Pumps are responsible for only taking what they can actually use
+  // Tank outputs based on downstream pump demand
+getOutputFlow() {
+  if (!this.flowNetwork) return 0;
+  
+  // Tank is passive - check what downstream is pulling
+  let demand = 0;
+  
+  for (const outputId of this.outputs) {
+    // Look through pipes to find downstream pump
+    const pump = this._findDownstreamComponent(outputId, 'pump');
     
-    // Tank can supply based on available volume
-    // (10x volume per second max to prevent instant drainage)
-    return this.volume * 10;
+    if (pump && pump.running) {
+      // Pump is pulling - use its calculated output
+      demand += pump.getOutputFlow();
+    }
   }
+  
+  // Can only supply what we have (with max rate limit)
+  const maxRate = this.volume * 10; // Prevent instant drainage
+  return Math.min(demand, maxRate);
+}
+
+/**
+ * Helper: Find downstream component through pipes
+ */
+_findDownstreamComponent(startId, targetType) {
+  if (!this.flowNetwork) return null;
+  
+  const component = this.flowNetwork.getComponent(startId);
+  if (!component) return null;
+  
+  // Found it!
+  if (component.type === targetType) return component;
+  
+  // If it's a pipe, look further downstream
+  if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
+    for (const outputId of component.outputs) {
+      const result = this._findDownstreamComponent(outputId, targetType);
+      if (result) return result;
+    }
+  }
+  
+  return null;
+}
 
   setVolume(volume) {
     this.volume = Math.max(0, Math.min(this.maxVolume, volume));
