@@ -33,18 +33,73 @@ class ProcessDesigner {
   /**
    * Initialize component library UI
    */
-  _initializeLibrary() {
-    const libraryContent = document.getElementById('libraryContent');
-    
-    // Group components by category
-    const categorized = {};
-    for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
-      const category = component.category;
-      if (!categorized[category]) {
-        categorized[category] = [];
-      }
-      categorized[category].push({ key, ...component });
+_initializeLibrary() {
+  const libraryContent = document.getElementById('libraryContent');
+  
+  // Check if library data exists
+  if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
+    console.error('❌ Component library not loaded!');
+    libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load. Check console.</p>';
+    return;
+  }
+  
+  console.log('✅ Component library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
+  
+  // Group components by category
+  const categorized = {};
+  for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
+    const category = component.category;
+    if (!categorized[category]) {
+      categorized[category] = [];
     }
+    categorized[category].push({ key, ...component });
+  }
+  
+  // Build category UI
+  for (const [categoryKey, categoryInfo] of Object.entries(CATEGORIES)) {
+    if (!categorized[categoryKey]) continue;
+    
+    const categoryEl = document.createElement('div');
+    categoryEl.className = 'component-category';
+    categoryEl.innerHTML = `
+      <div class="category-header" data-category="${categoryKey}">
+        <span class="category-icon">${categoryInfo.icon}</span>
+        <span class="category-name">${categoryInfo.name}</span>
+        <span class="category-toggle">▼</span>
+      </div>
+      <div class="category-items" data-category="${categoryKey}">
+        ${categorized[categoryKey].map(comp => `
+          <div class="component-item" draggable="true" data-component="${comp.key}">
+            <div class="component-icon">${comp.icon}</div>
+            <div class="component-info">
+              <span class="component-name">${comp.name}</span>
+              <span class="component-desc">${comp.description}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    
+    libraryContent.appendChild(categoryEl);
+  }
+  
+  // Category toggle handlers
+  libraryContent.querySelectorAll('.category-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const category = header.dataset.category;
+      const items = libraryContent.querySelector(`.category-items[data-category="${category}"]`);
+      items.classList.toggle('collapsed');
+      header.querySelector('.category-toggle').textContent = items.classList.contains('collapsed') ? '▶' : '▼';
+    });
+  });
+  
+  // Drag start handlers
+  libraryContent.querySelectorAll('.component-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => this._onDragStart(e));
+  });
+  
+  console.log('✅ Component library UI initialized');
+}
     
     // Build category UI
     for (const [categoryKey, categoryInfo] of Object.entries(CATEGORIES)) {
