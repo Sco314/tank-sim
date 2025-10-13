@@ -49,27 +49,12 @@ class Tank extends Component {
     }
   }
 
-  /**
-   * Tank outputs based on downstream demand
-   * Only outputs if pump is running downstream
-   */
-  /**
- * Tank outputs based on downstream demand
- * Rate limited to prevent unrealistic instant drainage
+/**
+ * Tank is PASSIVE - doesn't generate flow
  */
 getOutputFlow() {
-  if (!this.flowNetwork) return 0;
-  
-  // Check if there's demand downstream (is pump running?)
-  let hasDemand = false;
-  
-  for (const outputId of this.outputs) {
-    const pump = this._findDownstreamComponent(outputId, 'pump');
-    if (pump && pump.running) {
-      hasDemand = true;
-      break;
-    }
-  }
+  return 0; // Tank never processed in calculateFlows
+}
   
   // No demand = no output
   if (!hasDemand) return 0;
