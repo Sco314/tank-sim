@@ -369,40 +369,24 @@ if (validateConfig(SYSTEM_CONFIG)) {
   <meta name="generator" content="Process Simulator Designer v${EXPORTER_VERSION}"/>
   <meta name="export-date" content="${this.exportTimestamp}"/>
   <link rel="stylesheet" href="../../engine/style.css">
-
-  <!-- Core Architecture -->
-  <script src="../../engine/core/Component.js" defer></script>
-  <script src="../../engine/core/FlowNetwork.js" defer></script>
-  <script src="../../engine/core/ComponentManager.js" defer></script>
-
-  <!-- Boundary Components -->
-  <script src="../../engine/components/sources/Feed.js" defer></script>
-  <script src="../../engine/components/sinks/Drain.js" defer></script>
-
-  <!-- Tank Components -->
-  <script src="../../engine/components/tanks/Tank.js" defer></script>
-
-  <!-- Pump Components -->
-  <script src="../../engine/components/pumps/Pump.js" defer></script>
-  <script src="../../engine/components/pumps/FixedSpeedPump.js" defer></script>
-  <script src="../../engine/components/pumps/VariableSpeedPump.js" defer></script>
-  <script src="../../engine/components/pumps/ThreeSpeedPump.js" defer></script>
-
-  <!-- Valve Components -->
-  <script src="../../engine/components/valves/Valve.js" defer></script>
-
-  <!-- Pipe Components -->
-  <script src="../../engine/components/pipes/Pipe.js" defer></script>
-
-  <!-- Sensor Components -->
-  <script src="../../engine/components/sensors/PressureSensor.js" defer></script>
-
-  <!-- Managers -->
-  <script src="../../engine/managers/TankManager.js" defer></script>
-  <script src="../../engine/managers/PumpManager.js" defer></script>
-  <script src="../../engine/managers/ValveManager.js" defer></script>
-  <script src="../../engine/managers/PipeManager.js" defer></script>
-  <script src="../../engine/managers/PressureManager.js" defer></script>
+<script src="../../engine/core/Component.js" defer></script>
+<script src="../../engine/core/FlowNetwork.js" defer></script>
+<script src="../../engine/core/ComponentManager.js" defer></script>
+<script src="../../engine/components/sources/Feed.js" defer></script>
+<script src="../../engine/components/sinks/Drain.js" defer></script>
+<script src="../../engine/components/tanks/Tank.js" defer></script>
+<script src="../../engine/components/pumps/Pump.js" defer></script>
+<script src="../../engine/components/pumps/FixedSpeedPump.js" defer></script>
+<script src="../../engine/components/pumps/VariableSpeedPump.js" defer></script>
+<script src="../../engine/components/pumps/ThreeSpeedPump.js" defer></script>
+<script src="../../engine/components/valves/Valve.js" defer></script>
+<script src="../../engine/components/pipes/Pipe.js" defer></script>
+<script src="../../engine/components/sensors/PressureSensor.js" defer></script>
+<script src="../../engine/managers/TankManager.js" defer></script>
+<script src="../../engine/managers/PumpManager.js" defer></script>
+<script src="../../engine/managers/ValveManager.js" defer></script>
+<script src="../../engine/managers/PipeManager.js" defer></script>
+<script src="../../engine/managers/PressureManager.js" defer></script>
 
   <!-- Configuration -->
   <script src="./systemConfig.js" defer></script>
