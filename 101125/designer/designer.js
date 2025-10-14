@@ -1,22 +1,26 @@
 /**
- * designer.js - Core designer logic with connections and I/O management
+ * designer.js - Process Designer v2.0
+ * 
+ * Features:
+ * - UI health validation
+ * - Pre-export validation
+ * - Import/load functionality  
+ * - Preview mode
+ * - Disconnected component warnings
+ * - Export versioning
  */
 
-// === Shared component sprites (used by Designer & Exporter) ===
-// These definitions ensure the designer renders the same sized icons that the
-// exported simulator uses. The `x` and `y` values represent the offset of the
-// image relative to the component's (x,y) position. `labelDy` controls where
-// the component's label is drawn. Feel free to adjust widths, heights or
-// offsets here if you add new component types.
+const DESIGNER_VERSION = '2.0.0';
+
+// === Shared component sprites ===
 const SPRITES = {
   tank:  { href: "https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png",   w: 160, h: 180, x: -80, y: -90,  labelDy: -100 },
   pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",    w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
   valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w: 76,  h: 76,  x: -38, y: -38,  labelDy: -50  },
-  // fallback entry – if an unknown type is encountered, use the valve sprite
   default: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png", w: 76, h: 76, x: -38, y: -38, labelDy: -50 }
 };
 
-// Preload sprite images to avoid flicker when first drawn
+// Preload sprites
 Object.values(SPRITES).forEach(sprite => {
   if (!sprite || !sprite.href) return;
   const img = new Image();
@@ -43,16 +47,435 @@ class ProcessDesigner {
     this.connectionStart = null;
     this.tempConnectionLine = null;
 
+    // Metadata
+    this.designMetadata = {
+      version: DESIGNER_VERSION,
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+      name: 'Untitled Design'
+    };
+
     this._initializeLibrary();
     this._setupSearch();
+    this._validateUI();  // ← NEW: UI health check
     this._setupEventListeners();
     this._updateStats();
 
-    console.log('Process Designer initialized');
+    console.log(`Process Designer v${DESIGNER_VERSION} initialized`);
   }
 
   /**
-   * Initialize component library UI
+   * Validate UI elements exist (NEW)
+   */
+  _validateUI() {
+    const critical = ['canvas', 'componentsLayer', 'connectionsLayer', 'gridRect'];
+    const missing = critical.filter(id => !document.getElementById(id));
+    
+    // Check for at least one export button
+    const hasExportBtn = ['exportBtn', 'exportSimBtn', 'exportSim']
+      .some(id => document.getElementById(id));
+    
+    if (!hasExportBtn) {
+      missing.push('exportBtn (or exportSimBtn/exportSim)');
+    }
+    
+    if (missing.length) {
+      console.warn('⚠️ Designer UI missing elements:', missing.join(', '));
+      console.warn('   This may cause degraded functionality. Check designer.html.');
+    }
+    
+    return missing.length === 0;
+  }
+
+  /**
+   * Validate design before export (NEW)
+   */
+  _validateDesign() {
+    const issues = [];
+    const warnings = [];
+    
+    // Check for components
+    if (this.components.size === 0) {
+      issues.push('No components in design');
+      return { valid: false, issues, warnings };
+    }
+    
+    // Check for disconnected components
+    const disconnected = this._findDisconnectedComponents();
+    if (disconnected.length > 0) {
+      warnings.push(`${disconnected.length} disconnected component(s): ${disconnected.map(c => c.name).join(', ')}`);
+    }
+    
+    // Check for feeds and drains
+    const hasFeed = Array.from(this.components.values()).some(c => c.type === 'feed');
+    const hasDrain = Array.from(this.components.values()).some(c => c.type === 'drain');
+    
+    if (!hasFeed) {
+      warnings.push('No feed (source) component - fluid has no source');
+    }
+    if (!hasDrain) {
+      warnings.push('No drain (sink) component - fluid has no outlet');
+    }
+    
+    // Validate component properties
+    for (const comp of this.components.values()) {
+      const propIssues = this._validateComponentProperties(comp);
+      issues.push(...propIssues);
+    }
+    
+    // Check for circular dependencies (simple check)
+    const circular = this._detectCircularDependencies();
+    if (circular.length > 0) {
+      warnings.push(`Possible circular dependencies detected: ${circular.join(' → ')}`);
+    }
+    
+    return {
+      valid: issues.length === 0,
+      issues,
+      warnings
+    };
+  }
+
+  /**
+   * Find disconnected components (NEW)
+   */
+  _findDisconnectedComponents() {
+    const disconnected = [];
+    
+    for (const comp of this.components.values()) {
+      const hasInput = comp.config.inputs && comp.config.inputs.length > 0;
+      const hasOutput = comp.config.outputs && comp.config.outputs.length > 0;
+      
+      // Feed must have output, drain must have input
+      if (comp.type === 'feed' && !hasOutput) {
+        disconnected.push(comp);
+      } else if (comp.type === 'drain' && !hasInput) {
+        disconnected.push(comp);
+      } else if (comp.type !== 'feed' && comp.type !== 'drain' && !hasInput && !hasOutput) {
+        disconnected.push(comp);
+      }
+    }
+    
+    return disconnected;
+  }
+
+  /**
+   * Validate component properties (NEW)
+   */
+  _validateComponentProperties(comp) {
+    const issues = [];
+    const config = comp.config;
+    
+    // Check for negative values where they shouldn't be
+    if (config.capacity !== undefined && config.capacity < 0) {
+      issues.push(`${comp.name}: capacity cannot be negative (${config.capacity})`);
+    }
+    if (config.efficiency !== undefined && (config.efficiency < 0 || config.efficiency > 1)) {
+      issues.push(`${comp.name}: efficiency must be 0-1 (got ${config.efficiency})`);
+    }
+    if (config.volume !== undefined && config.volume < 0) {
+      issues.push(`${comp.name}: volume cannot be negative (${config.volume})`);
+    }
+    if (config.maxFlow !== undefined && config.maxFlow < 0) {
+      issues.push(`${comp.name}: maxFlow cannot be negative (${config.maxFlow})`);
+    }
+    
+    // Check for null/undefined required properties
+    const template = COMPONENT_LIBRARY[comp.key];
+    if (template && template.properties) {
+      template.properties.forEach(prop => {
+        if (prop.required && (config[prop.name] === null || config[prop.name] === undefined)) {
+          issues.push(`${comp.name}: missing required property '${prop.label}'`);
+        }
+      });
+    }
+    
+    return issues;
+  }
+
+  /**
+   * Detect circular dependencies (NEW)
+   */
+  _detectCircularDependencies() {
+    // Simple cycle detection - could be more sophisticated
+    const visited = new Set();
+    const path = [];
+    const cycles = [];
+    
+    const dfs = (compId) => {
+      if (path.includes(compId)) {
+        const cycleStart = path.indexOf(compId);
+        const cycle = path.slice(cycleStart).concat(compId);
+        cycles.push(cycle.map(id => this.components.get(id)?.name || id));
+        return;
+      }
+      
+      if (visited.has(compId)) return;
+      
+      visited.add(compId);
+      path.push(compId);
+      
+      const comp = this.components.get(compId);
+      if (comp && comp.config.outputs) {
+        comp.config.outputs.forEach(outputId => dfs(outputId));
+      }
+      
+      path.pop();
+    };
+    
+    for (const compId of this.components.keys()) {
+      dfs(compId);
+    }
+    
+    return cycles;
+  }
+
+  /**
+   * Show validation report modal (NEW)
+   */
+  _showValidationReport(validation) {
+    const modal = document.createElement('div');
+    modal.className = 'validation-modal';
+    modal.innerHTML = `
+      <div class="validation-modal-content">
+        <h2>🔍 Design Validation Report</h2>
+        
+        ${validation.valid 
+          ? '<div class="validation-success">✅ No critical issues found</div>'
+          : '<div class="validation-error">❌ Critical issues found - fix before export</div>'
+        }
+        
+        ${validation.issues.length > 0 ? `
+          <div class="validation-section">
+            <h3>❌ Issues (Must Fix)</h3>
+            <ul>
+              ${validation.issues.map(issue => `<li>${issue}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
+        ${validation.warnings.length > 0 ? `
+          <div class="validation-section">
+            <h3>⚠️ Warnings (Should Review)</h3>
+            <ul>
+              ${validation.warnings.map(warn => `<li>${warn}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        
+        <div class="validation-actions">
+          <button class="btn" id="validationClose">Close</button>
+          ${validation.valid ? '<button class="btn btn-primary" id="validationProceed">Proceed to Export</button>' : ''}
+        </div>
+      </div>
+    `;
+    
+    // Style
+    modal.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+    
+    const content = modal.querySelector('.validation-modal-content');
+    content.style.cssText = `
+      background: #0b1330;
+      border: 2px solid #4f46e5;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      color: #e9f0ff;
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.querySelector('#validationClose').addEventListener('click', () => modal.remove());
+    
+    const proceedBtn = modal.querySelector('#validationProceed');
+    if (proceedBtn) {
+      proceedBtn.addEventListener('click', () => {
+        modal.remove();
+        this._proceedWithExport();
+      });
+    }
+  }
+
+  /**
+   * Proceed with export after validation (NEW)
+   */
+  _proceedWithExport() {
+    const exportModal = document.getElementById('exportModal');
+    const simNameInput = document.getElementById('simNameInput');
+    
+    if (exportModal) {
+      exportModal.style.display = 'flex';
+      requestAnimationFrame(() => exportModal.classList.add('open'));
+      setTimeout(() => {
+        simNameInput?.select();
+        simNameInput?.focus();
+      }, 100);
+    } else {
+      // Direct export
+      const name = prompt('Enter simulator name:', 'My Simulator');
+      if (name) {
+        this._ensureExporter(() => {
+          const exporter = new SimulatorExporter(this);
+          exporter.exportSimulator(name);
+        });
+      }
+    }
+  }
+
+  /**
+   * Import design from JSON (NEW)
+   */
+  importConfig(jsonData) {
+    try {
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      
+      // Validate format
+      if (!data.components || !data.connections) {
+        throw new Error('Invalid design file format');
+      }
+      
+      // Clear existing design
+      this.clearCanvas(false); // Don't confirm
+      
+      // Import metadata
+      if (data.metadata) {
+        this.designMetadata = data.metadata;
+        this.designMetadata.modified = new Date().toISOString();
+      }
+      
+      // Import components
+      for (const compData of data.components) {
+        this.components.set(compData.id, compData);
+        this._renderComponent(compData);
+      }
+      
+      // Import connections
+      this.connections = data.connections;
+      this.connections.forEach(conn => this._renderConnection(conn));
+      
+      // Restore next IDs
+      this.nextId = data.nextId || this.components.size + 1;
+      this.nextConnectionId = data.nextConnectionId || this.connections.length + 1;
+      
+      this._updateStats();
+      console.log('✅ Design imported successfully');
+      alert(`✅ Imported: ${this.designMetadata.name}\n\nComponents: ${this.components.size}\nConnections: ${this.connections.length}`);
+      
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('❌ Import failed: ' + err.message);
+    }
+  }
+
+  /**
+   * Export design as JSON for re-import (NEW)
+   */
+  exportDesignJSON() {
+    const design = {
+      metadata: {
+        ...this.designMetadata,
+        exported: new Date().toISOString()
+      },
+      components: Array.from(this.components.values()),
+      connections: this.connections,
+      nextId: this.nextId,
+      nextConnectionId: this.nextConnectionId,
+      gridSize: this.gridSize,
+      viewBox: {
+        width: this.canvas.viewBox.baseVal.width,
+        height: this.canvas.viewBox.baseVal.height
+      }
+    };
+    
+    return JSON.stringify(design, null, 2);
+  }
+
+  /**
+   * Show preview of design (NEW)
+   */
+  _showPreview() {
+    // Generate preview HTML
+    const validation = this._validateDesign();
+    
+    const modal = document.createElement('div');
+    modal.className = 'preview-modal';
+    modal.innerHTML = `
+      <div class="preview-modal-content">
+        <button class="preview-close" id="previewClose">×</button>
+        <h2>📋 Design Preview</h2>
+        
+        <div class="preview-info">
+          <div class="preview-stat">
+            <strong>Components:</strong> ${this.components.size}
+          </div>
+          <div class="preview-stat">
+            <strong>Connections:</strong> ${this.connections.length}
+          </div>
+          <div class="preview-stat">
+            <strong>Status:</strong> ${validation.valid ? '✅ Valid' : '❌ Has Issues'}
+          </div>
+        </div>
+        
+        <div class="preview-canvas-container">
+          ${this.canvas.outerHTML}
+        </div>
+        
+        <div class="preview-actions">
+          <button class="btn" id="previewValidate">Run Validation</button>
+          <button class="btn btn-primary" id="previewExport">Export This Design</button>
+        </div>
+      </div>
+    `;
+    
+    modal.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    `;
+    
+    const content = modal.querySelector('.preview-modal-content');
+    content.style.cssText = `
+      background: #0b1330;
+      border: 2px solid #4f46e5;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      color: #e9f0ff;
+      position: relative;
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.querySelector('#previewClose').addEventListener('click', () => modal.remove());
+    modal.querySelector('#previewValidate').addEventListener('click', () => {
+      modal.remove();
+      this._showValidationReport(this._validateDesign());
+    });
+    modal.querySelector('#previewExport').addEventListener('click', () => {
+      modal.remove();
+      this._showValidationReport(this._validateDesign());
+    });
+  }
+
+  /**
+   * Initialize component library
    */
   _initializeLibrary() {
     const libraryContent = document.getElementById('libraryContent');
@@ -114,26 +537,21 @@ class ProcessDesigner {
       item.addEventListener('dragstart', (e) => this._onDragStart(e));
     });
 
-    // Replace default text icons in the library with actual component images.
-    // This runs after the DOM elements have been created. It looks up the
-    // component type for each library entry, retrieves the corresponding
-    // sprite from SPRITES and injects an <img> element into the
-    // .component-icon container. Using images here makes the palette WYSIWYG.
+    // Replace text icons with images
     libraryContent.querySelectorAll('.component-item').forEach(item => {
       const key = item.dataset.component;
       const template = window.COMPONENT_LIBRARY && window.COMPONENT_LIBRARY[key];
       if (!template) return;
-      // Some components define their type on defaultConfig.type
+      
       const type = template.defaultConfig && template.defaultConfig.type;
       const sprite = (SPRITES && SPRITES[type]) || SPRITES.default;
       const iconDiv = item.querySelector('.component-icon');
+      
       if (iconDiv && sprite && sprite.href) {
-        // Clear any existing icon text
         iconDiv.innerHTML = '';
         const img = document.createElement('img');
         img.src = sprite.href;
         img.alt = template.name;
-        // Size down the palette icons for a compact display
         img.width = 24;
         img.height = 24;
         iconDiv.appendChild(img);
@@ -141,13 +559,14 @@ class ProcessDesigner {
     });
 
     console.log('✅ Component library UI initialized');
-  } // <-- FIX: close _initializeLibrary()
+  }
 
   /**
-   * Setup search functionality
+   * Setup search
    */
   _setupSearch() {
     const searchInput = document.getElementById('searchComponents');
+    if (!searchInput) return;
 
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.toLowerCase().trim();
@@ -181,9 +600,12 @@ class ProcessDesigner {
    * Setup event listeners
    */
   _setupEventListeners() {
+    const byId = (id) => document.getElementById(id);
+    
+    // Canvas
     this.canvas.addEventListener('dragover', (e) => e.preventDefault());
     this.canvas.addEventListener('drop', (e) => this._onDrop(e));
-
+    
     this.canvas.addEventListener('mousemove', (e) => {
       this._updateMousePos(e);
       if (this.currentTool === 'connect' && this.connectionStart) {
@@ -197,53 +619,137 @@ class ProcessDesigner {
       }
     });
 
-    document.getElementById('gridToggle').addEventListener('change', (e) => {
+    // UI controls
+    byId('gridToggle')?.addEventListener('change', (e) => {
       this.gridRect.classList.toggle('hidden', !e.target.checked);
     });
 
-    document.getElementById('snapToggle').addEventListener('change', (e) => {
+    byId('snapToggle')?.addEventListener('change', (e) => {
       this.snapToGrid = e.target.checked;
     });
 
-    document.getElementById('selectTool').addEventListener('click', () => this.setTool('select'));
-    document.getElementById('connectTool').addEventListener('click', () => this.setTool('connect'));
+    byId('selectTool')?.addEventListener('click', () => this.setTool('select'));
+    byId('connectTool')?.addEventListener('click', () => this.setTool('connect'));
+    byId('clearBtn')?.addEventListener('click', () => this.clearCanvas());
 
-    document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
-    document.getElementById('exportBtn').addEventListener('click', () => this.exportConfig());
+    // NEW: Preview button
+    byId('previewBtn')?.addEventListener('click', () => this._showPreview());
 
-    // Export modal handlers
-    const exportModal = document.getElementById('exportModal');
-    const exportModalClose = document.getElementById('exportModalClose');
-    const exportCancelBtn = document.getElementById('exportCancelBtn');
-    const exportConfirmBtn = document.getElementById('exportConfirmBtn');
-
-    const closeExportModal = () => {
-      exportModal.classList.remove('open');
-      setTimeout(() => {
-        exportModal.style.display = 'none';
-      }, 300);
-    };
-
-    exportModalClose.addEventListener('click', closeExportModal);
-    exportCancelBtn.addEventListener('click', closeExportModal);
-    exportModal.addEventListener('click', (e) => {
-      if (e.target === exportModal) closeExportModal();
+    // NEW: Import button
+    byId('importBtn')?.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => this.importConfig(evt.target.result);
+          reader.readAsText(file);
+        }
+      };
+      input.click();
     });
 
-    exportConfirmBtn.addEventListener('click', () => {
-      const simName = document.getElementById('simNameInput').value || 'My Simulator';
-      const exporter = new SimulatorExporter(this);
-      exporter.exportSimulator(simName);
-      closeExportModal();
+    // NEW: Save Design button
+    byId('saveDesignBtn')?.addEventListener('click', () => {
+      const json = this.exportDesignJSON();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.designMetadata.name.replace(/[^a-z0-9]/gi, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Export with validation
+    const exportBtn = byId('exportBtn') || byId('exportSimBtn') || byId('exportSim');
+    const exportModal = byId('exportModal');
+    const exportModalClose = byId('exportModalClose');
+    const exportCancelBtn = byId('exportCancelBtn');
+    const exportConfirmBtn = byId('exportConfirmBtn');
+    const simNameInput = byId('simNameInput');
+
+    const closeExportModal = () => {
+      if (!exportModal) return;
+      exportModal.classList.remove('open');
+      setTimeout(() => { exportModal.style.display = 'none'; }, 300);
+    };
+
+    const doDirectExport = async () => {
+      const name = (simNameInput?.value?.trim()) || 
+                   prompt('Enter simulator name:', 'My Simulator');
+      
+      if (!name) return;
+
+      this._ensureExporter(() => {
+        try {
+          const exporter = new SimulatorExporter(this);
+          exporter.exportSimulator(name);
+        } catch (err) {
+          console.error('Export failed:', err);
+          alert('Export failed: ' + err.message);
+        }
+      });
+    };
+
+    exportBtn?.addEventListener('click', () => {
+      // Warn if falling back
+      if (!exportModal) {
+        console.warn('⚠️ Export modal not found - using prompt() fallback. Check #exportModal in HTML.');
+      }
+      
+      // Run validation first
+      const validation = this._validateDesign();
+      
+      // Update counts
+      const compCount = byId('exportCompCount');
+      const connCount = byId('exportConnCount');
+      if (compCount) compCount.textContent = this.components.size;
+      if (connCount) connCount.textContent = this.connections.length;
+
+      // Show validation report
+      this._showValidationReport(validation);
+    });
+
+    exportModalClose?.addEventListener('click', closeExportModal);
+    exportCancelBtn?.addEventListener('click', closeExportModal);
+    exportModal?.addEventListener('click', (e) => { 
+      if (e.target === exportModal) closeExportModal(); 
+    });
+    exportConfirmBtn?.addEventListener('click', () => { 
+      doDirectExport(); 
+      closeExportModal(); 
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (exportModal.classList.contains('open')) {
-          closeExportModal();
-        }
+      if (e.key === 'Escape' && exportModal?.classList.contains('open')) {
+        closeExportModal();
       }
     });
+
+    console.log('✅ Event listeners set up');
+  }
+
+  /**
+   * Ensure exporter loaded
+   */
+  _ensureExporter(cb) {
+    if (window.SimulatorExporter) return cb();
+    
+    console.log('Loading exporter.js...');
+    const script = document.createElement('script');
+    script.src = './exporter.js';
+    script.onload = () => {
+      console.log('✅ exporter.js loaded');
+      cb();
+    };
+    script.onerror = () => {
+      alert('❌ Could not load exporter.js');
+      console.error('Failed to load exporter.js');
+    };
+    document.head.appendChild(script);
   }
 
   /**
@@ -257,7 +763,8 @@ class ProcessDesigner {
     }
 
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`${tool}Tool`).classList.add('active');
+    const toolBtn = document.getElementById(`${tool}Tool`);
+    toolBtn?.classList.add('active');
 
     this.canvas.style.cursor = tool === 'connect' ? 'crosshair' : 'default';
 
@@ -265,7 +772,7 @@ class ProcessDesigner {
   }
 
   /**
-   * Handle connection tool clicks
+   * Handle connection clicks
    */
   _handleConnectionClick(e) {
     const target = e.target.closest('.canvas-component');
@@ -300,9 +807,6 @@ class ProcessDesigner {
     }
   }
 
-  /**
-   * Start drawing a connection
-   */
   _startConnection(componentId) {
     this.connectionStart = componentId;
 
@@ -318,9 +822,6 @@ class ProcessDesigner {
     console.log(`Connection started from ${component.name}`);
   }
 
-  /**
-   * Update temporary connection line
-   */
   _updateTempConnection(e) {
     if (!this.tempConnectionLine || !this.connectionStart) return;
 
@@ -334,9 +835,6 @@ class ProcessDesigner {
     this.tempConnectionLine.setAttribute('d', path);
   }
 
-  /**
-   * Complete a connection
-   */
   _completeConnection(toComponentId) {
     const fromComp = this.components.get(this.connectionStart);
     const toComp = this.components.get(toComponentId);
@@ -376,9 +874,6 @@ class ProcessDesigner {
     this._updateStats();
   }
 
-  /**
-   * Cancel ongoing connection
-   */
   _cancelConnection() {
     this.connectionStart = null;
     if (this.tempConnectionLine) {
@@ -387,15 +882,11 @@ class ProcessDesigner {
     }
   }
 
-  /**
-   * Render a connection on canvas
-   */
   _renderConnection(connection) {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
     const template = COMPONENT_LIBRARY[fromComp.key];
 
-    // Ensure <defs> exists for marker
     let defs = this.canvas.querySelector('defs');
     if (!defs) {
       defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -421,7 +912,6 @@ class ProcessDesigner {
     path.setAttribute('fill', 'none');
     path.setAttribute('marker-end', 'url(#arrowhead)');
 
-    // FIX: set initial path before appending so it renders immediately
     const pathData = this._createConnectionPath(fromComp.x, fromComp.y, toComp.x, toComp.y);
     path.setAttribute('d', pathData);
 
@@ -437,9 +927,6 @@ class ProcessDesigner {
     });
   }
 
-  /**
-   * Update connection path
-   */
   _updateConnectionPath(connection) {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
@@ -451,9 +938,6 @@ class ProcessDesigner {
     pathEl.setAttribute('d', pathData);
   }
 
-  /**
-   * Create SVG path for connection
-   */
   _createConnectionPath(x1, y1, x2, y2) {
     const dx = x2 - x1;
     const dy = y2 - y1;
@@ -463,9 +947,6 @@ class ProcessDesigner {
     return `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
   }
 
-  /**
-   * Delete a connection
-   */
   deleteConnection(connectionId) {
     const connection = this.connections.find(c => c.id === connectionId);
     if (!connection) return;
@@ -492,32 +973,20 @@ class ProcessDesigner {
     this._updateStats();
   }
 
-  /**
-   * Check if component type can have inputs
-   */
   _canInput(component) {
     return component.type !== 'feed';
   }
 
-  /**
-   * Check if component type can have outputs
-   */
   _canOutput(component) {
     return component.type !== 'drain';
   }
 
-  /**
-   * Drag start handler
-   */
   _onDragStart(e) {
     const componentKey = e.target.closest('.component-item').dataset.component;
     e.dataTransfer.setData('componentKey', componentKey);
     e.dataTransfer.effectAllowed = 'copy';
   }
 
-  /**
-   * Drop handler
-   */
   _onDrop(e) {
     e.preventDefault();
 
@@ -535,9 +1004,6 @@ class ProcessDesigner {
     this.addComponent(componentKey, finalX, finalY);
   }
 
-  /**
-   * Add component to canvas
-   */
   addComponent(componentKey, x, y) {
     const template = COMPONENT_LIBRARY[componentKey];
     if (!template) return;
@@ -565,9 +1031,6 @@ class ProcessDesigner {
     console.log(`Added ${template.name} at (${x}, ${y})`);
   }
 
-  /**
-   * Render component on canvas
-   */
   _renderComponent(component) {
     const template = COMPONENT_LIBRARY[component.key];
 
@@ -576,20 +1039,14 @@ class ProcessDesigner {
     group.setAttribute('data-id', component.id);
     group.setAttribute('transform', `translate(${component.x}, ${component.y})`);
 
-    // Determine which sprite to use based on component type. If the type
-    // isn't defined in SPRITES, fall back to the default entry.
     const sprite = (SPRITES && SPRITES[component.type]) || SPRITES.default;
 
-    // Make the group focusable and describe it for assistive tech
     group.setAttribute('role', 'button');
     group.setAttribute('tabindex', '0');
     group.setAttribute('aria-label', component.name);
-    // Improve UX by allowing clicks anywhere within the bounding box
     group.style.cursor = 'pointer';
     group.style.pointerEvents = 'bounding-box';
 
-    // Add a transparent hit area slightly larger than the image. This
-    // simplifies hit testing during dragging and selection.
     const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     hit.setAttribute('x', sprite.x - 8);
     hit.setAttribute('y', sprite.y - 8);
@@ -599,7 +1056,6 @@ class ProcessDesigner {
     hit.style.pointerEvents = 'visibleFill';
     group.appendChild(hit);
 
-    // Draw the actual image
     const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', sprite.href);
     img.setAttribute('x', sprite.x);
@@ -610,11 +1066,9 @@ class ProcessDesigner {
     img.style.imageRendering = 'optimizeQuality';
     group.appendChild(img);
 
-    // Component label
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.classList.add('component-label');
     label.setAttribute('x', 0);
-    // Use sprite.labelDy when available, fallback to slightly above the image
     const labelY = sprite.labelDy !== undefined ? sprite.labelDy : (sprite.y - 10);
     label.setAttribute('y', labelY);
     label.setAttribute('text-anchor', 'middle');
@@ -623,7 +1077,6 @@ class ProcessDesigner {
     label.textContent = component.name;
     group.appendChild(label);
 
-    // Optional selection ring. We leave its visibility controlled by CSS.
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     ring.setAttribute('x', sprite.x - 4);
     ring.setAttribute('y', sprite.y - 4);
@@ -632,7 +1085,6 @@ class ProcessDesigner {
     ring.setAttribute('rx', '10');
     ring.setAttribute('ry', '10');
     ring.setAttribute('fill', 'none');
-    // Style ring via attributes so it's invisible by default
     ring.setAttribute('stroke', '#7cc8ff');
     ring.setAttribute('stroke-width', '2');
     ring.setAttribute('stroke-dasharray', '6 4');
@@ -690,9 +1142,6 @@ class ProcessDesigner {
     this.componentsLayer.appendChild(group);
   }
 
-  /**
-   * Select component
-   */
   selectComponent(id) {
     if (this.selectedComponent) {
       const prevEl = this.canvas.querySelector(`[data-id="${this.selectedComponent}"]`);
@@ -706,9 +1155,6 @@ class ProcessDesigner {
     this._showProperties(id);
   }
 
-  /**
-   * Show component properties
-   */
   _showProperties(id) {
     const component = this.components.get(id);
     if (!component) return;
@@ -823,9 +1269,6 @@ class ProcessDesigner {
     }
   }
 
-  /**
-   * Delete component
-   */
   deleteComponent(id) {
     const relatedConnections = this.connections.filter(conn =>
       conn.from === id || conn.to === id
@@ -850,73 +1293,50 @@ class ProcessDesigner {
     this._updateStats();
   }
 
-  /**
-   * Update mouse position display
-   */
   _updateMousePos(e) {
+    const mousePosEl = document.getElementById('mousePos');
+    if (!mousePosEl) return;
+    
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const x = Math.round(((e.clientX - rect.left) / rect.width) * viewBox.width);
     const y = Math.round(((e.clientY - rect.top) / rect.height) * viewBox.height);
-    document.getElementById('mousePos').textContent = `X: ${x}, Y: ${y}`;
+    mousePosEl.textContent = `X: ${x}, Y: ${y}`;
   }
 
-  /**
-   * Update statistics
-   */
   _updateStats() {
-    document.getElementById('componentCount').textContent = `Components: ${this.components.size}`;
-    document.getElementById('connectionCount').textContent = `Connections: ${this.connections.length}`;
+    const compCountEl = document.getElementById('componentCount');
+    const connCountEl = document.getElementById('connectionCount');
+    
+    if (compCountEl) compCountEl.textContent = `Components: ${this.components.size}`;
+    if (connCountEl) connCountEl.textContent = `Connections: ${this.connections.length}`;
   }
 
-  /**
-   * Clear canvas
-   */
-  clearCanvas() {
-    if (!confirm('Clear all components? This cannot be undone.')) return;
+  clearCanvas(confirm = true) {
+    if (confirm && !window.confirm('Clear all components? This cannot be undone.')) return;
 
     this.components.clear();
     this.connections = [];
     this.componentsLayer.innerHTML = '';
     this.connectionsLayer.innerHTML = '';
     this.selectedComponent = null;
-    document.getElementById('propertiesContent').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>Select a component to edit its properties</p>
-      </div>
-    `;
-    this._updateStats();
-  }
-
-  /**
-   * Export configuration
-   */
-  exportConfig() {
-    if (this.components.size === 0) {
-      alert('⚠️ No components to export!\n\nAdd some components first.');
-      return;
+    
+    const propertiesContent = document.getElementById('propertiesContent');
+    if (propertiesContent) {
+      propertiesContent.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>Select a component to edit its properties</p>
+        </div>
+      `;
     }
-
-    document.getElementById('exportCompCount').textContent = this.components.size;
-    document.getElementById('exportConnCount').textContent = this.connections.length;
-
-    const modal = document.getElementById('exportModal');
-    modal.style.display = 'flex';
-    setTimeout(() => {
-      modal.classList.add('open');
-    }, 10);
-
-    setTimeout(() => {
-      const input = document.getElementById('simNameInput');
-      input.select();
-      input.focus();
-    }, 100);
+    
+    this._updateStats();
   }
 }
 
 // Initialize
 window.addEventListener('DOMContentLoaded', () => {
   window.designer = new ProcessDesigner();
-  console.log('✅ Designer ready!');
+  console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
 });
