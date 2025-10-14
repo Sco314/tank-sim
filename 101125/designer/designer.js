@@ -694,25 +694,43 @@ class ProcessDesigner {
       });
     };
 
-    exportBtn?.addEventListener('click', () => {
-      // Warn if falling back
-      if (!exportModal) {
-        console.warn('⚠️ Export modal not found - using prompt() fallback. Check #exportModal in HTML.');
-      }
-      
-      // Run validation first
-      const validation = this._validateDesign();
-      
-      // Update counts
-      const compCount = byId('exportCompCount');
-      const connCount = byId('exportConnCount');
-      if (compCount) compCount.textContent = this.components.size;
-      if (connCount) connCount.textContent = this.connections.length;
+    // Replace the current exportBtn click handler with this:
+exportBtn?.addEventListener('click', (e) => {
+  // Warn if falling back
+  if (!exportModal) {
+    console.warn('⚠️ Export modal not found - using prompt() fallback. Check #exportModal in HTML.');
+  }
 
-      // Show validation report
-      this._showValidationReport(validation);
-    });
+  const validation = this._validateDesign();
 
+  // Update counts if you display them
+  const compCount = byId('exportCompCount');
+  const connCount = byId('exportConnCount');
+  if (compCount) compCount.textContent = this.components.size;
+  if (connCount) connCount.textContent = this.connections.length;
+
+  // Fast-lane: if valid, skip report and go straight to export
+  if (validation.valid) {
+    // Optional: confirm warnings
+    if (validation.warnings.length > 0) {
+      const proceed = confirm(
+        `⚠️ Warnings:\n\n${validation.warnings.join('\n')}\n\nProceed with export?`
+      );
+      if (!proceed) return;
+    }
+    // Hold Shift to *always* skip dialogs and export immediately
+    if (e.shiftKey) {
+      console.log('⏩ Shift+Export: forcing direct export');
+    }
+    this._proceedWithExport(); // will show modal if available, else prompt() fallback
+    return;
+  }
+
+  // If not valid, show the report so you can fix issues
+  this._showValidationReport(validation);
+});
+
+    
     exportModalClose?.addEventListener('click', closeExportModal);
     exportCancelBtn?.addEventListener('click', closeExportModal);
     exportModal?.addEventListener('click', (e) => { 
