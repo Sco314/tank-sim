@@ -3,166 +3,186 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Process Simulator Designer</title>
-  <link rel="stylesheet" href="designer.css">
+  <title>Process Simulator Designer v2.0</title>
+  <link rel="stylesheet" href="designer-style.css">
 </head>
 <body>
-  
-  <!-- Header -->
-  <header class="designer-header">
-    <div class="header-left">
-      <h1>🔧 Process Simulator Designer</h1>
-      <span class="version">v1.0 - Phase 8.0</span>
-    </div>
-    <div class="header-right">
-      <button class="btn btn-secondary" id="clearBtn">Clear Canvas</button>
-      <button class="btn btn-secondary" id="importBtn">Import Config</button>
-      <button class="btn btn-primary" id="exportBtn">Export Sim</button>
-    </div>
-  </header>
 
-  <!-- Main Layout -->
-  <div class="designer-layout">
-    
-    <!-- Left Panel: Component Library -->
-    <aside class="library-panel">
-      <div class="panel-header">
-        <h2>📦 Component Library</h2>
-        <input type="text" id="searchComponents" placeholder="Search components..." class="search-input">
+<div class="designer-container">
+  
+  <!-- Left Sidebar: Component Library -->
+  <aside class="library-panel">
+    <div class="library-header">
+      <h2>Components</h2>
+      <input 
+        type="text" 
+        id="searchComponents" 
+        placeholder="Search components..."
+        class="search-input"
+      >
+    </div>
+    <div class="library-content" id="libraryContent">
+      <!-- Populated by designer.js -->
+    </div>
+  </aside>
+
+  <!-- Main Canvas Area -->
+  <main class="canvas-area">
+    <div class="toolbar">
+      <div class="toolbar-section">
+        <button id="selectTool" class="tool-btn active" title="Select Tool">
+          <span>🖱️</span> Select
+        </button>
+        <button id="connectTool" class="tool-btn" title="Connect Tool">
+          <span>🔗</span> Connect
+        </button>
       </div>
       
-      <div class="library-content" id="libraryContent">
-        <!-- Component categories will be injected here -->
-      </div>
-    </aside>
-
-    <!-- Center: Canvas -->
-    <main class="canvas-container">
-      <div class="canvas-toolbar">
-        <button class="tool-btn active" id="selectTool" title="Select">
-          <span class="icon">👆</span> Select
-        </button>
-        <button class="tool-btn" id="panTool" title="Pan">
-          <span class="icon">✋</span> Pan
-        </button>
-        <button class="tool-btn" id="connectTool" title="Connect">
-          <span class="icon">🔗</span> Connect
-        </button>
-        <div class="toolbar-divider"></div>
-        <button class="tool-btn" id="zoomIn" title="Zoom In">
-          <span class="icon">🔍+</span>
-        </button>
-        <button class="tool-btn" id="zoomOut" title="Zoom Out">
-          <span class="icon">🔍−</span>
-        </button>
-        <button class="tool-btn" id="zoomReset" title="Reset Zoom">
-          <span class="icon">⊡</span> 100%
-        </button>
-        <div class="toolbar-divider"></div>
-        <label class="grid-toggle">
+      <div class="toolbar-section">
+        <label class="toolbar-option">
           <input type="checkbox" id="gridToggle" checked>
-          <span>Show Grid</span>
+          <span>Grid</span>
         </label>
-        <label class="snap-toggle">
+        <label class="toolbar-option">
           <input type="checkbox" id="snapToggle" checked>
-          <span>Snap to Grid</span>
+          <span>Snap</span>
         </label>
       </div>
 
-      <svg id="canvas" class="canvas" viewBox="0 0 1200 800">
-        <!-- Grid pattern -->
+      <div class="toolbar-section">
+        <button id="previewBtn" class="btn" title="Preview Design">
+          👁️ Preview
+        </button>
+        <button id="importBtn" class="btn" title="Import Design">
+          📥 Import
+        </button>
+        <button id="saveDesignBtn" class="btn" title="Save Design as JSON">
+          💾 Save Design
+        </button>
+      </div>
+
+      <div class="toolbar-section">
+        <button id="clearBtn" class="btn btn-warning" title="Clear Canvas">
+          🗑️ Clear
+        </button>
+        <button id="exportBtn" class="btn btn-primary" title="Export Simulator">
+          📤 Export Sim
+        </button>
+      </div>
+
+      <div class="toolbar-stats">
+        <span id="componentCount">Components: 0</span>
+        <span id="connectionCount">Connections: 0</span>
+        <span id="mousePos">X: 0, Y: 0</span>
+      </div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <svg 
+        id="canvas" 
+        viewBox="0 0 1000 600" 
+        xmlns="http://www.w3.org/2000/svg"
+        class="design-canvas"
+      >
         <defs>
-          <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>
-          </pattern>
-          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-            <rect width="100" height="100" fill="url(#smallGrid)"/>
-            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d0d0d0" stroke-width="1"/>
+          <pattern id="designerGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22305f" stroke-width="1"/>
           </pattern>
         </defs>
         
-        <!-- Grid background -->
-        <rect id="gridRect" width="100%" height="100%" fill="url(#grid)" class="grid-layer"/>
+        <rect 
+          id="gridRect" 
+          x="0" 
+          y="0" 
+          width="100%" 
+          height="100%" 
+          fill="url(#designerGrid)"
+          opacity="0.4"
+        />
         
-        <!-- Connections layer -->
         <g id="connectionsLayer"></g>
-        
-        <!-- Components layer -->
         <g id="componentsLayer"></g>
       </svg>
+    </div>
+  </main>
 
-      <!-- Canvas Info -->
-      <div class="canvas-info">
-        <span id="componentCount">Components: 0</span>
-        <span class="divider">|</span>
-        <span id="connectionCount">Connections: 0</span>
-        <span class="divider">|</span>
-        <span id="mousePos">X: 0, Y: 0</span>
+  <!-- Right Sidebar: Properties -->
+  <aside class="properties-panel">
+    <div class="properties-header">
+      <h2>Properties</h2>
+    </div>
+    <div class="properties-content" id="propertiesContent">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>Select a component to edit its properties</p>
       </div>
-    </main>
+    </div>
+  </aside>
 
-    <!-- Right Panel: Properties -->
-    <aside class="properties-panel">
-      <div class="panel-header">
-        <h2>⚙️ Properties</h2>
-      </div>
-      
-      <div class="properties-content" id="propertiesContent">
-        <div class="empty-state">
-          <div class="empty-icon">📋</div>
-          <p>Select a component to edit its properties</p>
+</div>
+
+<!-- Export Modal -->
+<div id="exportModal" class="modal-overlay" style="display: none;" aria-hidden="true">
+  <div class="modal-container">
+    <button 
+      id="exportModalClose" 
+      class="modal-close" 
+      aria-label="Close export dialog"
+    >
+      ×
+    </button>
+    
+    <div class="modal-header">
+      <h2>📤 Export Simulator</h2>
+    </div>
+    
+    <div class="modal-body">
+      <div class="export-info">
+        <div class="info-row">
+          <span>Components:</span>
+          <strong id="exportCompCount">0</strong>
+        </div>
+        <div class="info-row">
+          <span>Connections:</span>
+          <strong id="exportConnCount">0</strong>
         </div>
       </div>
-    </aside>
 
-  </div>
-<!-- Export Modal -->
-<div id="exportModal" class="modal-overlay" aria-hidden="true">
-  <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
-    <button id="exportModalClose" class="modal-close" aria-label="Close">×</button>
+      <div class="form-field">
+        <label for="simNameInput">Simulator Name:</label>
+        <input 
+          type="text" 
+          id="simNameInput" 
+          placeholder="My Process Simulator"
+          value="My Simulator"
+          class="text-input"
+        >
+      </div>
 
-    <h2 id="exportTitle" style="margin-top:0">Export Simulator</h2>
-    <p class="sub">Name your sim and review the counts, then export.</p>
+      <div class="export-note">
+        <strong>📁 Folder Structure:</strong>
+        <pre>sims/my-simulator/
+├── index.html
+├── systemConfig.js
+├── README.md
+└── SETUP.txt
 
-    <div class="kv">
-      <div>Components</div><div id="exportCompCount">0</div>
-      <div>Connections</div><div id="exportConnCount">0</div>
+../../engine/     (must exist)
+../../valve.html  (must exist)</pre>
+      </div>
     </div>
-
-    <label for="simNameInput" style="display:block;margin-top:1rem;font-weight:600">
-      Simulator name
-    </label>
-    <input id="simNameInput" type="text" value="My Simulator" style="width:100%;padding:.5rem;border-radius:.5rem;border:1px solid #334"/>
-
-    <div class="modal-actions" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+    
+    <div class="modal-footer">
       <button id="exportCancelBtn" class="btn">Cancel</button>
       <button id="exportConfirmBtn" class="btn btn-primary">Export</button>
     </div>
   </div>
 </div>
 
-
+<!-- Scripts -->
+<script src="component-library.js"></script>
+<script src="designer.js"></script>
 <script src="exporter.js"></script>
-
-  <!-- Scripts -->
-  <script src="componentLibrary.js"></script>
-  <script src="designer.js"></script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
