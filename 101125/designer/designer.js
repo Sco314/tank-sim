@@ -2,6 +2,27 @@
  * designer.js - Core designer logic with connections and I/O management
  */
 
+// === Shared component sprites (used by Designer & Exporter) ===
+// These definitions ensure the designer renders the same sized icons that the
+// exported simulator uses. The `x` and `y` values represent the offset of the
+// image relative to the component's (x,y) position. `labelDy` controls where
+// the component's label is drawn. Feel free to adjust widths, heights or
+// offsets here if you add new component types.
+const SPRITES = {
+  tank:  { href: "https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png",   w: 160, h: 180, x: -80, y: -90,  labelDy: -100 },
+  pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",    w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
+  valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w: 76,  h: 76,  x: -38, y: -38,  labelDy: -50  },
+  // fallback entry – if an unknown type is encountered, use the valve sprite
+  default: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png", w: 76, h: 76, x: -38, y: -38, labelDy: -50 }
+};
+
+// Preload sprite images to avoid flicker when first drawn
+Object.values(SPRITES).forEach(sprite => {
+  if (!sprite || !sprite.href) return;
+  const img = new Image();
+  img.src = sprite.href;
+});
+
 class ProcessDesigner {
   constructor() {
     this.canvas = document.getElementById('canvas');
@@ -91,6 +112,32 @@ class ProcessDesigner {
 
     libraryContent.querySelectorAll('.component-item').forEach(item => {
       item.addEventListener('dragstart', (e) => this._onDragStart(e));
+    });
+
+    // Replace default text icons in the library with actual component images.
+    // This runs after the DOM elements have been created. It looks up the
+    // component type for each library entry, retrieves the corresponding
+    // sprite from SPRITES and injects an <img> element into the
+    // .component-icon container. Using images here makes the palette WYSIWYG.
+    libraryContent.querySelectorAll('.component-item').forEach(item => {
+      const key = item.dataset.component;
+      const template = window.COMPONENT_LIBRARY && window.COMPONENT_LIBRARY[key];
+      if (!template) return;
+      // Some components define their type on defaultConfig.type
+      const type = template.defaultConfig && template.defaultConfig.type;
+      const sprite = (SPRITES && SPRITES[type]) || SPRITES.default;
+      const iconDiv = item.querySelector('.component-icon');
+      if (iconDiv && sprite && sprite.href) {
+        // Clear any existing icon text
+        iconDiv.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = sprite.href;
+        img.alt = template.name;
+        // Size down the palette icons for a compact display
+        img.width = 24;
+        img.height = 24;
+        iconDiv.appendChild(img);
+      }
     });
 
     console.log('✅ Component library UI initialized');
@@ -529,31 +576,69 @@ class ProcessDesigner {
     group.setAttribute('data-id', component.id);
     group.setAttribute('transform', `translate(${component.x}, ${component.y})`);
 
-    const body = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    body.classList.add('component-body');
-    body.setAttribute('x', -40);
-    body.setAttribute('y', -30);
-    body.setAttribute('width', 80);
-    body.setAttribute('height', 60);
-    body.setAttribute('rx', 8);
-    body.style.fill = template.color + '20';
-    body.style.stroke = template.color;
+    // Determine which sprite to use based on component type. If the type
+    // isn't defined in SPRITES, fall back to the default entry.
+    const sprite = (SPRITES && SPRITES[component.type]) || SPRITES.default;
 
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    icon.classList.add('component-icon-text');
-    icon.setAttribute('x', 0);
-    icon.setAttribute('y', 10);
-    icon.textContent = template.icon;
+    // Make the group focusable and describe it for assistive tech
+    group.setAttribute('role', 'button');
+    group.setAttribute('tabindex', '0');
+    group.setAttribute('aria-label', component.name);
+    // Improve UX by allowing clicks anywhere within the bounding box
+    group.style.cursor = 'pointer';
+    group.style.pointerEvents = 'bounding-box';
 
+    // Add a transparent hit area slightly larger than the image. This
+    // simplifies hit testing during dragging and selection.
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    hit.setAttribute('x', sprite.x - 8);
+    hit.setAttribute('y', sprite.y - 8);
+    hit.setAttribute('width', sprite.w + 16);
+    hit.setAttribute('height', sprite.h + 16);
+    hit.setAttribute('fill', 'transparent');
+    hit.style.pointerEvents = 'visibleFill';
+    group.appendChild(hit);
+
+    // Draw the actual image
+    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', sprite.href);
+    img.setAttribute('x', sprite.x);
+    img.setAttribute('y', sprite.y);
+    img.setAttribute('width', sprite.w);
+    img.setAttribute('height', sprite.h);
+    img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    img.style.imageRendering = 'optimizeQuality';
+    group.appendChild(img);
+
+    // Component label
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.classList.add('component-label');
     label.setAttribute('x', 0);
-    label.setAttribute('y', -40);
+    // Use sprite.labelDy when available, fallback to slightly above the image
+    const labelY = sprite.labelDy !== undefined ? sprite.labelDy : (sprite.y - 10);
+    label.setAttribute('y', labelY);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', '12');
+    label.setAttribute('fill', '#9bb0ff');
     label.textContent = component.name;
-
-    group.appendChild(body);
-    group.appendChild(icon);
     group.appendChild(label);
+
+    // Optional selection ring. We leave its visibility controlled by CSS.
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    ring.setAttribute('x', sprite.x - 4);
+    ring.setAttribute('y', sprite.y - 4);
+    ring.setAttribute('width', sprite.w + 8);
+    ring.setAttribute('height', sprite.h + 8);
+    ring.setAttribute('rx', '10');
+    ring.setAttribute('ry', '10');
+    ring.setAttribute('fill', 'none');
+    // Style ring via attributes so it's invisible by default
+    ring.setAttribute('stroke', '#7cc8ff');
+    ring.setAttribute('stroke-width', '2');
+    ring.setAttribute('stroke-dasharray', '6 4');
+    ring.setAttribute('opacity', '0');
+    ring.classList.add('selection-ring');
+    group.appendChild(ring);
 
     group.addEventListener('click', (e) => {
       if (this.currentTool === 'select') {
