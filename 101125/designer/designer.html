@@ -117,10 +117,30 @@
 
   </div>
 <!-- Export Modal -->
-<div id="exportModal" class="modal-overlay">
-  <div class="modal-container">
-@@ -43,3 +161,27 @@ <h3>Your Design:</h3>
+<div id="exportModal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+    <button id="exportModalClose" class="modal-close" aria-label="Close">×</button>
+
+    <h2 id="exportTitle" style="margin-top:0">Export Simulator</h2>
+    <p class="sub">Name your sim and review the counts, then export.</p>
+
+    <div class="kv">
+      <div>Components</div><div id="exportCompCount">0</div>
+      <div>Connections</div><div id="exportConnCount">0</div>
+    </div>
+
+    <label for="simNameInput" style="display:block;margin-top:1rem;font-weight:600">
+      Simulator name
+    </label>
+    <input id="simNameInput" type="text" value="My Simulator" style="width:100%;padding:.5rem;border-radius:.5rem;border:1px solid #334"/>
+
+    <div class="modal-actions" style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+      <button id="exportCancelBtn" class="btn">Cancel</button>
+      <button id="exportConfirmBtn" class="btn btn-primary">Export</button>
+    </div>
+  </div>
 </div>
+
 
 <script src="exporter.js"></script>
 
