@@ -254,13 +254,13 @@ if (validateConfig(SYSTEM_CONFIG)) {
 <div class="app">
   <div class="grid">
     <div class="card stage">
-      <svg viewBox="0 0 1200 800" aria-labelledby="title desc" role="img">
+      <svg viewBox="0 0 ${this.designer.canvas.viewBox.baseVal.width} ${this.designer.canvas.viewBox.baseVal.height}" aria-labelledby="title desc" role="img">
         <title id="title">${simName}</title>
         <desc id="desc">Interactive process simulator. Click components to control them.</desc>
         
         <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#22305f" stroke-width="1"></path>
+          <pattern id="grid" width="${this.designer.gridSize || 20}" height="${this.designer.gridSize || 20}" patternUnits="userSpaceOnUse">
+            <path d="M ${this.designer.gridSize || 20} 0 L 0 0 0 ${this.designer.gridSize || 20}" fill="none" stroke="#22305f" stroke-width="1"></path>
           </pattern>
           <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#7cc8ff"></stop>
@@ -268,7 +268,7 @@ if (validateConfig(SYSTEM_CONFIG)) {
           </linearGradient>
         </defs>
         
-        <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" opacity="0.4"></rect>
+        <rect x="0" y="0" width="${this.designer.canvas.viewBox.baseVal.width}" height="${this.designer.canvas.viewBox.baseVal.height}" fill="url(#grid)" opacity="0.4"></rect>
         
         <!-- PIPES (Background Layer) -->
         ${pipesSVG}
@@ -494,13 +494,12 @@ Built with [Process Simulator Designer](https://github.com/yourusername/tank-sim
           <text x="0" y="-100" text-anchor="middle" fill="#9bb0ff" font-size="14">${comp.name}</text>
         </g>`;
     } else if (comp.type === 'valve') {
+      // Apply the transform directly on the element with the id instead of an inner wrapper.
       return `
         <!-- VALVE: ${comp.name} -->
-        <g id="${cleanId}" class="valve" tabindex="0" role="button" aria-pressed="false" aria-label="${comp.name}">
-          <g transform="translate(${comp.x}, ${comp.y})">
-            <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
-            <text x="0" y="-50" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
-          </g>
+        <g id="${cleanId}" class="valve" transform="translate(${comp.x}, ${comp.y})" tabindex="0" role="button" aria-pressed="false" aria-label="${comp.name}">
+          <image href="https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png" x="-38" y="-38" width="76" height="76" />
+          <text x="0" y="-50" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
         </g>`;
     } else if (comp.type === 'pump') {
       return `
@@ -531,11 +530,15 @@ Built with [Process Simulator Designer](https://github.com/yourusername/tank-sim
     // Simple straight line path
     const path = `M ${fromComp.x} ${fromComp.y} L ${toComp.x} ${toComp.y}`;
     
+    // Use CSS classes for pipe styling instead of hard‑coded strokes. The engine's
+    // stylesheet should define .pipe-body and .pipe-flow classes for width,
+    // color and other styling. The id is maintained on the flow path for
+    // animating flow within the pipe.
     return `
         <!-- PIPE: ${fromComp.name} to ${toComp.name} -->
-        <g id="pipe${idx + 1}">
-          <path d="${path}" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
-          <path id="pipe${idx + 1}Flow" d="${path}" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+        <g id="pipe${idx + 1}" class="pipe">
+          <path class="pipe-body" d="${path}" fill="none"></path>
+          <path id="pipe${idx + 1}Flow" class="pipe-flow" d="${path}" fill="none"></path>
         </g>`;
   }
 
