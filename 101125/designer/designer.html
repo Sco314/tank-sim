@@ -61,14 +61,27 @@
         </button>
       </div>
 
-      <div class="toolbar-section">
-        <button id="clearBtn" class="btn btn-warning" title="Clear Canvas">
-          🗑️ Clear
-        </button>
-        <button id="exportBtn" class="btn btn-primary" title="Export Simulator">
-          📤 Export Sim
-        </button>
-      </div>
+<div class="toolbar-section">
+  <button id="clearBtn" class="btn btn-warning" title="Clear Canvas">
+    🗑️ Clear
+  </button>
+
+  <!-- Existing “general” export (keep for now / back-compat) -->
+  <button id="exportBtn" class="btn btn-primary" title="Export Simulator">
+    📤 Export Sim
+  </button>
+
+  <!-- NEW: single-file HTML (default/shareable) -->
+  <button id="exportSingleFile" class="btn btn-primary" title="Export Single-File HTML">
+    📄 Single-File
+  </button>
+
+  <!-- NEW: flat folder / ZIP (optional) -->
+  <button id="exportZip" class="btn" title="Export Flat Folder / ZIP">
+    📦 ZIP
+  </button>
+</div>
+
 
       <div class="toolbar-stats">
         <span id="componentCount">Components: 0</span>
@@ -180,6 +193,14 @@
 </div>
 
 <!-- Scripts -->
+<!-- JSZip for ZIP export support -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<!-- Enhanced Exporter -->
+<script>
+  window.EXPORTER_ENGINE_PATH = '../js'; // Adjust to your structure
+</script>
+<script src="exporter.js"></script>
 <script src="componentLibrary.js"></script>
 <script src="designer.js"></script>
 <script src="exporter.js"></script>
