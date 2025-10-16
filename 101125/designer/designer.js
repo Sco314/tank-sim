@@ -1,13 +1,14 @@
 /**
- * designer.js - Process Designer v2.0
- * 
+ * designer.js - Process Designer v2.0  (designer6.js)
+ *
  * Features:
  * - UI health validation
  * - Pre-export validation
- * - Import/load functionality  
+ * - Import/load functionality
  * - Preview mode
  * - Disconnected component warnings
  * - Export versioning
+ * - Single-file export helpers (integrated from designer_additions.js)
  */
 
 const DESIGNER_VERSION = '2.0.0';
@@ -15,7 +16,7 @@ const DESIGNER_VERSION = '2.0.0';
 // === Shared component sprites ===
 const SPRITES = {
   tank:  { href: "https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png",   w: 160, h: 180, x: -80, y: -90,  labelDy: -100 },
-  pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",    w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
+  pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",     w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
   valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w: 76,  h: 76,  x: -38, y: -38,  labelDy: -50  },
   default: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png", w: 76, h: 76, x: -38, y: -38, labelDy: -50 }
 };
@@ -57,130 +58,90 @@ class ProcessDesigner {
 
     this._initializeLibrary();
     this._setupSearch();
-    this._validateUI();  // ← NEW: UI health check
+    this._validateUI();  // UI health check
     this._setupEventListeners();
     this._updateStats();
 
     console.log(`Process Designer v${DESIGNER_VERSION} initialized`);
   }
 
-  /**
-   * Validate UI elements exist (NEW)
-   */
+  // -----------------------------
+  // UI + Validation
+  // -----------------------------
+
   _validateUI() {
     const critical = ['canvas', 'componentsLayer', 'connectionsLayer', 'gridRect'];
     const missing = critical.filter(id => !document.getElementById(id));
-    
-    // Check for at least one export button
-    const hasExportBtn = ['exportBtn', 'exportSimBtn', 'exportSim']
-      .some(id => document.getElementById(id));
-    
-    if (!hasExportBtn) {
-      missing.push('exportBtn (or exportSimBtn/exportSim)');
-    }
-    
+
+    // At least one export button
+    const hasExportBtn = ['exportBtn', 'exportSimBtn', 'exportSim'].some(id => document.getElementById(id));
+    if (!hasExportBtn) missing.push('exportBtn (or exportSimBtn/exportSim)');
+
     if (missing.length) {
       console.warn('⚠️ Designer UI missing elements:', missing.join(', '));
       console.warn('   This may cause degraded functionality. Check designer.html.');
     }
-    
     return missing.length === 0;
   }
 
-  /**
-   * Validate design before export (NEW)
-   */
   _validateDesign() {
     const issues = [];
     const warnings = [];
-    
-    // Check for components
+
     if (this.components.size === 0) {
       issues.push('No components in design');
       return { valid: false, issues, warnings };
     }
-    
-    // Check for disconnected components
+
     const disconnected = this._findDisconnectedComponents();
     if (disconnected.length > 0) {
       warnings.push(`${disconnected.length} disconnected component(s): ${disconnected.map(c => c.name).join(', ')}`);
     }
-    
-    // Check for feeds and drains
+
     const hasFeed = Array.from(this.components.values()).some(c => c.type === 'feed');
     const hasDrain = Array.from(this.components.values()).some(c => c.type === 'drain');
-    
-    if (!hasFeed) {
-      warnings.push('No feed (source) component - fluid has no source');
-    }
-    if (!hasDrain) {
-      warnings.push('No drain (sink) component - fluid has no outlet');
-    }
-    
-    // Validate component properties
+    if (!hasFeed) warnings.push('No feed (source) component - fluid has no source');
+    if (!hasDrain) warnings.push('No drain (sink) component - fluid has no outlet');
+
     for (const comp of this.components.values()) {
       const propIssues = this._validateComponentProperties(comp);
       issues.push(...propIssues);
     }
-    
-    // Check for circular dependencies (simple check)
+
     const circular = this._detectCircularDependencies();
     if (circular.length > 0) {
       warnings.push(`Possible circular dependencies detected: ${circular.join(' → ')}`);
     }
-    
-    return {
-      valid: issues.length === 0,
-      issues,
-      warnings
-    };
+
+    return { valid: issues.length === 0, issues, warnings };
   }
 
-  /**
-   * Find disconnected components (NEW)
-   */
   _findDisconnectedComponents() {
     const disconnected = [];
-    
     for (const comp of this.components.values()) {
       const hasInput = comp.config.inputs && comp.config.inputs.length > 0;
       const hasOutput = comp.config.outputs && comp.config.outputs.length > 0;
-      
-      // Feed must have output, drain must have input
-      if (comp.type === 'feed' && !hasOutput) {
-        disconnected.push(comp);
-      } else if (comp.type === 'drain' && !hasInput) {
-        disconnected.push(comp);
-      } else if (comp.type !== 'feed' && comp.type !== 'drain' && !hasInput && !hasOutput) {
-        disconnected.push(comp);
-      }
+
+      if (comp.type === 'feed' && !hasOutput) disconnected.push(comp);
+      else if (comp.type === 'drain' && !hasInput) disconnected.push(comp);
+      else if (comp.type !== 'feed' && comp.type !== 'drain' && !hasInput && !hasOutput) disconnected.push(comp);
     }
-    
     return disconnected;
   }
 
-  /**
-   * Validate component properties (NEW)
-   */
   _validateComponentProperties(comp) {
     const issues = [];
     const config = comp.config;
-    
-    // Check for negative values where they shouldn't be
-    if (config.capacity !== undefined && config.capacity < 0) {
+
+    if (config.capacity !== undefined && config.capacity < 0)
       issues.push(`${comp.name}: capacity cannot be negative (${config.capacity})`);
-    }
-    if (config.efficiency !== undefined && (config.efficiency < 0 || config.efficiency > 1)) {
+    if (config.efficiency !== undefined && (config.efficiency < 0 || config.efficiency > 1))
       issues.push(`${comp.name}: efficiency must be 0-1 (got ${config.efficiency})`);
-    }
-    if (config.volume !== undefined && config.volume < 0) {
+    if (config.volume !== undefined && config.volume < 0)
       issues.push(`${comp.name}: volume cannot be negative (${config.volume})`);
-    }
-    if (config.maxFlow !== undefined && config.maxFlow < 0) {
+    if (config.maxFlow !== undefined && config.maxFlow < 0)
       issues.push(`${comp.name}: maxFlow cannot be negative (${config.maxFlow})`);
-    }
-    
-    // Check for null/undefined required properties
+
     const template = COMPONENT_LIBRARY[comp.key];
     if (template && template.properties) {
       template.properties.forEach(prop => {
@@ -189,19 +150,14 @@ class ProcessDesigner {
         }
       });
     }
-    
     return issues;
   }
 
-  /**
-   * Detect circular dependencies (NEW)
-   */
   _detectCircularDependencies() {
-    // Simple cycle detection - could be more sophisticated
     const visited = new Set();
     const path = [];
     const cycles = [];
-    
+
     const dfs = (compId) => {
       if (path.includes(compId)) {
         const cycleStart = path.indexOf(compId);
@@ -209,120 +165,72 @@ class ProcessDesigner {
         cycles.push(cycle.map(id => this.components.get(id)?.name || id));
         return;
       }
-      
       if (visited.has(compId)) return;
-      
       visited.add(compId);
       path.push(compId);
-      
+
       const comp = this.components.get(compId);
-      if (comp && comp.config.outputs) {
-        comp.config.outputs.forEach(outputId => dfs(outputId));
-      }
-      
+      if (comp && comp.config.outputs) comp.config.outputs.forEach(outputId => dfs(outputId));
       path.pop();
     };
-    
-    for (const compId of this.components.keys()) {
-      dfs(compId);
-    }
-    
+
+    for (const compId of this.components.keys()) dfs(compId);
     return cycles;
   }
 
-  /**
-   * Show validation report modal (NEW)
-   */
   _showValidationReport(validation) {
     const modal = document.createElement('div');
     modal.className = 'validation-modal';
     modal.innerHTML = `
       <div class="validation-modal-content">
         <h2>🔍 Design Validation Report</h2>
-        
-        ${validation.valid 
-          ? '<div class="validation-success">✅ No critical issues found</div>'
-          : '<div class="validation-error">❌ Critical issues found - fix before export</div>'
-        }
-        
-        ${validation.issues.length > 0 ? `
+        ${validation.valid ? '<div class="validation-success">✅ No critical issues found</div>'
+                           : '<div class="validation-error">❌ Critical issues found - fix before export</div>'}
+        ${validation.issues.length ? `
           <div class="validation-section">
             <h3>❌ Issues (Must Fix)</h3>
-            <ul>
-              ${validation.issues.map(issue => `<li>${issue}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
-        
-        ${validation.warnings.length > 0 ? `
+            <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+          </div>` : ''}
+        ${validation.warnings.length ? `
           <div class="validation-section">
             <h3>⚠️ Warnings (Should Review)</h3>
-            <ul>
-              ${validation.warnings.map(warn => `<li>${warn}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
-        
+            <ul>${validation.warnings.map(warn => `<li>${warn}</li>`).join('')}</ul>
+          </div>` : ''}
         <div class="validation-actions">
           <button class="btn" id="validationClose">Close</button>
           ${validation.valid ? '<button class="btn btn-primary" id="validationProceed">Proceed to Export</button>' : ''}
         </div>
       </div>
     `;
-    
-    // Style
+
     modal.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center; z-index: 10000;
     `;
-    
     const content = modal.querySelector('.validation-modal-content');
     content.style.cssText = `
-      background: #0b1330;
-      border: 2px solid #4f46e5;
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      color: #e9f0ff;
+      background: #0b1330; border: 2px solid #4f46e5; border-radius: 16px;
+      padding: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; color: #e9f0ff;
     `;
-    
+
     document.body.appendChild(modal);
-    
     modal.querySelector('#validationClose').addEventListener('click', () => modal.remove());
-    
-    const proceedBtn = modal.querySelector('#validationProceed');
-    if (proceedBtn) {
-      proceedBtn.addEventListener('click', () => {
-        modal.remove();
-        this._proceedWithExport();
-      });
-    }
+    modal.querySelector('#validationProceed')?.addEventListener('click', () => {
+      modal.remove();
+      this._proceedWithExport();
+    });
   }
 
-  /**
-   * Proceed with export after validation (NEW)
-   */
   _proceedWithExport() {
     const exportModal = document.getElementById('exportModal');
     const simNameInput = document.getElementById('simNameInput');
-    
+
     if (exportModal) {
       exportModal.style.display = 'flex';
       requestAnimationFrame(() => exportModal.classList.add('open'));
-      setTimeout(() => {
-        simNameInput?.select();
-        simNameInput?.focus();
-      }, 100);
+      setTimeout(() => { simNameInput?.select(); simNameInput?.focus(); }, 100);
     } else {
-      // Direct export
-      const name = prompt('Enter simulator name:', 'My Simulator');
+      const name = prompt('Enter simulator name:', this.getSimulatorName());
       if (name) {
         this._ensureExporter(() => {
           const exporter = new SimulatorExporter(this);
@@ -332,60 +240,45 @@ class ProcessDesigner {
     }
   }
 
-  /**
-   * Import design from JSON (NEW)
-   */
+  // -----------------------------
+  // Import/Export design JSON
+  // -----------------------------
+
   importConfig(jsonData) {
     try {
       const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-      
-      // Validate format
-      if (!data.components || !data.connections) {
-        throw new Error('Invalid design file format');
-      }
-      
-      // Clear existing design
-      this.clearCanvas(false); // Don't confirm
-      
-      // Import metadata
+      if (!data.components || !data.connections) throw new Error('Invalid design file format');
+
+      this.clearCanvas(false);
+
       if (data.metadata) {
         this.designMetadata = data.metadata;
         this.designMetadata.modified = new Date().toISOString();
       }
-      
-      // Import components
+
       for (const compData of data.components) {
         this.components.set(compData.id, compData);
         this._renderComponent(compData);
       }
-      
-      // Import connections
+
       this.connections = data.connections;
       this.connections.forEach(conn => this._renderConnection(conn));
-      
-      // Restore next IDs
+
       this.nextId = data.nextId || this.components.size + 1;
       this.nextConnectionId = data.nextConnectionId || this.connections.length + 1;
-      
+
       this._updateStats();
       console.log('✅ Design imported successfully');
       alert(`✅ Imported: ${this.designMetadata.name}\n\nComponents: ${this.components.size}\nConnections: ${this.connections.length}`);
-      
     } catch (err) {
       console.error('Import failed:', err);
       alert('❌ Import failed: ' + err.message);
     }
   }
 
-  /**
-   * Export design as JSON for re-import (NEW)
-   */
   exportDesignJSON() {
     const design = {
-      metadata: {
-        ...this.designMetadata,
-        exported: new Date().toISOString()
-      },
+      metadata: { ...this.designMetadata, exported: new Date().toISOString() },
       components: Array.from(this.components.values()),
       connections: this.connections,
       nextId: this.nextId,
@@ -396,73 +289,47 @@ class ProcessDesigner {
         height: this.canvas.viewBox.baseVal.height
       }
     };
-    
     return JSON.stringify(design, null, 2);
   }
 
-  /**
-   * Show preview of design (NEW)
-   */
+  // -----------------------------
+  // Preview
+  // -----------------------------
+
   _showPreview() {
-    // Generate preview HTML
     const validation = this._validateDesign();
-    
     const modal = document.createElement('div');
     modal.className = 'preview-modal';
     modal.innerHTML = `
       <div class="preview-modal-content">
         <button class="preview-close" id="previewClose">×</button>
         <h2>📋 Design Preview</h2>
-        
         <div class="preview-info">
-          <div class="preview-stat">
-            <strong>Components:</strong> ${this.components.size}
-          </div>
-          <div class="preview-stat">
-            <strong>Connections:</strong> ${this.connections.length}
-          </div>
-          <div class="preview-stat">
-            <strong>Status:</strong> ${validation.valid ? '✅ Valid' : '❌ Has Issues'}
-          </div>
+          <div class="preview-stat"><strong>Components:</strong> ${this.components.size}</div>
+          <div class="preview-stat"><strong>Connections:</strong> ${this.connections.length}</div>
+          <div class="preview-stat"><strong>Status:</strong> ${validation.valid ? '✅ Valid' : '❌ Has Issues'}</div>
         </div>
-        
         <div class="preview-canvas-container">
           ${this.canvas.outerHTML}
         </div>
-        
         <div class="preview-actions">
           <button class="btn" id="previewValidate">Run Validation</button>
           <button class="btn btn-primary" id="previewExport">Export This Design</button>
         </div>
       </div>
     `;
-    
+
     modal.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      padding: 20px;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px;
     `;
-    
     const content = modal.querySelector('.preview-modal-content');
     content.style.cssText = `
-      background: #0b1330;
-      border: 2px solid #4f46e5;
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 90vw;
-      max-height: 90vh;
-      overflow-y: auto;
-      color: #e9f0ff;
-      position: relative;
+      background: #0b1330; border: 2px solid #4f46e5; border-radius: 16px;
+      padding: 24px; max-width: 90vw; max-height: 90vh; overflow-y: auto; color: #e9f0ff; position: relative;
     `;
-    
+
     document.body.appendChild(modal);
-    
     modal.querySelector('#previewClose').addEventListener('click', () => modal.remove());
     modal.querySelector('#previewValidate').addEventListener('click', () => {
       modal.remove();
@@ -474,15 +341,15 @@ class ProcessDesigner {
     });
   }
 
-  /**
-   * Initialize component library
-   */
+  // -----------------------------
+  // Library / Search / Events
+  // -----------------------------
+
   _initializeLibrary() {
     const libraryContent = document.getElementById('libraryContent');
-
     if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
       console.error('❌ Component library not loaded!');
-      libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load.</p>';
+      if (libraryContent) libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load.</p>';
       return;
     }
 
@@ -491,9 +358,7 @@ class ProcessDesigner {
     const categorized = {};
     for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
       const category = component.category;
-      if (!categorized[category]) {
-        categorized[category] = [];
-      }
+      if (!categorized[category]) categorized[category] = [];
       categorized[category].push({ key, ...component });
     }
 
@@ -520,7 +385,6 @@ class ProcessDesigner {
           `).join('')}
         </div>
       `;
-
       libraryContent.appendChild(categoryEl);
     }
 
@@ -542,11 +406,11 @@ class ProcessDesigner {
       const key = item.dataset.component;
       const template = window.COMPONENT_LIBRARY && window.COMPONENT_LIBRARY[key];
       if (!template) return;
-      
+
       const type = template.defaultConfig && template.defaultConfig.type;
       const sprite = (SPRITES && SPRITES[type]) || SPRITES.default;
       const iconDiv = item.querySelector('.component-icon');
-      
+
       if (iconDiv && sprite && sprite.href) {
         iconDiv.innerHTML = '';
         const img = document.createElement('img');
@@ -561,9 +425,6 @@ class ProcessDesigner {
     console.log('✅ Component library UI initialized');
   }
 
-  /**
-   * Setup search
-   */
   _setupSearch() {
     const searchInput = document.getElementById('searchComponents');
     if (!searchInput) return;
@@ -572,12 +433,8 @@ class ProcessDesigner {
       const query = e.target.value.toLowerCase().trim();
 
       if (!query) {
-        document.querySelectorAll('.component-item').forEach(item => {
-          item.style.display = 'flex';
-        });
-        document.querySelectorAll('.component-category').forEach(cat => {
-          cat.style.display = 'block';
-        });
+        document.querySelectorAll('.component-item').forEach(item => { item.style.display = 'flex'; });
+        document.querySelectorAll('.component-category').forEach(cat => { cat.style.display = 'block'; });
         return;
       }
 
@@ -589,41 +446,33 @@ class ProcessDesigner {
       });
 
       document.querySelectorAll('.component-category').forEach(category => {
-        const hasVisibleItems = Array.from(category.querySelectorAll('.component-item'))
+        const hasVisible = Array.from(category.querySelectorAll('.component-item'))
           .some(item => item.style.display !== 'none');
-        category.style.display = hasVisibleItems ? 'block' : 'none';
+        category.style.display = hasVisible ? 'block' : 'none';
       });
     });
   }
 
-  /**
-   * Setup event listeners
-   */
   _setupEventListeners() {
     const byId = (id) => document.getElementById(id);
-    
+
     // Canvas
     this.canvas.addEventListener('dragover', (e) => e.preventDefault());
     this.canvas.addEventListener('drop', (e) => this._onDrop(e));
-    
+
     this.canvas.addEventListener('mousemove', (e) => {
       this._updateMousePos(e);
-      if (this.currentTool === 'connect' && this.connectionStart) {
-        this._updateTempConnection(e);
-      }
+      if (this.currentTool === 'connect' && this.connectionStart) this._updateTempConnection(e);
     });
 
     this.canvas.addEventListener('click', (e) => {
-      if (this.currentTool === 'connect') {
-        this._handleConnectionClick(e);
-      }
+      if (this.currentTool === 'connect') this._handleConnectionClick(e);
     });
 
     // UI controls
     byId('gridToggle')?.addEventListener('change', (e) => {
       this.gridRect.classList.toggle('hidden', !e.target.checked);
     });
-
     byId('snapToggle')?.addEventListener('change', (e) => {
       this.snapToGrid = e.target.checked;
     });
@@ -632,26 +481,31 @@ class ProcessDesigner {
     byId('connectTool')?.addEventListener('click', () => this.setTool('connect'));
     byId('clearBtn')?.addEventListener('click', () => this.clearCanvas());
 
-    // NEW: Preview button
+    // Preview
     byId('previewBtn')?.addEventListener('click', () => this._showPreview());
 
-    // NEW: Import button
+    // Import .json (design)
     byId('importBtn')?.addEventListener('click', () => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.json';
+      input.accept = '.json,.html';
       input.onchange = (e) => {
         const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (evt) => this.importConfig(evt.target.result);
-          reader.readAsText(file);
-        }
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          if (file.name.toLowerCase().endsWith('.html')) {
+            this.loadSingleFile(evt.target.result); // single-file import
+          } else {
+            this.importConfig(evt.target.result);   // JSON design import
+          }
+        };
+        reader.readAsText(file);
       };
       input.click();
     });
 
-    // NEW: Save Design button
+    // Save Design (.json)
     byId('saveDesignBtn')?.addEventListener('click', () => {
       const json = this.exportDesignJSON();
       const blob = new Blob([json], { type: 'application/json' });
@@ -663,13 +517,50 @@ class ProcessDesigner {
       URL.revokeObjectURL(url);
     });
 
-    // Export with validation
+    // Export (existing flow via SimulatorExporter)
     const exportBtn = byId('exportBtn') || byId('exportSimBtn') || byId('exportSim');
     const exportModal = byId('exportModal');
     const exportModalClose = byId('exportModalClose');
     const exportCancelBtn = byId('exportCancelBtn');
     const exportConfirmBtn = byId('exportConfirmBtn');
     const simNameInput = byId('simNameInput');
+
+// Optional dedicated buttons: single-file and ZIP (robust, lazy-load exporter.js)
+byId('exportSingleFile')?.addEventListener('click', () => {
+  const name = this.getSimulatorName();
+  this._ensureExporter(() => {
+    try {
+      const exporter = new SimulatorExporter(this);
+      if (typeof exporter.exportAsSingleFile === 'function') {
+        exporter.exportAsSingleFile(name);
+      } else {
+        // Fallback to the built-in browser single-file path in designer6.js
+        this.buildSingleFileInBrowser(name, this.getConfiguration());
+      }
+    } catch (err) {
+      console.error('Single-file export failed:', err);
+      alert('Export failed: ' + err.message);
+    }
+  });
+});
+
+byId('exportZip')?.addEventListener('click', () => {
+  const name = this.getSimulatorName();
+  this._ensureExporter(() => {
+    try {
+      const exporter = new SimulatorExporter(this);
+      if (typeof exporter.exportAsZip === 'function') {
+        exporter.exportAsZip(name);
+      } else {
+        alert('ZIP export requires exporter.js support. Please update exporter.js.');
+      }
+    } catch (err) {
+      console.error('ZIP export failed:', err);
+      alert('Export failed: ' + err.message);
+    }
+  });
+});
+
 
     const closeExportModal = () => {
       if (!exportModal) return;
@@ -678,11 +569,8 @@ class ProcessDesigner {
     };
 
     const doDirectExport = async () => {
-      const name = (simNameInput?.value?.trim()) || 
-                   prompt('Enter simulator name:', 'My Simulator');
-      
+      const name = (simNameInput?.value?.trim()) || prompt('Enter simulator name:', this.getSimulatorName());
       if (!name) return;
-
       this._ensureExporter(() => {
         try {
           const exporter = new SimulatorExporter(this);
@@ -694,75 +582,45 @@ class ProcessDesigner {
       });
     };
 
-    // Replace the current exportBtn click handler with this:
-exportBtn?.addEventListener('click', (e) => {
-  // Warn if falling back
-  if (!exportModal) {
-    console.warn('⚠️ Export modal not found - using prompt() fallback. Check #exportModal in HTML.');
-  }
+    exportBtn?.addEventListener('click', (e) => {
+      if (!exportModal) console.warn('⚠️ Export modal not found - using prompt() fallback. Check #exportModal in HTML.');
+      const validation = this._validateDesign();
 
-  const validation = this._validateDesign();
+      const compCount = byId('exportCompCount');
+      const connCount = byId('exportConnCount');
+      if (compCount) compCount.textContent = this.components.size;
+      if (connCount) connCount.textContent = this.connections.length;
 
-  // Update counts if you display them
-  const compCount = byId('exportCompCount');
-  const connCount = byId('exportConnCount');
-  if (compCount) compCount.textContent = this.components.size;
-  if (connCount) connCount.textContent = this.connections.length;
+      if (validation.valid) {
+        if (validation.warnings.length > 0) {
+          const proceed = confirm(`⚠️ Warnings:\n\n${validation.warnings.join('\n')}\n\nProceed with export?`);
+          if (!proceed) return;
+        }
+        if (e.shiftKey) console.log('⏩ Shift+Export: forcing direct export');
+        this._proceedWithExport();
+        return;
+      }
+      this._showValidationReport(validation);
+    });
 
-  // Fast-lane: if valid, skip report and go straight to export
-  if (validation.valid) {
-    // Optional: confirm warnings
-    if (validation.warnings.length > 0) {
-      const proceed = confirm(
-        `⚠️ Warnings:\n\n${validation.warnings.join('\n')}\n\nProceed with export?`
-      );
-      if (!proceed) return;
-    }
-    // Hold Shift to *always* skip dialogs and export immediately
-    if (e.shiftKey) {
-      console.log('⏩ Shift+Export: forcing direct export');
-    }
-    this._proceedWithExport(); // will show modal if available, else prompt() fallback
-    return;
-  }
-
-  // If not valid, show the report so you can fix issues
-  this._showValidationReport(validation);
-});
-
-    
     exportModalClose?.addEventListener('click', closeExportModal);
     exportCancelBtn?.addEventListener('click', closeExportModal);
-    exportModal?.addEventListener('click', (e) => { 
-      if (e.target === exportModal) closeExportModal(); 
-    });
-    exportConfirmBtn?.addEventListener('click', () => { 
-      doDirectExport(); 
-      closeExportModal(); 
-    });
+    exportModal?.addEventListener('click', (e) => { if (e.target === exportModal) closeExportModal(); });
+    exportConfirmBtn?.addEventListener('click', () => { doDirectExport(); closeExportModal(); });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && exportModal?.classList.contains('open')) {
-        closeExportModal();
-      }
+      if (e.key === 'Escape' && exportModal?.classList.contains('open')) closeExportModal();
     });
 
     console.log('✅ Event listeners set up');
   }
 
-  /**
-   * Ensure exporter loaded
-   */
   _ensureExporter(cb) {
     if (window.SimulatorExporter) return cb();
-    
     console.log('Loading exporter.js...');
     const script = document.createElement('script');
     script.src = './exporter.js';
-    script.onload = () => {
-      console.log('✅ exporter.js loaded');
-      cb();
-    };
+    script.onload = () => { console.log('✅ exporter.js loaded'); cb(); };
     script.onerror = () => {
       alert('❌ Could not load exporter.js');
       console.error('Failed to load exporter.js');
@@ -770,64 +628,39 @@ exportBtn?.addEventListener('click', (e) => {
     document.head.appendChild(script);
   }
 
-  /**
-   * Set active tool
-   */
+  // -----------------------------
+  // Canvas interactions
+  // -----------------------------
+
   setTool(tool) {
     this.currentTool = tool;
-
-    if (tool !== 'connect' && this.connectionStart) {
-      this._cancelConnection();
-    }
+    if (tool !== 'connect' && this.connectionStart) this._cancelConnection();
 
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-    const toolBtn = document.getElementById(`${tool}Tool`);
-    toolBtn?.classList.add('active');
-
+    document.getElementById(`${tool}Tool`)?.classList.add('active');
     this.canvas.style.cursor = tool === 'connect' ? 'crosshair' : 'default';
-
     console.log(`Tool changed to: ${tool}`);
   }
 
-  /**
-   * Handle connection clicks
-   */
   _handleConnectionClick(e) {
     const target = e.target.closest('.canvas-component');
-    if (!target) {
-      this._cancelConnection();
-      return;
-    }
+    if (!target) { this._cancelConnection(); return; }
 
     const componentId = target.dataset.id;
     const component = this.components.get(componentId);
 
     if (!this.connectionStart) {
-      if (!this._canOutput(component)) {
-        alert(`${component.name} cannot have outputs (it's a ${component.type})`);
-        return;
-      }
+      if (!this._canOutput(component)) { alert(`${component.name} cannot have outputs (it's a ${component.type})`); return; }
       this._startConnection(componentId);
     } else {
-      if (!this._canInput(component)) {
-        alert(`${component.name} cannot have inputs (it's a ${component.type})`);
-        this._cancelConnection();
-        return;
-      }
-
-      if (componentId === this.connectionStart) {
-        alert('Cannot connect component to itself');
-        this._cancelConnection();
-        return;
-      }
-
+      if (!this._canInput(component)) { alert(`${component.name} cannot have inputs (it's a ${component.type})`); this._cancelConnection(); return; }
+      if (componentId === this.connectionStart) { alert('Cannot connect component to itself'); this._cancelConnection(); return; }
       this._completeConnection(componentId);
     }
   }
 
   _startConnection(componentId) {
     this.connectionStart = componentId;
-
     this.tempConnectionLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.tempConnectionLine.setAttribute('stroke', '#4f46e5');
     this.tempConnectionLine.setAttribute('stroke-width', '3');
@@ -842,13 +675,11 @@ exportBtn?.addEventListener('click', (e) => {
 
   _updateTempConnection(e) {
     if (!this.tempConnectionLine || !this.connectionStart) return;
-
     const startComp = this.components.get(this.connectionStart);
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const mouseX = ((e.clientX - rect.left) / rect.width) * viewBox.width;
     const mouseY = ((e.clientY - rect.top) / rect.height) * viewBox.height;
-
     const path = this._createConnectionPath(startComp.x, startComp.y, mouseX, mouseY);
     this.tempConnectionLine.setAttribute('d', path);
   }
@@ -857,28 +688,15 @@ exportBtn?.addEventListener('click', (e) => {
     const fromComp = this.components.get(this.connectionStart);
     const toComp = this.components.get(toComponentId);
 
-    const exists = this.connections.some(conn =>
-      conn.from === this.connectionStart && conn.to === toComponentId
-    );
-
-    if (exists) {
-      alert('Connection already exists');
-      this._cancelConnection();
-      return;
-    }
+    const exists = this.connections.some(conn => conn.from === this.connectionStart && conn.to === toComponentId);
+    if (exists) { alert('Connection already exists'); this._cancelConnection(); return; }
 
     if (!fromComp.config.outputs) fromComp.config.outputs = [];
     if (!toComp.config.inputs) toComp.config.inputs = [];
-
     fromComp.config.outputs.push(toComponentId);
     toComp.config.inputs.push(this.connectionStart);
 
-    const connection = {
-      id: `conn_${this.nextConnectionId++}`,
-      from: this.connectionStart,
-      to: toComponentId
-    };
-
+    const connection = { id: `conn_${this.nextConnectionId++}`, from: this.connectionStart, to: toComponentId };
     this.connections.push(connection);
     this._renderConnection(connection);
 
@@ -887,17 +705,14 @@ exportBtn?.addEventListener('click', (e) => {
     }
 
     console.log(`Connected ${fromComp.name} → ${toComp.name}`);
-
     this._cancelConnection();
     this._updateStats();
   }
 
   _cancelConnection() {
     this.connectionStart = null;
-    if (this.tempConnectionLine) {
-      this.tempConnectionLine.remove();
-      this.tempConnectionLine = null;
-    }
+    this.tempConnectionLine?.remove();
+    this.tempConnectionLine = null;
   }
 
   _renderConnection(connection) {
@@ -938,9 +753,7 @@ exportBtn?.addEventListener('click', (e) => {
     path.addEventListener('click', (e) => {
       if (this.currentTool === 'select') {
         e.stopPropagation();
-        if (confirm('Delete this connection?')) {
-          this.deleteConnection(connection.id);
-        }
+        if (confirm('Delete this connection?')) this.deleteConnection(connection.id);
       }
     });
   }
@@ -949,9 +762,7 @@ exportBtn?.addEventListener('click', (e) => {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
     const pathEl = this.canvas.querySelector(`[data-connection-id="${connection.id}"]`);
-
     if (!pathEl) return;
-
     const pathData = this._createConnectionPath(fromComp.x, fromComp.y, toComp.x, toComp.y);
     pathEl.setAttribute('d', pathData);
   }
@@ -961,7 +772,6 @@ exportBtn?.addEventListener('click', (e) => {
     const dy = y2 - y1;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const curve = Math.min(dist * 0.3, 100);
-
     return `M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`;
   }
 
@@ -972,32 +782,20 @@ exportBtn?.addEventListener('click', (e) => {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
 
-    if (fromComp.config.outputs) {
-      fromComp.config.outputs = fromComp.config.outputs.filter(id => id !== connection.to);
-    }
-    if (toComp.config.inputs) {
-      toComp.config.inputs = toComp.config.inputs.filter(id => id !== connection.from);
-    }
+    if (fromComp.config.outputs) fromComp.config.outputs = fromComp.config.outputs.filter(id => id !== connection.to);
+    if (toComp.config.inputs) toComp.config.inputs = toComp.config.inputs.filter(id => id !== connection.from);
 
     this.connections = this.connections.filter(c => c.id !== connectionId);
-
-    const pathEl = this.canvas.querySelector(`[data-connection-id="${connectionId}"]`);
-    pathEl?.remove();
+    this.canvas.querySelector(`[data-connection-id="${connectionId}"]`)?.remove();
 
     if (this.selectedComponent === connection.from || this.selectedComponent === connection.to) {
       this._showProperties(this.selectedComponent);
     }
-
     this._updateStats();
   }
 
-  _canInput(component) {
-    return component.type !== 'feed';
-  }
-
-  _canOutput(component) {
-    return component.type !== 'drain';
-  }
+  _canInput(component)  { return component.type !== 'feed'; }
+  _canOutput(component) { return component.type !== 'drain'; }
 
   _onDragStart(e) {
     const componentKey = e.target.closest('.component-item').dataset.component;
@@ -1007,7 +805,6 @@ exportBtn?.addEventListener('click', (e) => {
 
   _onDrop(e) {
     e.preventDefault();
-
     const componentKey = e.dataTransfer.getData('componentKey');
     if (!componentKey) return;
 
@@ -1027,7 +824,6 @@ exportBtn?.addEventListener('click', (e) => {
     if (!template) return;
 
     const id = `comp_${this.nextId++}`;
-
     const component = {
       id,
       key: componentKey,
@@ -1035,23 +831,17 @@ exportBtn?.addEventListener('click', (e) => {
       name: template.name + ' ' + this.nextId,
       x,
       y,
-      config: {
-        ...template.defaultConfig,
-        inputs: [],
-        outputs: []
-      }
+      config: { ...template.defaultConfig, inputs: [], outputs: [] }
     };
 
     this.components.set(id, component);
     this._renderComponent(component);
     this._updateStats();
-
     console.log(`Added ${template.name} at (${x}, ${y})`);
   }
 
   _renderComponent(component) {
     const template = COMPONENT_LIBRARY[component.key];
-
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     group.classList.add('canvas-component');
     group.setAttribute('data-id', component.id);
@@ -1100,8 +890,7 @@ exportBtn?.addEventListener('click', (e) => {
     ring.setAttribute('y', sprite.y - 4);
     ring.setAttribute('width', sprite.w + 8);
     ring.setAttribute('height', sprite.h + 8);
-    ring.setAttribute('rx', '10');
-    ring.setAttribute('ry', '10');
+    ring.setAttribute('rx', '10'); ring.setAttribute('ry', '10');
     ring.setAttribute('fill', 'none');
     ring.setAttribute('stroke', '#7cc8ff');
     ring.setAttribute('stroke-width', '2');
@@ -1111,15 +900,10 @@ exportBtn?.addEventListener('click', (e) => {
     group.appendChild(ring);
 
     group.addEventListener('click', (e) => {
-      if (this.currentTool === 'select') {
-        e.stopPropagation();
-        this.selectComponent(component.id);
-      }
+      if (this.currentTool === 'select') { e.stopPropagation(); this.selectComponent(component.id); }
     });
 
-    let isDragging = false;
-    let startX, startY;
-
+    let isDragging = false; let startX, startY;
     group.addEventListener('mousedown', (e) => {
       if (this.currentTool !== 'select' || e.button !== 0) return;
       isDragging = true;
@@ -1136,27 +920,13 @@ exportBtn?.addEventListener('click', (e) => {
       const viewBox = this.canvas.viewBox.baseVal;
       let newX = ((e.clientX - rect.left) / rect.width) * viewBox.width - startX;
       let newY = ((e.clientY - rect.top) / rect.height) * viewBox.height - startY;
-
-      if (this.snapToGrid) {
-        newX = Math.round(newX / this.gridSize) * this.gridSize;
-        newY = Math.round(newY / this.gridSize) * this.gridSize;
-      }
-
-      component.x = newX;
-      component.y = newY;
+      if (this.snapToGrid) { newX = Math.round(newX / this.gridSize) * this.gridSize; newY = Math.round(newY / this.gridSize) * this.gridSize; }
+      component.x = newX; component.y = newY;
       group.setAttribute('transform', `translate(${newX}, ${newY})`);
-
-      this.connections.forEach(conn => {
-        if (conn.from === component.id || conn.to === component.id) {
-          this._updateConnectionPath(conn);
-        }
-      });
+      this.connections.forEach(conn => { if (conn.from === component.id || conn.to === component.id) this._updateConnectionPath(conn); });
     });
 
-    this.canvas.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-
+    this.canvas.addEventListener('mouseup', () => { isDragging = false; });
     this.componentsLayer.appendChild(group);
   }
 
@@ -1165,11 +935,8 @@ exportBtn?.addEventListener('click', (e) => {
       const prevEl = this.canvas.querySelector(`[data-id="${this.selectedComponent}"]`);
       prevEl?.classList.remove('selected');
     }
-
     this.selectedComponent = id;
-    const el = this.canvas.querySelector(`[data-id="${id}"]`);
-    el?.classList.add('selected');
-
+    this.canvas.querySelector(`[data-id="${id}"]`)?.classList.add('selected');
     this._showProperties(id);
   }
 
@@ -1193,7 +960,7 @@ exportBtn?.addEventListener('click', (e) => {
               type="${prop.type === 'text' ? 'text' : 'number'}" 
               class="property-input" 
               data-property="${prop.name}"
-              value="${component.config[prop.name] || prop.default}"
+              value="${component.config[prop.name] ?? prop.default ?? ''}"
               ${prop.min !== undefined ? `min="${prop.min}"` : ''}
               ${prop.max !== undefined ? `max="${prop.max}"` : ''}
               ${prop.step !== undefined ? `step="${prop.step}"` : ''}
@@ -1206,7 +973,7 @@ exportBtn?.addEventListener('click', (e) => {
         <div class="property-group">
           <h3>⬇️ Inputs</h3>
           <div class="connections-list">
-            ${component.config.inputs && component.config.inputs.length > 0 
+            ${component.config.inputs?.length
               ? component.config.inputs.map(inputId => {
                   const inputComp = this.components.get(inputId);
                   return `
@@ -1215,18 +982,15 @@ exportBtn?.addEventListener('click', (e) => {
                       <button class="btn-remove" data-remove-input="${inputId}">✕</button>
                     </div>
                   `;
-                }).join('')
-              : '<p class="empty-text">No inputs connected</p>'
-            }
+                }).join('') : '<p class="empty-text">No inputs connected</p>'}
           </div>
-        </div>
-      ` : ''}
+        </div>` : ''}
 
       ${canOutput ? `
         <div class="property-group">
           <h3>⬆️ Outputs</h3>
           <div class="connections-list">
-            ${component.config.outputs && component.config.outputs.length > 0 
+            ${component.config.outputs?.length
               ? component.config.outputs.map(outputId => {
                   const outputComp = this.components.get(outputId);
                   return `
@@ -1235,12 +999,9 @@ exportBtn?.addEventListener('click', (e) => {
                       <button class="btn-remove" data-remove-output="${outputId}">✕</button>
                     </div>
                   `;
-                }).join('')
-              : '<p class="empty-text">No outputs connected</p>'
-            }
+                }).join('') : '<p class="empty-text">No outputs connected</p>'}
           </div>
-        </div>
-      ` : ''}
+        </div>` : ''}
 
       <div class="property-group">
         <button class="btn btn-danger" id="deleteComponent">🗑️ Delete Component</button>
@@ -1277,44 +1038,37 @@ exportBtn?.addEventListener('click', (e) => {
       });
     });
 
-    const deleteBtn = propertiesContent.querySelector('#deleteComponent');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', () => {
-        if (confirm(`Delete ${component.name}?`)) {
-          this.deleteComponent(id);
-        }
-      });
-    }
+    propertiesContent.querySelector('#deleteComponent')?.addEventListener('click', () => {
+      if (confirm(`Delete ${component.name}?`)) this.deleteComponent(id);
+    });
   }
 
   deleteComponent(id) {
-    const relatedConnections = this.connections.filter(conn =>
-      conn.from === id || conn.to === id
-    );
+    const relatedConnections = this.connections.filter(conn => conn.from === id || conn.to === id);
     relatedConnections.forEach(conn => this.deleteConnection(conn.id));
 
     this.components.delete(id);
-
-    const el = this.canvas.querySelector(`[data-id="${id}"]`);
-    el?.remove();
+    this.canvas.querySelector(`[data-id="${id}"]`)?.remove();
 
     if (this.selectedComponent === id) {
       this.selectedComponent = null;
-      document.getElementById('propertiesContent').innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📋</div>
-          <p>Select a component to edit its properties</p>
-        </div>
-      `;
+      const propertiesContent = document.getElementById('propertiesContent');
+      if (propertiesContent) {
+        propertiesContent.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>Select a component to edit its properties</p>
+          </div>
+        `;
+      }
     }
-
     this._updateStats();
   }
 
   _updateMousePos(e) {
     const mousePosEl = document.getElementById('mousePos');
     if (!mousePosEl) return;
-    
+
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const x = Math.round(((e.clientX - rect.left) / rect.width) * viewBox.width);
@@ -1325,20 +1079,18 @@ exportBtn?.addEventListener('click', (e) => {
   _updateStats() {
     const compCountEl = document.getElementById('componentCount');
     const connCountEl = document.getElementById('connectionCount');
-    
     if (compCountEl) compCountEl.textContent = `Components: ${this.components.size}`;
     if (connCountEl) connCountEl.textContent = `Connections: ${this.connections.length}`;
   }
 
   clearCanvas(confirm = true) {
     if (confirm && !window.confirm('Clear all components? This cannot be undone.')) return;
-
     this.components.clear();
     this.connections = [];
     this.componentsLayer.innerHTML = '';
     this.connectionsLayer.innerHTML = '';
     this.selectedComponent = null;
-    
+
     const propertiesContent = document.getElementById('propertiesContent');
     if (propertiesContent) {
       propertiesContent.innerHTML = `
@@ -1348,159 +1100,127 @@ exportBtn?.addEventListener('click', (e) => {
         </div>
       `;
     }
-    
     this._updateStats();
   }
-}
 
-// Initialize
-window.addEventListener('DOMContentLoaded', () => {
-  window.designer = new ProcessDesigner();
-  console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
-});
+  // -----------------------------
+  // BUILD SYSTEM INTEGRATION (from designer_additions.js) — class methods
+  // -----------------------------
 
-// ============================================================================
-// BUILD SYSTEM INTEGRATION
-// Add these methods to your existing designer.js file
-// NO UI CHANGES - Backend only!
-// ============================================================================
+  /** Convenience getters/setters used by additions */
+  getSimulatorName() { return this.designMetadata?.name || 'My Simulator'; }
+  setSimulatorName(name) {
+    if (!name) return;
+    this.designMetadata.name = name;
+    this.designMetadata.modified = new Date().toISOString();
+    // If you show name in UI, update it here as needed.
+  }
+  getConfiguration() { return JSON.parse(this.exportDesignJSON()); }
+  loadConfiguration(cfg) { this.importConfig(cfg); }
 
-/**
- * Export simulator as single-file HTML
- * Call this from your existing export button
- */
-exportAsSingleFile() {
-  const simName = this.getSimulatorName(); // Your existing method
-  const config = this.getConfiguration(); // Your existing method
-  
-  console.log('Exporting as single-file HTML...');
-  
-  // Option 1: Call build.js via Node (if running in Electron/Node environment)
-  if (typeof require !== 'undefined') {
-    try {
-      const { buildSingleFile } = require('../build.js');
-      const outputPath = buildSingleFile(simName, config);
-      console.log('✅ Exported:', outputPath);
-      return outputPath;
-    } catch (e) {
-      console.warn('Node.js build not available, using browser method');
+  /** Export simulator as single-file HTML (UI can call this) */
+  exportAsSingleFile() {
+    const simName = this.getSimulatorName();
+    const config = this.getConfiguration();
+
+    console.log('Exporting as single-file HTML...');
+
+    if (typeof require !== 'undefined') {
+      try {
+        const { buildSingleFile } = require('../build.js');
+        const outputPath = buildSingleFile(simName, config);
+        console.log('✅ Exported:', outputPath);
+        return outputPath;
+      } catch (e) {
+        console.warn('Node.js build not available, using browser method');
+      }
+    }
+    this.buildSingleFileInBrowser(simName, config);
+  }
+
+  /** Export simulator as ZIP (Node-only in this scaffold) */
+  exportAsZip() {
+    const simName = this.getSimulatorName();
+    const config = this.getConfiguration();
+    console.log('Exporting as ZIP...');
+
+    if (typeof require !== 'undefined') {
+      try {
+        const { buildZip } = require('../build.js');
+        buildZip(simName, config).then(zipPath => console.log('✅ Exported:', zipPath));
+      } catch (e) {
+        console.warn('Node.js build not available');
+        alert('ZIP export requires Node.js environment. Use single-file export instead.');
+      }
+    } else {
+      alert('ZIP export requires Node.js. Use single-file export instead.');
     }
   }
-  
-  // Option 2: Browser-based build (slower but works everywhere)
-  this.buildSingleFileInBrowser(simName, config);
-}
 
-/**
- * Export simulator as ZIP
- */
-exportAsZip() {
-  const simName = this.getSimulatorName();
-  const config = this.getConfiguration();
-  
-  console.log('Exporting as ZIP...');
-  
-  if (typeof require !== 'undefined') {
-    try {
-      const { buildZip } = require('../build.js');
-      buildZip(simName, config).then(zipPath => {
-        console.log('✅ Exported:', zipPath);
-      });
-    } catch (e) {
-      console.warn('Node.js build not available');
-      alert('ZIP export requires Node.js environment. Use single-file export instead.');
-    }
-  } else {
-    alert('ZIP export requires Node.js. Use single-file export instead.');
+  /** Browser-based single-file build (fallback) */
+  async buildSingleFileInBrowser(simName, config) {
+    const slug = simName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    console.log('Building in browser...');
+
+    const files = await Promise.all([
+      fetch('../style.css').then(r => r.text()),
+      fetch('../index.html').then(r => r.text()),
+      fetch('../valve.html').then(r => r.text()),
+      ...this.getAllJSPaths().map(p => fetch(p).then(r => r.text()))
+    ]);
+
+    const [css, html, valveHtml, ...jsFiles] = files;
+    const combinedJS = jsFiles.join('\n\n');
+    const configJSON = JSON.stringify(config, null, 2);
+    const valveInline = this.prepareValveInline(valveHtml);
+    const output = this.buildHTMLTemplate(simName, css, html, valveInline, combinedJS, configJSON);
+
+    this.downloadFile(output, `${slug}.html`);
+    console.log('✅ Export complete!');
   }
-}
 
-/**
- * Browser-based single-file build (fallback)
- * This method builds everything in the browser without Node.js
- */
-async buildSingleFileInBrowser(simName, config) {
-  const slug = simName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  
-  console.log('Building in browser...');
-  
-  // Fetch all required files
-  const files = await Promise.all([
-    fetch('../style.css').then(r => r.text()),
-    fetch('../index.html').then(r => r.text()),
-    fetch('../valve.html').then(r => r.text()),
-    ...this.getAllJSPaths().map(path => fetch(path).then(r => r.text()))
-  ]);
-  
-  const [css, html, valveHtml, ...jsFiles] = files;
-  
-  // Combine JS
-  const combinedJS = jsFiles.join('\n\n');
-  
-  // Build config
-  const configJSON = JSON.stringify(config, null, 2);
-  
-  // Process valve.html for inline
-  const valveInline = this.prepareValveInline(valveHtml);
-  
-  // Build final HTML
-  const output = this.buildHTMLTemplate(simName, css, html, valveInline, combinedJS, configJSON);
-  
-  // Download
-  this.downloadFile(output, `${slug}.html`);
-  
-  console.log('✅ Export complete!');
-}
+  /** Ordered engine file list (adjust if your engine order changes) */
+  getAllJSPaths() {
+    return [
+      // Core
+      '../js/core/Component.js',
+      '../js/core/FlowNetwork.js',
+      '../js/core/ComponentManager.js',
+      '../js/core/version.js',
+      // Components
+      '../js/components/sources/Feed.js',
+      '../js/components/sinks/Drain.js',
+      '../js/components/pumps/Pump.js',
+      '../js/components/pumps/FixedSpeedPump.js',
+      '../js/components/pumps/VariableSpeedPump.js',
+      '../js/components/pumps/ThreeSpeedPump.js',
+      '../js/components/valves/Valve.js',
+      '../js/components/tanks/Tank.js',
+      '../js/components/pipes/Pipe.js',
+      '../js/components/sensors/PressureSensor.js',
+      // Managers
+      '../js/managers/TankManager.js',
+      '../js/managers/PumpManager.js',
+      '../js/managers/ValveManager.js',
+      '../js/managers/PipeManager.js',
+      '../js/managers/PressureManager.js',
+      // Config
+      '../js/config/systemConfig.js'
+    ];
+  }
 
-/**
- * Get all JS file paths in load order
- */
-getAllJSPaths() {
-  return [
-    // Core
-    '../js/core/Component.js',
-    '../js/core/FlowNetwork.js',
-    '../js/core/ComponentManager.js',
-    '../js/core/version.js',
-    
-    // Components
-    '../js/components/sources/Feed.js',
-    '../js/components/sinks/Drain.js',
-    '../js/components/pumps/Pump.js',
-    '../js/components/pumps/FixedSpeedPump.js',
-    '../js/components/pumps/VariableSpeedPump.js',
-    '../js/components/pumps/ThreeSpeedPump.js',
-    '../js/components/valves/Valve.js',
-    '../js/components/tanks/Tank.js',
-    '../js/components/pipes/Pipe.js',
-    '../js/components/sensors/PressureSensor.js',
-    
-    // Managers
-    '../js/managers/TankManager.js',
-    '../js/managers/PumpManager.js',
-    '../js/managers/ValveManager.js',
-    '../js/managers/PipeManager.js',
-    '../js/managers/PressureManager.js',
-    
-    // Config
-    '../js/config/systemConfig.js'
-  ];
-}
+  /** Prepare valve.html content for srcdoc */
+  prepareValveInline(valveHtml) {
+    const bodyMatch = valveHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : valveHtml;
 
-/**
- * Prepare valve HTML for inline srcdoc
- */
-prepareValveInline(valveHtml) {
-  const bodyMatch = valveHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  const bodyContent = bodyMatch ? bodyMatch[1] : valveHtml;
-  
-  const styleMatch = valveHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  const style = styleMatch ? styleMatch[1] : '';
-  
-  const scriptMatch = valveHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
-  const script = scriptMatch ? scriptMatch[1] : '';
-  
-  return `<!DOCTYPE html>
+    const styleMatch = valveHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    const style = styleMatch ? styleMatch[1] : '';
+
+    const scriptMatch = valveHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    const script = scriptMatch ? scriptMatch[1] : '';
+
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1513,28 +1233,26 @@ ${bodyContent}
 <script>${script}</script>
 </body>
 </html>`.trim();
-}
+  }
 
-/**
- * Build complete HTML template
- */
-buildHTMLTemplate(simName, css, html, valveInline, js, configJSON) {
-  // Extract body from index.html
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  const bodyContent = bodyMatch ? bodyMatch[1] : html;
-  
-  // Replace valve.html iframe with inline srcdoc
-  const processedBody = bodyContent.replace(
-    /(<iframe[^>]*src=["'])[^"']*valve\.html["']/gi,
-    `$1" srcdoc="${valveInline.replace(/"/g, '&quot;')}"`
-  );
-  
-  return `<!DOCTYPE html>
+  /** Build the final single-file HTML */
+  buildHTMLTemplate(simName, css, html, valveInline, js, configJSON) {
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : html;
+
+    const processedBody = bodyContent.replace(
+      /(<iframe[^>]*src=["'])[^"']*valve\.html["']/gi,
+      `$1" srcdoc="${valveInline.replace(/"/g, '&quot;')}"`
+    );
+
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${simName}</title>
+  <meta name="sim-name" content="${(simName || '').replace(/"/g, '&quot;')}">
+  <meta name="engine-version" content="${(window.ENGINE_VERSION || 'unversioned')}">
   <style>
 ${css}
   </style>
@@ -1543,7 +1261,7 @@ ${css}
 
 ${processedBody}
 
-<!-- System Configuration -->
+<!-- System Configuration (for re-import) -->
 <script id="system-config" type="application/json">
 ${configJSON}
 </script>
@@ -1555,83 +1273,47 @@ ${js}
 
 </body>
 </html>`;
-}
-
-/**
- * Download file to user's computer
- */
-downloadFile(content, filename) {
-  const blob = new Blob([content], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Load a combined single-file HTML back into designer
- * This allows users to edit exported sims
- */
-loadSingleFile(htmlContent) {
-  console.log('Loading single-file simulator...');
-  
-  // Parse HTML
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlContent, 'text/html');
-  
-  // Extract config
-  const configScript = doc.getElementById('system-config');
-  if (configScript) {
-    try {
-      const config = JSON.parse(configScript.textContent);
-      
-      // Load into designer
-      this.loadConfiguration(config); // Your existing method
-      
-      // Extract sim name from title
-      const title = doc.querySelector('title');
-      if (title) {
-        this.setSimulatorName(title.textContent); // Your existing method
-      }
-      
-      console.log('✅ Simulator loaded successfully');
-      return true;
-    } catch (e) {
-      console.error('Failed to parse config:', e);
-      return false;
-    }
   }
-  
-  console.error('No system-config found in HTML');
-  return false;
+
+  /** Download a text file */
+  downloadFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /** Load a combined single-file HTML back into designer */
+  loadSingleFile(htmlContent) {
+    console.log('Loading single-file simulator...');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+
+    const configScript = doc.getElementById('system-config');
+    if (configScript) {
+      try {
+        const config = JSON.parse(configScript.textContent);
+        this.loadConfiguration(config);
+        const title = doc.querySelector('title');
+        if (title) this.setSimulatorName(title.textContent);
+        console.log('✅ Simulator loaded successfully');
+        return true;
+      } catch (e) {
+        console.error('Failed to parse config:', e);
+        return false;
+      }
+    }
+    console.error('No system-config found in HTML');
+    return false;
+  }
 }
 
-// ============================================================================
-// USAGE EXAMPLES (for your existing export buttons)
-// ============================================================================
-
-/*
-// In your existing export button handler:
-document.getElementById('exportSingleFile').addEventListener('click', () => {
-  designer.exportAsSingleFile();
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+  window.designer = new ProcessDesigner();
+  console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
 });
-
-// In your existing load button handler:
-document.getElementById('loadFile').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    designer.loadSingleFile(ev.target.result);
-  };
-  reader.readAsText(file);
-});
-
-// For ZIP export (if you add that button later):
-document.getElementById('exportZip').addEventListener('click', () => {
-  designer.exportAsZip();
-});
-*/
