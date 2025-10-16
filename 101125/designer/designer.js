@@ -1358,3 +1358,280 @@ window.addEventListener('DOMContentLoaded', () => {
   window.designer = new ProcessDesigner();
   console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
 });
+
+// ============================================================================
+// BUILD SYSTEM INTEGRATION
+// Add these methods to your existing designer.js file
+// NO UI CHANGES - Backend only!
+// ============================================================================
+
+/**
+ * Export simulator as single-file HTML
+ * Call this from your existing export button
+ */
+exportAsSingleFile() {
+  const simName = this.getSimulatorName(); // Your existing method
+  const config = this.getConfiguration(); // Your existing method
+  
+  console.log('Exporting as single-file HTML...');
+  
+  // Option 1: Call build.js via Node (if running in Electron/Node environment)
+  if (typeof require !== 'undefined') {
+    try {
+      const { buildSingleFile } = require('../build.js');
+      const outputPath = buildSingleFile(simName, config);
+      console.log('✅ Exported:', outputPath);
+      return outputPath;
+    } catch (e) {
+      console.warn('Node.js build not available, using browser method');
+    }
+  }
+  
+  // Option 2: Browser-based build (slower but works everywhere)
+  this.buildSingleFileInBrowser(simName, config);
+}
+
+/**
+ * Export simulator as ZIP
+ */
+exportAsZip() {
+  const simName = this.getSimulatorName();
+  const config = this.getConfiguration();
+  
+  console.log('Exporting as ZIP...');
+  
+  if (typeof require !== 'undefined') {
+    try {
+      const { buildZip } = require('../build.js');
+      buildZip(simName, config).then(zipPath => {
+        console.log('✅ Exported:', zipPath);
+      });
+    } catch (e) {
+      console.warn('Node.js build not available');
+      alert('ZIP export requires Node.js environment. Use single-file export instead.');
+    }
+  } else {
+    alert('ZIP export requires Node.js. Use single-file export instead.');
+  }
+}
+
+/**
+ * Browser-based single-file build (fallback)
+ * This method builds everything in the browser without Node.js
+ */
+async buildSingleFileInBrowser(simName, config) {
+  const slug = simName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  
+  console.log('Building in browser...');
+  
+  // Fetch all required files
+  const files = await Promise.all([
+    fetch('../style.css').then(r => r.text()),
+    fetch('../index.html').then(r => r.text()),
+    fetch('../valve.html').then(r => r.text()),
+    ...this.getAllJSPaths().map(path => fetch(path).then(r => r.text()))
+  ]);
+  
+  const [css, html, valveHtml, ...jsFiles] = files;
+  
+  // Combine JS
+  const combinedJS = jsFiles.join('\n\n');
+  
+  // Build config
+  const configJSON = JSON.stringify(config, null, 2);
+  
+  // Process valve.html for inline
+  const valveInline = this.prepareValveInline(valveHtml);
+  
+  // Build final HTML
+  const output = this.buildHTMLTemplate(simName, css, html, valveInline, combinedJS, configJSON);
+  
+  // Download
+  this.downloadFile(output, `${slug}.html`);
+  
+  console.log('✅ Export complete!');
+}
+
+/**
+ * Get all JS file paths in load order
+ */
+getAllJSPaths() {
+  return [
+    // Core
+    '../js/core/Component.js',
+    '../js/core/FlowNetwork.js',
+    '../js/core/ComponentManager.js',
+    '../js/core/version.js',
+    
+    // Components
+    '../js/components/sources/Feed.js',
+    '../js/components/sinks/Drain.js',
+    '../js/components/pumps/Pump.js',
+    '../js/components/pumps/FixedSpeedPump.js',
+    '../js/components/pumps/VariableSpeedPump.js',
+    '../js/components/pumps/ThreeSpeedPump.js',
+    '../js/components/valves/Valve.js',
+    '../js/components/tanks/Tank.js',
+    '../js/components/pipes/Pipe.js',
+    '../js/components/sensors/PressureSensor.js',
+    
+    // Managers
+    '../js/managers/TankManager.js',
+    '../js/managers/PumpManager.js',
+    '../js/managers/ValveManager.js',
+    '../js/managers/PipeManager.js',
+    '../js/managers/PressureManager.js',
+    
+    // Config
+    '../js/config/systemConfig.js'
+  ];
+}
+
+/**
+ * Prepare valve HTML for inline srcdoc
+ */
+prepareValveInline(valveHtml) {
+  const bodyMatch = valveHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const bodyContent = bodyMatch ? bodyMatch[1] : valveHtml;
+  
+  const styleMatch = valveHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const style = styleMatch ? styleMatch[1] : '';
+  
+  const scriptMatch = valveHtml.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+  const script = scriptMatch ? scriptMatch[1] : '';
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valve Control</title>
+<style>${style}</style>
+</head>
+<body>
+${bodyContent}
+<script>${script}</script>
+</body>
+</html>`.trim();
+}
+
+/**
+ * Build complete HTML template
+ */
+buildHTMLTemplate(simName, css, html, valveInline, js, configJSON) {
+  // Extract body from index.html
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const bodyContent = bodyMatch ? bodyMatch[1] : html;
+  
+  // Replace valve.html iframe with inline srcdoc
+  const processedBody = bodyContent.replace(
+    /(<iframe[^>]*src=["'])[^"']*valve\.html["']/gi,
+    `$1" srcdoc="${valveInline.replace(/"/g, '&quot;')}"`
+  );
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${simName}</title>
+  <style>
+${css}
+  </style>
+</head>
+<body>
+
+${processedBody}
+
+<!-- System Configuration -->
+<script id="system-config" type="application/json">
+${configJSON}
+</script>
+
+<!-- Simulator Engine -->
+<script>
+${js}
+</script>
+
+</body>
+</html>`;
+}
+
+/**
+ * Download file to user's computer
+ */
+downloadFile(content, filename) {
+  const blob = new Blob([content], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Load a combined single-file HTML back into designer
+ * This allows users to edit exported sims
+ */
+loadSingleFile(htmlContent) {
+  console.log('Loading single-file simulator...');
+  
+  // Parse HTML
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  
+  // Extract config
+  const configScript = doc.getElementById('system-config');
+  if (configScript) {
+    try {
+      const config = JSON.parse(configScript.textContent);
+      
+      // Load into designer
+      this.loadConfiguration(config); // Your existing method
+      
+      // Extract sim name from title
+      const title = doc.querySelector('title');
+      if (title) {
+        this.setSimulatorName(title.textContent); // Your existing method
+      }
+      
+      console.log('✅ Simulator loaded successfully');
+      return true;
+    } catch (e) {
+      console.error('Failed to parse config:', e);
+      return false;
+    }
+  }
+  
+  console.error('No system-config found in HTML');
+  return false;
+}
+
+// ============================================================================
+// USAGE EXAMPLES (for your existing export buttons)
+// ============================================================================
+
+/*
+// In your existing export button handler:
+document.getElementById('exportSingleFile').addEventListener('click', () => {
+  designer.exportAsSingleFile();
+});
+
+// In your existing load button handler:
+document.getElementById('loadFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    designer.loadSingleFile(ev.target.result);
+  };
+  reader.readAsText(file);
+});
+
+// For ZIP export (if you add that button later):
+document.getElementById('exportZip').addEventListener('click', () => {
+  designer.exportAsZip();
+});
+*/
