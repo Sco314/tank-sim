@@ -1,5 +1,9 @@
-/**
- * componentLibrary.js - Available components for the designer
+/** 
+ * componentLibrary.js 
+ * 
+ * Adds per-component connectionPoints and exports helpers:
+ *   - getConnectionPoint(component, pointId)
+ *   - findNearestConnectionPoints(fromComp, toComp)
  */
 
 const COMPONENT_LIBRARY = {
@@ -10,6 +14,9 @@ const COMPONENT_LIBRARY = {
     icon: '⚡',
     description: 'Infinite supply source',
     color: '#10b981',
+    connectionPoints: [
+      { id: 'outlet', x: 40, y: 0, type: 'output' }
+    ],
     defaultConfig: {
       type: 'feed',
       supplyPressure: 3.0,
@@ -20,16 +27,19 @@ const COMPONENT_LIBRARY = {
       { name: 'name', type: 'text', label: 'Name', default: 'Feed' },
       { name: 'supplyPressure', type: 'number', label: 'Supply Pressure (bar)', default: 3.0, min: 0, max: 10, step: 0.1 },
       { name: 'maxFlow', type: 'number', label: 'Max Flow (m³/s)', default: 'Infinity' },
-      { name: 'temperature', type: 'number', label: 'Temperature (°C)', default: 20, min: 0, max: 100 }
+      { name: 'temperature', type: 'number', label: 'Temperature (°C)', default: 20, min: -50, max: 150, step: 1 }
     ]
   },
-  
+
   drain: {
     name: 'Drain',
     category: 'boundaries',
     icon: '⬇️',
     description: 'Infinite sink outlet',
     color: '#ef4444',
+    connectionPoints: [
+      { id: 'inlet', x: -40, y: 0, type: 'input' }
+    ],
     defaultConfig: {
       type: 'drain',
       ambientPressure: 1.0,
@@ -37,94 +47,113 @@ const COMPONENT_LIBRARY = {
     },
     properties: [
       { name: 'name', type: 'text', label: 'Name', default: 'Drain' },
-      { name: 'ambientPressure', type: 'number', label: 'Ambient Pressure (bar)', default: 1.0, min: 0, max: 5, step: 0.1 },
+      { name: 'ambientPressure', type: 'number', label: 'Ambient Pressure (bar)', default: 1.0, min: 0, max: 10, step: 0.1 },
       { name: 'maxCapacity', type: 'number', label: 'Max Capacity (m³/s)', default: 'Infinity' }
     ]
   },
-  
-  // Tanks
+
+  // Storage
   tank: {
     name: 'Tank',
     category: 'storage',
-    icon: '🗄️',
-    description: 'Storage tank',
+    icon: '🛢️',
+    description: 'Vertical storage tank',
     color: '#3b82f6',
+    // Tank sprite footprint: 160x180 centered at (-80,-90)
+    connectionPoints: [
+      { id: 'left',   x: -80, y: 0,   type: 'both' },
+      { id: 'right',  x:  80, y: 0,   type: 'both' },
+      { id: 'top',    x:   0, y: -90, type: 'both' },
+      { id: 'bottom', x:   0, y:  90, type: 'both' }
+    ],
     defaultConfig: {
       type: 'tank',
-      area: 2.5,
-      maxHeight: 1.2,
-      initialVolume: 0
+      capacity: 10.0,
+      initialLevel: 2.0,
+      maxLevel: 9.5
     },
     properties: [
       { name: 'name', type: 'text', label: 'Name', default: 'Tank' },
-      { name: 'area', type: 'number', label: 'Area (m²)', default: 2.5, min: 0.1, max: 10, step: 0.1 },
-      { name: 'maxHeight', type: 'number', label: 'Max Height (m)', default: 1.2, min: 0.1, max: 5, step: 0.1 },
-      { name: 'initialVolume', type: 'number', label: 'Initial Volume (m³)', default: 0, min: 0, step: 0.1 }
+      { name: 'capacity', type: 'number', label: 'Capacity (m³)', default: 10.0, min: 0, max: 1000, step: 0.1 },
+      { name: 'initialLevel', type: 'number', label: 'Initial Level (m)', default: 2.0, min: 0, max: 20, step: 0.1 },
+      { name: 'maxLevel', type: 'number', label: 'Max Safe Level (m)', default: 9.5, min: 0, max: 20, step: 0.1 }
     ]
   },
-  
+
   // Pumps
   fixedPump: {
     name: 'Fixed Speed Pump',
     category: 'pumps',
-    icon: '🔄',
-    description: 'ON/OFF pump',
-    color: '#8b5cf6',
+    icon: '⚙️',
+    description: 'Constant-speed pump',
+    color: '#10b981',
+    // Pump sprite footprint: ~120x120 centered at (-60,-60)
+    connectionPoints: [
+      { id: 'inlet',  x: -60, y: 0, type: 'input' },
+      { id: 'outlet', x:  60, y: 0, type: 'output' }
+    ],
     defaultConfig: {
-      type: 'pump',
-      pumpType: 'fixed',
-      capacity: 0.5,
-      efficiency: 0.95
+      type: 'pumpFixed',
+      head: 10,
+      efficiency: 0.7,
+      maxFlow: 1.0
     },
     properties: [
-      { name: 'name', type: 'text', label: 'Name', default: 'Pump' },
-      { name: 'capacity', type: 'number', label: 'Capacity (m³/s)', default: 0.5, min: 0.1, max: 5, step: 0.1 },
-      { name: 'efficiency', type: 'number', label: 'Efficiency', default: 0.95, min: 0, max: 1, step: 0.01 }
+      { name: 'name', type: 'text', label: 'Name', default: 'Fixed Pump' },
+      { name: 'head', type: 'number', label: 'Head (m)', default: 10, min: 0, max: 200, step: 0.5 },
+      { name: 'efficiency', type: 'number', label: 'Efficiency (0-1)', default: 0.7, min: 0, max: 1, step: 0.01 },
+      { name: 'maxFlow', type: 'number', label: 'Max Flow (m³/s)', default: 1.0, min: 0, max: 10, step: 0.1 }
     ]
   },
-  
+
   variablePump: {
     name: 'Variable Speed Pump',
     category: 'pumps',
     icon: '⚙️',
-    description: '0-100% control',
-    color: '#8b5cf6',
+    description: 'Adjustable-speed pump',
+    color: '#059669',
+    // Pump sprite footprint: ~120x120 centered at (-60,-60)
+    connectionPoints: [
+      { id: 'inlet',  x: -60, y: 0, type: 'input' },
+      { id: 'outlet', x:  60, y: 0, type: 'output' }
+    ],
     defaultConfig: {
-      type: 'pump',
-      pumpType: 'variable',
-      capacity: 0.5,
-      efficiency: 0.95,
-      minSpeed: 0.1
+      type: 'pumpVariable',
+      headCurve: [ [0, 20], [0.5, 15], [1.0, 10] ],
+      minSpeed: 0.3,
+      maxSpeed: 1.0
     },
     properties: [
-      { name: 'name', type: 'text', label: 'Name', default: 'VFD Pump' },
-      { name: 'capacity', type: 'number', label: 'Capacity (m³/s)', default: 0.5, min: 0.1, max: 5, step: 0.1 },
-      { name: 'efficiency', type: 'number', label: 'Efficiency', default: 0.95, min: 0, max: 1, step: 0.01 },
-      { name: 'minSpeed', type: 'number', label: 'Min Speed', default: 0.1, min: 0, max: 0.5, step: 0.05 }
+      { name: 'name', type: 'text', label: 'Name', default: 'Variable Pump' },
+      { name: 'minSpeed', type: 'number', label: 'Min Speed (0-1)', default: 0.3, min: 0, max: 1, step: 0.01 },
+      { name: 'maxSpeed', type: 'number', label: 'Max Speed (0-1)', default: 1.0, min: 0, max: 1, step: 0.01 }
     ]
   },
-  
+
   // Valves
   valve: {
-    name: 'Control Valve',
+    name: 'Valve',
     category: 'valves',
     icon: '🔧',
-    description: 'Flow control valve',
+    description: 'Manual valve with open/close',
     color: '#f59e0b',
+    // Valve sprite footprint: 76x76 centered at (-38,-38)
+    connectionPoints: [
+      { id: 'inlet',  x: -38, y: 0, type: 'input' },
+      { id: 'outlet', x:  38, y: 0, type: 'output' }
+    ],
     defaultConfig: {
       type: 'valve',
-      maxFlow: 0.5,
-      initialPosition: 0,
-      responseTime: 0.1
+      open: true,
+      kv: 1.0
     },
     properties: [
       { name: 'name', type: 'text', label: 'Name', default: 'Valve' },
-      { name: 'maxFlow', type: 'number', label: 'Max Flow (m³/s)', default: 0.5, min: 0.1, max: 5, step: 0.1 },
-      { name: 'initialPosition', type: 'number', label: 'Initial Position', default: 0, min: 0, max: 1, step: 0.1 },
-      { name: 'responseTime', type: 'number', label: 'Response Time (s)', default: 0.1, min: 0.01, max: 1, step: 0.01 }
+      { name: 'open', type: 'number', label: 'Open (0-1)', default: 1.0, min: 0, max: 1, step: 0.01 },
+      { name: 'kv', type: 'number', label: 'Kv (m³/h·bar^0.5)', default: 1.0, min: 0, max: 100, step: 0.1 }
     ]
   },
-  
+
   // Sensors
   pressureSensor: {
     name: 'Pressure Sensor',
@@ -132,6 +161,12 @@ const COMPONENT_LIBRARY = {
     icon: '📊',
     description: 'Pressure measurement',
     color: '#06b6d4',
+    // Sensor attach point at center, optional tees left/right
+    connectionPoints: [
+      { id: 'probe', x: 0, y: 0, type: 'both' },
+      { id: 'left',  x: -20, y: 0, type: 'both' },
+      { id: 'right', x:  20, y: 0, type: 'both' }
+    ],
     defaultConfig: {
       type: 'sensor',
       measurementPoint: 'static',
@@ -149,7 +184,7 @@ const COMPONENT_LIBRARY = {
   }
 };
 
-// Category definitions
+// Categories (unchanged)
 const CATEGORIES = {
   boundaries: {
     name: 'Boundary Conditions',
@@ -178,11 +213,46 @@ const CATEGORIES = {
   }
 };
 
+// === Connection point helpers ===
+function getConnectionPoint(component, pointId) {
+  const def = COMPONENT_LIBRARY[component.key];
+  const pts = def && def.connectionPoints;
+  if (!pts || pts.length === 0) {
+    return { x: component.x, y: component.y }; // fallback center
+  }
+  const found = pts.find(p => p.id === pointId) || pts[0];
+  return { x: component.x + (found.x || 0), y: component.y + (found.y || 0) };
+}
+
+function findNearestConnectionPoints(fromComp, toComp) {
+  const fromDef = COMPONENT_LIBRARY[fromComp.key] || {};
+  const toDef = COMPONENT_LIBRARY[toComp.key] || {};
+  const fromPts = (fromDef.connectionPoints && fromDef.connectionPoints.filter(p => p.type !== 'input')) || [{ id: 'center', x: 0, y: 0 }];
+  const toPts   = (toDef.connectionPoints   && toDef.connectionPoints.filter(p => p.type !== 'output')) || [{ id: 'center', x: 0, y: 0 }];
+
+  let bestFrom = fromPts[0], bestTo = toPts[0], minDist = Infinity;
+  for (const f of fromPts) {
+    const fx = fromComp.x + (f.x || 0), fy = fromComp.y + (f.y || 0);
+    for (const t of toPts) {
+      const tx = toComp.x + (t.x || 0), ty = toComp.y + (t.y || 0);
+      const dx = tx - fx, dy = ty - fy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minDist) { minDist = d2; bestFrom = f; bestTo = t; }
+    }
+  }
+  return {
+    from: { x: fromComp.x + (bestFrom.x || 0), y: fromComp.y + (bestFrom.y || 0), id: bestFrom.id },
+    to:   { x: toComp.x   + (bestTo.x   || 0), y: toComp.y   + (bestTo.y   || 0), id: bestTo.id }
+  };
+}
+
 // Verify export
-console.log('✅ componentLibrary.js loaded');
+console.log('✅ componentLibrary_with_points.js loaded');
 console.log('📦 Components available:', Object.keys(COMPONENT_LIBRARY));
 console.log('📁 Categories:', Object.keys(CATEGORIES));
 
 // Export for use in designer
 window.COMPONENT_LIBRARY = COMPONENT_LIBRARY;
 window.CATEGORIES = CATEGORIES;
+window.getConnectionPoint = getConnectionPoint;
+window.findNearestConnectionPoints = findNearestConnectionPoints;
