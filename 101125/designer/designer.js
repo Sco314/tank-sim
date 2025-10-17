@@ -1,29 +1,27 @@
 /**
- * designer.js - Process Designer v2.0  (designer6.js)
+ * designer7.js - Process Designer v2.0 (with connection points)
  *
- * Features:
- * - UI health validation
- * - Pre-export validation
- * - Import/load functionality
- * - Preview mode
- * - Disconnected component warnings
- * - Export versioning
- * - Single-file export helpers (integrated from designer_additions.js)
+ * Changes from designer6.js:
+ * - Uses connection points for connections:
+ *   • _completeConnection stores fromPoint/toPoint IDs
+ *   • _renderConnection/_updateConnectionPath draw to those points
+ * - Hover markers on components (pointer-events: none)
+ * - Temp rubber-band line starts at nearest connection point on start component
  */
 
-const DESIGNER_VERSION = '2.0.0';
+const DESIGNER_VERSION = '2.0.1';
 
-// === Shared component sprites ===
+// === Shared component sprites (WYSIWYG with Sim) ===
 const SPRITES = {
   tank:  { href: "https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png",   w: 160, h: 180, x: -80, y: -90,  labelDy: -100 },
   pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",     w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
-  valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w: 76,  h: 76,  x: -38, y: -38,  labelDy: -50  },
+  valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w:  76, h:  76, x: -38, y: -38,  labelDy: -50  },
   default: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png", w: 76, h: 76, x: -38, y: -38, labelDy: -50 }
 };
 
 // Preload sprites
 Object.values(SPRITES).forEach(sprite => {
-  if (!sprite || !sprite.href) return;
+  if (!sprite?.href) return;
   const img = new Image();
   img.src = sprite.href;
 });
@@ -58,7 +56,7 @@ class ProcessDesigner {
 
     this._initializeLibrary();
     this._setupSearch();
-    this._validateUI();  // UI health check
+    this._validateUI();
     this._setupEventListeners();
     this._updateStats();
 
@@ -68,15 +66,11 @@ class ProcessDesigner {
   // -----------------------------
   // UI + Validation
   // -----------------------------
-
   _validateUI() {
-    const critical = ['canvas', 'componentsLayer', 'connectionsLayer', 'gridRect'];
-    const missing = critical.filter(id => !document.getElementById(id));
-
-    // At least one export button
+    const needed = ['canvas', 'componentsLayer', 'connectionsLayer', 'gridRect'];
+    const missing = needed.filter(id => !document.getElementById(id));
     const hasExportBtn = ['exportBtn', 'exportSimBtn', 'exportSim'].some(id => document.getElementById(id));
     if (!hasExportBtn) missing.push('exportBtn (or exportSimBtn/exportSim)');
-
     if (missing.length) {
       console.warn('⚠️ Designer UI missing elements:', missing.join(', '));
       console.warn('   This may cause degraded functionality. Check designer.html.');
@@ -131,21 +125,21 @@ class ProcessDesigner {
 
   _validateComponentProperties(comp) {
     const issues = [];
-    const config = comp.config;
+    const cfg = comp.config;
 
-    if (config.capacity !== undefined && config.capacity < 0)
-      issues.push(`${comp.name}: capacity cannot be negative (${config.capacity})`);
-    if (config.efficiency !== undefined && (config.efficiency < 0 || config.efficiency > 1))
-      issues.push(`${comp.name}: efficiency must be 0-1 (got ${config.efficiency})`);
-    if (config.volume !== undefined && config.volume < 0)
-      issues.push(`${comp.name}: volume cannot be negative (${config.volume})`);
-    if (config.maxFlow !== undefined && config.maxFlow < 0)
-      issues.push(`${comp.name}: maxFlow cannot be negative (${config.maxFlow})`);
+    if (cfg.capacity !== undefined && cfg.capacity < 0)
+      issues.push(`${comp.name}: capacity cannot be negative (${cfg.capacity})`);
+    if (cfg.efficiency !== undefined && (cfg.efficiency < 0 || cfg.efficiency > 1))
+      issues.push(`${comp.name}: efficiency must be 0-1 (got ${cfg.efficiency})`);
+    if (cfg.volume !== undefined && cfg.volume < 0)
+      issues.push(`${comp.name}: volume cannot be negative (${cfg.volume})`);
+    if (cfg.maxFlow !== undefined && cfg.maxFlow < 0)
+      issues.push(`${comp.name}: maxFlow cannot be negative (${cfg.maxFlow})`);
 
     const template = COMPONENT_LIBRARY[comp.key];
-    if (template && template.properties) {
+    if (template?.properties) {
       template.properties.forEach(prop => {
-        if (prop.required && (config[prop.name] === null || config[prop.name] === undefined)) {
+        if (prop.required && (cfg[prop.name] === null || cfg[prop.name] === undefined)) {
           issues.push(`${comp.name}: missing required property '${prop.label}'`);
         }
       });
@@ -160,9 +154,8 @@ class ProcessDesigner {
 
     const dfs = (compId) => {
       if (path.includes(compId)) {
-        const cycleStart = path.indexOf(compId);
-        const cycle = path.slice(cycleStart).concat(compId);
-        cycles.push(cycle.map(id => this.components.get(id)?.name || id));
+        const i = path.indexOf(compId);
+        cycles.push(path.slice(i).concat(compId).map(id => this.components.get(id)?.name || id));
         return;
       }
       if (visited.has(compId)) return;
@@ -170,7 +163,7 @@ class ProcessDesigner {
       path.push(compId);
 
       const comp = this.components.get(compId);
-      if (comp && comp.config.outputs) comp.config.outputs.forEach(outputId => dfs(outputId));
+      if (comp?.config?.outputs) comp.config.outputs.forEach(outId => dfs(outId));
       path.pop();
     };
 
@@ -189,12 +182,12 @@ class ProcessDesigner {
         ${validation.issues.length ? `
           <div class="validation-section">
             <h3>❌ Issues (Must Fix)</h3>
-            <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+            <ul>${validation.issues.map(i => `<li>${i}</li>`).join('')}</ul>
           </div>` : ''}
         ${validation.warnings.length ? `
           <div class="validation-section">
             <h3>⚠️ Warnings (Should Review)</h3>
-            <ul>${validation.warnings.map(warn => `<li>${warn}</li>`).join('')}</ul>
+            <ul>${validation.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
           </div>` : ''}
         <div class="validation-actions">
           <button class="btn" id="validationClose">Close</button>
@@ -202,16 +195,15 @@ class ProcessDesigner {
         </div>
       </div>
     `;
-
-    modal.style.cssText = `
-      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-      display: flex; align-items: center; justify-content: center; z-index: 10000;
-    `;
+    Object.assign(modal.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+    });
     const content = modal.querySelector('.validation-modal-content');
-    content.style.cssText = `
-      background: #0b1330; border: 2px solid #4f46e5; border-radius: 16px;
-      padding: 24px; max-width: 600px; max-height: 80vh; overflow-y: auto; color: #e9f0ff;
-    `;
+    Object.assign(content.style, {
+      background: '#0b1330', border: '2px solid #4f46e5', borderRadius: '16px',
+      padding: '24px', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', color: '#e9f0ff'
+    });
 
     document.body.appendChild(modal);
     modal.querySelector('#validationClose').addEventListener('click', () => modal.remove());
@@ -243,7 +235,6 @@ class ProcessDesigner {
   // -----------------------------
   // Import/Export design JSON
   // -----------------------------
-
   importConfig(jsonData) {
     try {
       const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -295,7 +286,6 @@ class ProcessDesigner {
   // -----------------------------
   // Preview
   // -----------------------------
-
   _showPreview() {
     const validation = this._validateDesign();
     const modal = document.createElement('div');
@@ -318,16 +308,15 @@ class ProcessDesigner {
         </div>
       </div>
     `;
-
-    modal.style.cssText = `
-      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-      display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px;
-    `;
+    Object.assign(modal.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.9)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px'
+    });
     const content = modal.querySelector('.preview-modal-content');
-    content.style.cssText = `
-      background: #0b1330; border: 2px solid #4f46e5; border-radius: 16px;
-      padding: 24px; max-width: 90vw; max-height: 90vh; overflow-y: auto; color: #e9f0ff; position: relative;
-    `;
+    Object.assign(content.style, {
+      background: '#0b1330', border: '2px solid #4f46e5', borderRadius: '16px',
+      padding: '24px', maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', color: '#e9f0ff', position: 'relative'
+    });
 
     document.body.appendChild(modal);
     modal.querySelector('#previewClose').addEventListener('click', () => modal.remove());
@@ -344,7 +333,6 @@ class ProcessDesigner {
   // -----------------------------
   // Library / Search / Events
   // -----------------------------
-
   _initializeLibrary() {
     const libraryContent = document.getElementById('libraryContent');
     if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
@@ -404,14 +392,14 @@ class ProcessDesigner {
     // Replace text icons with images
     libraryContent.querySelectorAll('.component-item').forEach(item => {
       const key = item.dataset.component;
-      const template = window.COMPONENT_LIBRARY && window.COMPONENT_LIBRARY[key];
+      const template = window.COMPONENT_LIBRARY[key];
       if (!template) return;
 
-      const type = template.defaultConfig && template.defaultConfig.type;
+      const type = template.defaultConfig?.type;
       const sprite = (SPRITES && SPRITES[type]) || SPRITES.default;
       const iconDiv = item.querySelector('.component-icon');
 
-      if (iconDiv && sprite && sprite.href) {
+      if (iconDiv && sprite?.href) {
         iconDiv.innerHTML = '';
         const img = document.createElement('img');
         img.src = sprite.href;
@@ -456,7 +444,7 @@ class ProcessDesigner {
   _setupEventListeners() {
     const byId = (id) => document.getElementById(id);
 
-    // Canvas
+    // Canvas basic interactions
     this.canvas.addEventListener('dragover', (e) => e.preventDefault());
     this.canvas.addEventListener('drop', (e) => this._onDrop(e));
 
@@ -484,7 +472,7 @@ class ProcessDesigner {
     // Preview
     byId('previewBtn')?.addEventListener('click', () => this._showPreview());
 
-    // Import .json (design)
+    // Import .json/.html
     byId('importBtn')?.addEventListener('click', () => {
       const input = document.createElement('input');
       input.type = 'file';
@@ -495,9 +483,9 @@ class ProcessDesigner {
         const reader = new FileReader();
         reader.onload = (evt) => {
           if (file.name.toLowerCase().endsWith('.html')) {
-            this.loadSingleFile(evt.target.result); // single-file import
+            this.loadSingleFile(evt.target.result);
           } else {
-            this.importConfig(evt.target.result);   // JSON design import
+            this.importConfig(evt.target.result);
           }
         };
         reader.readAsText(file);
@@ -517,50 +505,13 @@ class ProcessDesigner {
       URL.revokeObjectURL(url);
     });
 
-    // Export (existing flow via SimulatorExporter)
+    // Export (legacy modal flow)
     const exportBtn = byId('exportBtn') || byId('exportSimBtn') || byId('exportSim');
     const exportModal = byId('exportModal');
     const exportModalClose = byId('exportModalClose');
     const exportCancelBtn = byId('exportCancelBtn');
     const exportConfirmBtn = byId('exportConfirmBtn');
     const simNameInput = byId('simNameInput');
-
-// Optional dedicated buttons: single-file and ZIP (robust, lazy-load exporter.js)
-byId('exportSingleFile')?.addEventListener('click', () => {
-  const name = this.getSimulatorName();
-  this._ensureExporter(() => {
-    try {
-      const exporter = new SimulatorExporter(this);
-      if (typeof exporter.exportAsSingleFile === 'function') {
-        exporter.exportAsSingleFile(name);
-      } else {
-        // Fallback to the built-in browser single-file path in designer6.js
-        this.buildSingleFileInBrowser(name, this.getConfiguration());
-      }
-    } catch (err) {
-      console.error('Single-file export failed:', err);
-      alert('Export failed: ' + err.message);
-    }
-  });
-});
-
-byId('exportZip')?.addEventListener('click', () => {
-  const name = this.getSimulatorName();
-  this._ensureExporter(() => {
-    try {
-      const exporter = new SimulatorExporter(this);
-      if (typeof exporter.exportAsZip === 'function') {
-        exporter.exportAsZip(name);
-      } else {
-        alert('ZIP export requires exporter.js support. Please update exporter.js.');
-      }
-    } catch (err) {
-      console.error('ZIP export failed:', err);
-      alert('Export failed: ' + err.message);
-    }
-  });
-});
-
 
     const closeExportModal = () => {
       if (!exportModal) return;
@@ -612,6 +563,41 @@ byId('exportZip')?.addEventListener('click', () => {
       if (e.key === 'Escape' && exportModal?.classList.contains('open')) closeExportModal();
     });
 
+    // Optional dedicated export buttons
+    byId('exportSingleFile')?.addEventListener('click', () => {
+      const name = this.getSimulatorName();
+      this._ensureExporter(() => {
+        try {
+          const exporter = new SimulatorExporter(this);
+          if (typeof exporter.exportAsSingleFile === 'function') {
+            exporter.exportAsSingleFile(name);
+          } else {
+            this.buildSingleFileInBrowser(name, this.getConfiguration());
+          }
+        } catch (err) {
+          console.error('Single-file export failed:', err);
+          alert('Export failed: ' + err.message);
+        }
+      });
+    });
+
+    byId('exportZip')?.addEventListener('click', () => {
+      const name = this.getSimulatorName();
+      this._ensureExporter(() => {
+        try {
+          const exporter = new SimulatorExporter(this);
+          if (typeof exporter.exportAsZip === 'function') {
+            exporter.exportAsZip(name);
+          } else {
+            alert('ZIP export requires exporter.js support. Please update exporter.js.');
+          }
+        } catch (err) {
+          console.error('ZIP export failed:', err);
+          alert('Export failed: ' + err.message);
+        }
+      });
+    });
+
     console.log('✅ Event listeners set up');
   }
 
@@ -631,7 +617,6 @@ byId('exportZip')?.addEventListener('click', () => {
   // -----------------------------
   // Canvas interactions
   // -----------------------------
-
   setTool(tool) {
     this.currentTool = tool;
     if (tool !== 'connect' && this.connectionStart) this._cancelConnection();
@@ -673,17 +658,29 @@ byId('exportZip')?.addEventListener('click', () => {
     console.log(`Connection started from ${component.name}`);
   }
 
+  // UPDATED: start from nearest connection point on start component
   _updateTempConnection(e) {
     if (!this.tempConnectionLine || !this.connectionStart) return;
+
     const startComp = this.components.get(this.connectionStart);
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const mouseX = ((e.clientX - rect.left) / rect.width) * viewBox.width;
     const mouseY = ((e.clientY - rect.top) / rect.height) * viewBox.height;
-    const path = this._createConnectionPath(startComp.x, startComp.y, mouseX, mouseY);
+
+    // Use helper to find the best start point; to-end is the mouse location
+    let x1 = startComp.x, y1 = startComp.y;
+    if (typeof window.findNearestConnectionPoints === 'function') {
+      const probeToComp = { x: mouseX, y: mouseY, key: startComp.key }; // minimal shape for helper
+      const pair = window.findNearestConnectionPoints(startComp, probeToComp);
+      x1 = pair.from.x; y1 = pair.from.y;
+    }
+
+    const path = this._createConnectionPath(x1, y1, mouseX, mouseY);
     this.tempConnectionLine.setAttribute('d', path);
   }
 
+  // REPLACED: store fromPoint/toPoint IDs and use helper for geometry
   _completeConnection(toComponentId) {
     const fromComp = this.components.get(this.connectionStart);
     const toComp = this.components.get(toComponentId);
@@ -696,7 +693,22 @@ byId('exportZip')?.addEventListener('click', () => {
     fromComp.config.outputs.push(toComponentId);
     toComp.config.inputs.push(this.connectionStart);
 
-    const connection = { id: `conn_${this.nextConnectionId++}`, from: this.connectionStart, to: toComponentId };
+    // Compute nearest connection points and store the chosen point IDs
+    let fromPoint = null, toPoint = null;
+    if (typeof window.findNearestConnectionPoints === 'function') {
+      const pair = window.findNearestConnectionPoints(fromComp, toComp);
+      fromPoint = pair.from.id || null;
+      toPoint = pair.to.id || null;
+    }
+
+    const connection = {
+      id: `conn_${this.nextConnectionId++}`,
+      from: this.connectionStart,
+      to: toComponentId,
+      fromPoint, // may be null if helper unavailable
+      toPoint
+    };
+
     this.connections.push(connection);
     this._renderConnection(connection);
 
@@ -704,7 +716,7 @@ byId('exportZip')?.addEventListener('click', () => {
       this._showProperties(this.selectedComponent);
     }
 
-    console.log(`Connected ${fromComp.name} → ${toComp.name}`);
+    console.log(`Connected ${fromComp.name} → ${toComp.name} ${fromPoint && toPoint ? `(${fromPoint}→${toPoint})` : ''}`);
     this._cancelConnection();
     this._updateStats();
   }
@@ -715,10 +727,10 @@ byId('exportZip')?.addEventListener('click', () => {
     this.tempConnectionLine = null;
   }
 
+  // REPLACED: render path from stored connection points (or fallback to centers)
   _renderConnection(connection) {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
-    const template = COMPONENT_LIBRARY[fromComp.key];
 
     let defs = this.canvas.querySelector('defs');
     if (!defs) {
@@ -740,12 +752,13 @@ byId('exportZip')?.addEventListener('click', () => {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.classList.add('connection-line');
     path.setAttribute('data-connection-id', connection.id);
-    path.setAttribute('stroke', template.color || '#4f46e5');
+    path.setAttribute('stroke', '#4f46e5');
     path.setAttribute('stroke-width', '3');
     path.setAttribute('fill', 'none');
     path.setAttribute('marker-end', 'url(#arrowhead)');
 
-    const pathData = this._createConnectionPath(fromComp.x, fromComp.y, toComp.x, toComp.y);
+    const { x1, y1, x2, y2 } = this._resolveConnectionEndpoints(fromComp, toComp, connection);
+    const pathData = this._createConnectionPath(x1, y1, x2, y2);
     path.setAttribute('d', pathData);
 
     this.connectionsLayer.appendChild(path);
@@ -758,13 +771,43 @@ byId('exportZip')?.addEventListener('click', () => {
     });
   }
 
+  // REPLACED: update path using stored point IDs (or helper)
   _updateConnectionPath(connection) {
     const fromComp = this.components.get(connection.from);
     const toComp = this.components.get(connection.to);
     const pathEl = this.canvas.querySelector(`[data-connection-id="${connection.id}"]`);
     if (!pathEl) return;
-    const pathData = this._createConnectionPath(fromComp.x, fromComp.y, toComp.x, toComp.y);
+
+    const { x1, y1, x2, y2 } = this._resolveConnectionEndpoints(fromComp, toComp, connection);
+    const pathData = this._createConnectionPath(x1, y1, x2, y2);
     pathEl.setAttribute('d', pathData);
+  }
+
+  // Helper: compute endpoints using connection points where possible
+  _resolveConnectionEndpoints(fromComp, toComp, connection) {
+    // Default to component centers
+    let x1 = fromComp.x, y1 = fromComp.y, x2 = toComp.x, y2 = toComp.y;
+
+    // If we have point IDs and a helper to resolve them, use them
+    const lib = window.COMPONENT_LIBRARY;
+    if (lib && (connection?.fromPoint || connection?.toPoint)) {
+      const fromPts = lib[fromComp.key]?.connectionPoints || [];
+      const toPts   = lib[toComp.key]?.connectionPoints || [];
+      const f = fromPts.find(p => p.id === connection.fromPoint);
+      const t = toPts.find(p => p.id === connection.toPoint);
+      if (f) { x1 = fromComp.x + (f.x || 0); y1 = fromComp.y + (f.y || 0); }
+      if (t) { x2 = toComp.x   + (t.x || 0);  y2 = toComp.y   + (t.y || 0); }
+      return { x1, y1, x2, y2 };
+    }
+
+    // Otherwise, if helper exists, choose nearest dynamically
+    if (typeof window.findNearestConnectionPoints === 'function') {
+      const pair = window.findNearestConnectionPoints(fromComp, toComp);
+      x1 = pair.from.x; y1 = pair.from.y;
+      x2 = pair.to.x;   y2 = pair.to.y;
+    }
+
+    return { x1, y1, x2, y2 };
   }
 
   _createConnectionPath(x1, y1, x2, y2) {
@@ -841,7 +884,6 @@ byId('exportZip')?.addEventListener('click', () => {
   }
 
   _renderComponent(component) {
-    const template = COMPONENT_LIBRARY[component.key];
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     group.classList.add('canvas-component');
     group.setAttribute('data-id', component.id);
@@ -899,10 +941,20 @@ byId('exportZip')?.addEventListener('click', () => {
     ring.classList.add('selection-ring');
     group.appendChild(ring);
 
+    // Select
     group.addEventListener('click', (e) => {
       if (this.currentTool === 'select') { e.stopPropagation(); this.selectComponent(component.id); }
     });
 
+    // Hover markers for connection points (pointer-events: none)
+    group.addEventListener('mouseenter', () => {
+      if (this.currentTool === 'connect') this._showConnectionPoints(component);
+    });
+    group.addEventListener('mouseleave', () => {
+      this.canvas.querySelectorAll('.connection-point-marker').forEach(n => n.remove());
+    });
+
+    // Dragging
     let isDragging = false; let startX, startY;
     group.addEventListener('mousedown', (e) => {
       if (this.currentTool !== 'select' || e.button !== 0) return;
@@ -928,6 +980,25 @@ byId('exportZip')?.addEventListener('click', () => {
 
     this.canvas.addEventListener('mouseup', () => { isDragging = false; });
     this.componentsLayer.appendChild(group);
+  }
+
+  // Show connection points as small circles (pointer-events: none)
+  _showConnectionPoints(component) {
+    const def = window.COMPONENT_LIBRARY?.[component.key];
+    const pts = def?.connectionPoints || [];
+    pts.forEach(p => {
+      const cx = component.x + (p.x || 0);
+      const cy = component.y + (p.y || 0);
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.classList.add('connection-point-marker');
+      c.setAttribute('cx', cx);
+      c.setAttribute('cy', cy);
+      c.setAttribute('r', '5');
+      c.setAttribute('fill', p.type === 'input' ? '#10b981' : (p.type === 'output' ? '#f59e0b' : '#64748b'));
+      c.setAttribute('opacity', '0.9');
+      c.style.pointerEvents = 'none'; // <-- important so they don't eat clicks
+      this.componentsLayer.appendChild(c);
+    });
   }
 
   selectComponent(id) {
@@ -1104,27 +1175,21 @@ byId('exportZip')?.addEventListener('click', () => {
   }
 
   // -----------------------------
-  // BUILD SYSTEM INTEGRATION (from designer_additions.js) — class methods
+  // BUILD SYSTEM INTEGRATION — class methods
   // -----------------------------
-
-  /** Convenience getters/setters used by additions */
   getSimulatorName() { return this.designMetadata?.name || 'My Simulator'; }
   setSimulatorName(name) {
     if (!name) return;
     this.designMetadata.name = name;
     this.designMetadata.modified = new Date().toISOString();
-    // If you show name in UI, update it here as needed.
   }
   getConfiguration() { return JSON.parse(this.exportDesignJSON()); }
   loadConfiguration(cfg) { this.importConfig(cfg); }
 
-  /** Export simulator as single-file HTML (UI can call this) */
   exportAsSingleFile() {
     const simName = this.getSimulatorName();
     const config = this.getConfiguration();
-
     console.log('Exporting as single-file HTML...');
-
     if (typeof require !== 'undefined') {
       try {
         const { buildSingleFile } = require('../build.js');
@@ -1138,12 +1203,10 @@ byId('exportZip')?.addEventListener('click', () => {
     this.buildSingleFileInBrowser(simName, config);
   }
 
-  /** Export simulator as ZIP (Node-only in this scaffold) */
   exportAsZip() {
     const simName = this.getSimulatorName();
     const config = this.getConfiguration();
     console.log('Exporting as ZIP...');
-
     if (typeof require !== 'undefined') {
       try {
         const { buildZip } = require('../build.js');
@@ -1157,7 +1220,6 @@ byId('exportZip')?.addEventListener('click', () => {
     }
   }
 
-  /** Browser-based single-file build (fallback) */
   async buildSingleFileInBrowser(simName, config) {
     const slug = simName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     console.log('Building in browser...');
@@ -1179,7 +1241,6 @@ byId('exportZip')?.addEventListener('click', () => {
     console.log('✅ Export complete!');
   }
 
-  /** Ordered engine file list (adjust if your engine order changes) */
   getAllJSPaths() {
     return [
       // Core
@@ -1209,7 +1270,6 @@ byId('exportZip')?.addEventListener('click', () => {
     ];
   }
 
-  /** Prepare valve.html content for srcdoc */
   prepareValveInline(valveHtml) {
     const bodyMatch = valveHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     const bodyContent = bodyMatch ? bodyMatch[1] : valveHtml;
@@ -1235,7 +1295,6 @@ ${bodyContent}
 </html>`.trim();
   }
 
-  /** Build the final single-file HTML */
   buildHTMLTemplate(simName, css, html, valveInline, js, configJSON) {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     const bodyContent = bodyMatch ? bodyMatch[1] : html;
@@ -1275,7 +1334,6 @@ ${js}
 </html>`;
   }
 
-  /** Download a text file */
   downloadFile(content, filename) {
     const blob = new Blob([content], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -1287,7 +1345,6 @@ ${js}
     URL.revokeObjectURL(url);
   }
 
-  /** Load a combined single-file HTML back into designer */
   loadSingleFile(htmlContent) {
     console.log('Loading single-file simulator...');
     const parser = new DOMParser();
