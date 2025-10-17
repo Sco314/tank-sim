@@ -1,0 +1,20 @@
+SETUP INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+
+Single-File HTML:
+1. Open untitled-design.html in any modern web browser
+2. No setup required - everything is included!
+
+Folder/ZIP Version:
+1. Extract ZIP to desired location
+2. Open untitled-design/index.html in web browser
+3. Ensure folder structure is intact
+
+Requirements:
+- Modern web browser (Chrome, Firefox, Edge, Safari)
+- JavaScript enabled
+- No internet required (single-file version)
+
+For help, see README.md
+
+Generated: 10/16/2025, 7:34:39 PM
