@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Process Simulator Designer v2.0</title>
-  <link rel="stylesheet" href="designer-style.css">
+  <link rel="stylesheet" href="css/designer-style.css">
 </head>
 <body>
 
@@ -61,27 +61,23 @@
         </button>
       </div>
 
-<div class="toolbar-section">
-  <button id="clearBtn" class="btn btn-warning" title="Clear Canvas">
-    🗑️ Clear
-  </button>
+      <div class="toolbar-section">
+        <button id="clearBtn" class="btn btn-warning" title="Clear Canvas">
+          🗑️ Clear
+        </button>
 
-  <!-- Existing “general” export (keep for now / back-compat) -->
-  <button id="exportBtn" class="btn btn-primary" title="Export Simulator">
-    📤 Export Sim
-  </button>
+        <button id="exportBtn" class="btn btn-primary" title="Export Simulator">
+          📤 Export Sim
+        </button>
 
-  <!-- NEW: single-file HTML (default/shareable) -->
-  <button id="exportSingleFile" class="btn btn-primary" title="Export Single-File HTML">
-    📄 Single-File
-  </button>
+        <button id="exportSingleFile" class="btn btn-primary" title="Export Single-File HTML">
+          📄 Single-File
+        </button>
 
-  <!-- NEW: flat folder / ZIP (optional) -->
-  <button id="exportZip" class="btn" title="Export Flat Folder / ZIP">
-    📦 ZIP
-  </button>
-</div>
-
+        <button id="exportZip" class="btn" title="Export Flat Folder / ZIP">
+          📦 ZIP
+        </button>
+      </div>
 
       <div class="toolbar-stats">
         <span id="componentCount">Components: 0</span>
@@ -173,15 +169,8 @@
       </div>
 
       <div class="export-note">
-        <strong>📁 Folder Structure:</strong>
-        <pre>sims/my-simulator/
-├── index.html
-├── systemConfig.js
-├── README.md
-└── SETUP.txt
-
-../../engine/     (must exist)
-../../valve.html  (must exist)</pre>
+        <strong>📁 Note:</strong>
+        <p>Exports standalone HTML file with all engine code embedded from GitHub.</p>
       </div>
     </div>
     
@@ -196,13 +185,10 @@
 <!-- JSZip for ZIP export support -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<!-- Enhanced Exporter -->
-<script>
-  window.EXPORTER_ENGINE_PATH = '../js'; // Adjust to your structure
-</script>
-<script src="exporter.js"></script>
-<script src="componentLibrary.js"></script>
-<script src="designer.js"></script>
+<!-- Load scripts in correct order with correct paths -->
+<script src="js/componentLibrary.js"></script>
+<script src="js/exporter.js"></script>
+<script src="js/designer.js"></script>
 
 </body>
 </html>
