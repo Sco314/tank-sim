@@ -1,7 +1,7 @@
 Sco314/tank-sim  [GitHub root https://github.com/Sco314/tank-sim/]
 ├── designer.html           
-├── valve.html              
-│
+├── valve.html 
+├── Sco314tank-simGitHubFileMap.txt             
 ├── css/
 │   └── designer-style.css  (referenced in designer.html)
 │
@@ -45,4 +45,5 @@ Sco314/tank-sim  [GitHub root https://github.com/Sco314/tank-sim/]
 │       ├── PipeManager.js
 │       └── PressureManager.js
 │
+
 └── 101125/ [legacy and beta files]
