@@ -330,88 +330,96 @@ class ProcessDesigner {
     });
   }
 
-  // -----------------------------
-  // Library / Search / Events
-  // -----------------------------
-  _initializeLibrary() {
-    const libraryContent = document.getElementById('libraryContent');
-    if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
-      console.error('❌ Component library not loaded!');
-      if (libraryContent) libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load.</p>';
-      return;
-    }
+// REPLACEMENT CODE for designer.js _initializeLibrary() method
+// This fixes the "undefined undefined" category headers
 
-    console.log('✅ Component library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
-
-    const categorized = {};
-    for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
-      const category = component.category;
-      if (!categorized[category]) categorized[category] = [];
-      categorized[category].push({ key, ...component });
-    }
-
-    for (const [categoryKey, categoryInfo] of Object.entries(CATEGORIES)) {
-      if (!categorized[categoryKey]) continue;
-
-      const categoryEl = document.createElement('div');
-      categoryEl.className = 'component-category';
-      categoryEl.innerHTML = `
-        <div class="category-header" data-category="${categoryKey}">
-          <span class="category-icon">${categoryInfo.icon}</span>
-          <span class="category-name">${categoryInfo.name}</span>
-          <span class="category-toggle">▼</span>
-        </div>
-        <div class="category-items" data-category="${categoryKey}">
-          ${categorized[categoryKey].map(comp => `
-            <div class="component-item" draggable="true" data-component="${comp.key}">
-              <div class="component-icon">${comp.icon}</div>
-              <div class="component-info">
-                <span class="component-name">${comp.name}</span>
-                <span class="component-desc">${comp.description}</span>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `;
-      libraryContent.appendChild(categoryEl);
-    }
-
-    libraryContent.querySelectorAll('.category-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const category = header.dataset.category;
-        const items = libraryContent.querySelector(`.category-items[data-category="${category}"]`);
-        items.classList.toggle('collapsed');
-        header.querySelector('.category-toggle').textContent = items.classList.contains('collapsed') ? '▶' : '▼';
-      });
-    });
-
-    libraryContent.querySelectorAll('.component-item').forEach(item => {
-      item.addEventListener('dragstart', (e) => this._onDragStart(e));
-    });
-
-    // Replace text icons with images
-    libraryContent.querySelectorAll('.component-item').forEach(item => {
-      const key = item.dataset.component;
-      const template = window.COMPONENT_LIBRARY[key];
-      if (!template) return;
-
-      const type = template.defaultConfig?.type;
-      const sprite = (SPRITES && SPRITES[type]) || SPRITES.default;
-      const iconDiv = item.querySelector('.component-icon');
-
-      if (iconDiv && sprite?.href) {
-        iconDiv.innerHTML = '';
-        const img = document.createElement('img');
-        img.src = sprite.href;
-        img.alt = template.name;
-        img.width = 24;
-        img.height = 24;
-        iconDiv.appendChild(img);
-      }
-    });
-
-    console.log('✅ Component library UI initialized');
+_initializeLibrary() {
+  const libraryContent = document.getElementById('libraryContent');
+  if (!window.COMPONENT_LIBRARY || !window.CATEGORIES) {
+    console.error('❌ Component library not loaded!');
+    if (libraryContent) libraryContent.innerHTML = '<p style="color: red; padding: 16px;">Error: Component library failed to load.</p>';
+    return;
   }
+
+  console.log('✅ Component library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
+
+  // Organize components by category
+  const categorized = {};
+  for (const [key, component] of Object.entries(COMPONENT_LIBRARY)) {
+    const category = component.category;
+    if (!categorized[category]) categorized[category] = [];
+    categorized[category].push({ key, ...component });
+  }
+
+  // Build category sections in UI
+  for (const [categoryKey, categoryData] of Object.entries(CATEGORIES)) {
+    if (!categorized[categoryKey]) continue;
+
+    const categoryEl = document.createElement('div');
+    categoryEl.className = 'component-category';
+    categoryEl.innerHTML = `
+      <div class="category-header" data-category="${categoryKey}">
+        <span class="category-icon">${categoryData.icon}</span>
+        <span class="category-name">${categoryData.name}</span>
+        <span class="category-toggle">▼</span>
+      </div>
+      <div class="category-items" data-category="${categoryKey}">
+        ${categorized[categoryKey].map(comp => `
+          <div class="component-item" draggable="true" data-component="${comp.key}">
+            <div class="component-icon">${comp.icon}</div>
+            <div class="component-info">
+              <span class="component-name">${comp.name}</span>
+              <span class="component-desc">${comp.description}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    libraryContent.appendChild(categoryEl);
+  }
+
+  // Add click handlers for category collapse/expand
+  libraryContent.querySelectorAll('.category-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const category = header.dataset.category;
+      const items = libraryContent.querySelector(`.category-items[data-category="${category}"]`);
+      items.classList.toggle('collapsed');
+      header.querySelector('.category-toggle').textContent = items.classList.contains('collapsed') ? '▶' : '▼';
+    });
+  });
+
+  // Add drag handlers
+  libraryContent.querySelectorAll('.component-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => this._onDragStart(e));
+  });
+
+  // Replace emoji icons with PNG images where available
+  libraryContent.querySelectorAll('.component-item').forEach(item => {
+    const key = item.dataset.component;
+    const template = window.COMPONENT_LIBRARY[key];
+    if (!template) return;
+
+    const type = template.defaultConfig?.type;
+    const sprite = (SPRITES && SPRITES[type]) || SPRITES?.default;
+    const iconDiv = item.querySelector('.component-icon');
+
+    if (iconDiv && sprite?.href) {
+      iconDiv.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = sprite.href;
+      img.alt = template.name;
+      img.width = 24;
+      img.height = 24;
+      img.onerror = () => {
+        // If image fails to load, show emoji fallback
+        iconDiv.innerHTML = template.icon;
+      };
+      iconDiv.appendChild(img);
+    }
+  });
+
+  console.log('✅ Component library UI initialized');
+}
 
   _setupSearch() {
     const searchInput = document.getElementById('searchComponents');
