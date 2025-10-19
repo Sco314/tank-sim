@@ -187,19 +187,31 @@ class SimulatorExporter {
   }
 
   /**
-   * Get SVG filename for a component
+   * Get SVG filename for a component (with orientation support)
    */
   _getSVGFileForComponent(comp) {
-    // Check for orientation variants (future enhancement)
-    if (comp.type === 'valve' && comp.orientation) {
-      const variantKey = `valve-${comp.orientation}`;
-      return SVG_COMPONENTS[variantKey] || SVG_COMPONENTS['valve'];
+    // Use helper function from componentLibrary if available
+    if (typeof window.getComponentSVG === 'function') {
+      return window.getComponentSVG(comp);
     }
     
-    if ((comp.type === 'pumpFixed' || comp.type === 'pumpVariable' || comp.type === 'pump3Speed') && comp.orientation === 'right') {
-      return SVG_COMPONENTS['pump-right'];
+    // Fallback: manual orientation handling
+    const orientation = comp.config?.orientation;
+    
+    // Valve orientations
+    if (comp.type === 'valve' && orientation) {
+      if (orientation === 'left') return 'Valve-Icon-handle-left-01.svg';
+      if (orientation === 'up') return 'Valve-Icon-handle-up-01.svg';
+      return 'Valve-Icon-handle-right-01.svg'; // default/right
     }
     
+    // Pump orientations
+    if ((comp.type === 'pumpFixed' || comp.type === 'pumpVariable' || comp.type === 'pump3Speed') && orientation) {
+      if (orientation === 'right') return 'cent-pump-inlet-right-01.svg';
+      return 'cent-pump-inlet-left-01.svg'; // default/left
+    }
+    
+    // Default SVG lookup
     return SVG_COMPONENTS[comp.type] || null;
   }
 
