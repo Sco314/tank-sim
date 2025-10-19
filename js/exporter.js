@@ -1,17 +1,19 @@
 /**
- * exporter.js v3.1 - GitHub Only Exporter
+ * exporter.js v3.2 - GitHub Exporter with SVG Symbol Support
  * 
- * Fetches ALL engine files from GitHub at export time
- * Creates 100% standalone HTML files
+ * NEW: Fetches vectorized SVG component files from GitHub
+ * Parses SVGs to extract <symbol> definitions with connection points
+ * Generates standalone HTML with embedded symbols using <use> references
  * 
- * Hardcoded to: https://sco314.github.io/tank-sim/101125/
+ * Base URL: https://sco314.github.io/tank-sim/
  */
 
-const EXPORTER_VERSION = '3.1.0';
+const EXPORTER_VERSION = '3.2.0';
 const ENGINE_VERSION = '1.0.0';
 
-// Hardcoded GitHub base URL
+// Hardcoded GitHub base URLs
 const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/101125/';
+const GITHUB_SVG_URL = 'https://sco314.github.io/tank-sim/';
 
 // All engine files to fetch
 const ENGINE_FILES = [
@@ -53,6 +55,18 @@ const ENGINE_FILES = [
 // Valve HTML file
 const VALVE_HTML_FILE = 'valve.html';
 
+// SVG Component Files with connection points
+const SVG_COMPONENTS = {
+  'valve': 'Valve-Icon-handle-right-01.svg',
+  'valve-left': 'Valve-Icon-handle-left-01.svg',
+  'valve-up': 'Valve-Icon-handle-up-01.svg',
+  'pumpFixed': 'cent-pump-inlet-left-01.svg',
+  'pumpVariable': 'cent-pump-inlet-left-01.svg',
+  'pump3Speed': 'cent-pump-inlet-left-01.svg',
+  'pump-right': 'cent-pump-inlet-right-01.svg',
+  'tank': 'Tankstoragevessel-01.svg'
+};
+
 class SimulatorExporter {
   constructor(designer) {
     this.designer = designer;
@@ -89,480 +103,457 @@ class SimulatorExporter {
       progressUI.update('⏳ Fetching engine files from GitHub...', 0);
       const engineCode = await this._fetchAllEngineFiles(progressUI);
       
-      // Step 5: Fetch valve.html
+      // Step 5: Fetch component SVG files (NEW!)
+      progressUI.update('⏳ Fetching component SVG files...', 70);
+      const svgFiles = await this._fetchComponentSVGs();
+      const symbols = this._parseSVGsToSymbols(svgFiles);
+      
+      // Step 6: Fetch valve.html
       progressUI.update('⏳ Fetching valve control...', 80);
       const valveHTML = await this._fetchValveHTML();
       
-      // Step 6: Generate complete standalone HTML
+      // Step 7: Generate complete standalone HTML with symbols
       progressUI.update('⏳ Generating HTML...', 90);
       const cleanName = this._sanitizeName(simName);
-      const html = this._generateStandaloneHTML(simName, cleanName, engineCode, valveHTML);
+      const html = this._generateStandaloneHTML(simName, cleanName, engineCode, valveHTML, symbols);
       
-      // Step 7: Download
+      // Step 8: Download
       progressUI.update('⏳ Downloading file...', 95);
       this._downloadFile(`${cleanName}.html`, html);
       
-      // Step 8: Success!
-      progressUI.close();
+      // Step 9: Success!
+      progressUI.update('✅ Export complete!', 100);
+      setTimeout(() => progressUI.remove(), 2000);
       
-      const fileSize = (html.length / 1024).toFixed(1);
-      console.log(`✅ Export complete! File size: ${fileSize} KB`);
-      alert(`✅ Export complete!\n\nFile: ${cleanName}.html\nSize: ${fileSize} KB\n\n✓ 100% standalone\n✓ Works anywhere\n✓ Latest engine code from GitHub`);
+      console.log('✅ Export successful!');
+      console.log(`📊 Embedded ${Object.keys(symbols).length} SVG symbols`);
       
-    } catch (error) {
-      progressUI.close();
-      console.error('❌ Export failed:', error);
-      
-      // Show detailed error message
-      this._showDetailedError(error);
+    } catch (err) {
+      progressUI.remove();
+      console.error('❌ Export failed:', err);
+      alert(`Export failed: ${err.message}`);
     }
   }
 
   /**
-   * Create progress UI overlay
+   * Fetch only the SVG files needed for this design
    */
-  _createProgressUI() {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#172144;color:#e9f0ff;padding:30px 50px;border-radius:12px;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,0.5);min-width:400px;';
+  async _fetchComponentSVGs() {
+    // Determine which unique SVG files are needed
+    const neededSVGs = new Set();
     
-    overlay.innerHTML = `
-      <div style="font-size:20px;font-weight:600;margin-bottom:12px;" id="progressText">⏳ Starting export...</div>
-      <div style="background:#0e1734;height:8px;border-radius:4px;overflow:hidden;">
-        <div id="progressBar" style="background:#7cc8ff;height:100%;width:0%;transition:width 0.3s;"></div>
-      </div>
-      <div style="font-size:13px;margin-top:8px;color:#9bb0ff;" id="progressDetail">Initializing...</div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    return {
-      update: (text, percent) => {
-        overlay.querySelector('#progressText').textContent = text;
-        overlay.querySelector('#progressBar').style.width = percent + '%';
-      },
-      setDetail: (detail) => {
-        overlay.querySelector('#progressDetail').textContent = detail;
-      },
-      close: () => {
-        document.body.removeChild(overlay);
+    for (const [id, comp] of this.designer.components) {
+      const svgFile = this._getSVGFileForComponent(comp);
+      if (svgFile) {
+        neededSVGs.add(svgFile);
       }
-    };
+    }
+    
+    if (neededSVGs.size === 0) {
+      console.log('ℹ️ No SVG components needed (using fallback rendering)');
+      return {};
+    }
+    
+    console.log(`📦 Fetching ${neededSVGs.size} SVG file(s):`, Array.from(neededSVGs));
+    
+    // Fetch all needed SVGs
+    const svgPromises = Array.from(neededSVGs).map(async (filename) => {
+      const url = `${GITHUB_SVG_URL}${filename}`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const svgText = await response.text();
+        console.log(`  ✅ ${filename}`);
+        return { filename, svgText };
+      } catch (err) {
+        console.error(`  ❌ ${filename}:`, err.message);
+        return { filename, svgText: null };
+      }
+    });
+    
+    const results = await Promise.all(svgPromises);
+    
+    // Build map of filename -> SVG text
+    const svgMap = {};
+    results.forEach(({ filename, svgText }) => {
+      if (svgText) {
+        svgMap[filename] = svgText;
+      }
+    });
+    
+    return svgMap;
+  }
+
+  /**
+   * Get SVG filename for a component
+   */
+  _getSVGFileForComponent(comp) {
+    // Check for orientation variants (future enhancement)
+    if (comp.type === 'valve' && comp.orientation) {
+      const variantKey = `valve-${comp.orientation}`;
+      return SVG_COMPONENTS[variantKey] || SVG_COMPONENTS['valve'];
+    }
+    
+    if ((comp.type === 'pumpFixed' || comp.type === 'pumpVariable' || comp.type === 'pump3Speed') && comp.orientation === 'right') {
+      return SVG_COMPONENTS['pump-right'];
+    }
+    
+    return SVG_COMPONENTS[comp.type] || null;
+  }
+
+  /**
+   * Parse SVG files and extract symbol definitions
+   */
+  _parseSVGsToSymbols(svgMap) {
+    const symbols = {};
+    
+    for (const [filename, svgText] of Object.entries(svgMap)) {
+      try {
+        // Parse the SVG
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgElement = doc.querySelector('svg');
+        
+        if (!svgElement) {
+          console.warn(`⚠️ No SVG element in ${filename}`);
+          continue;
+        }
+        
+        // Extract viewBox
+        const viewBox = svgElement.getAttribute('viewBox') || '0 0 100 100';
+        
+        // Get all content
+        const content = Array.from(svgElement.children)
+          .map(child => child.outerHTML)
+          .join('\n        ');
+        
+        // Create symbol ID from filename
+        const symbolId = this._filenameToSymbolId(filename);
+        
+        symbols[filename] = {
+          id: symbolId,
+          viewBox: viewBox,
+          content: content,
+          connectionPoints: this._extractConnectionPoints(svgText)
+        };
+        
+        console.log(`  ✅ Parsed ${filename} -> #${symbolId} (${symbols[filename].connectionPoints.length} connection points)`);
+        
+      } catch (err) {
+        console.error(`❌ Error parsing ${filename}:`, err);
+      }
+    }
+    
+    return symbols;
+  }
+
+  /**
+   * Extract connection point info from SVG
+   */
+  _extractConnectionPoints(svgText) {
+    const points = [];
+    const cpRegex = /<circle[^>]*class="cp"[^>]*>/g;
+    let match;
+    
+    while ((match = cpRegex.exec(svgText)) !== null) {
+      const circleTag = match[0];
+      
+      // Extract attributes
+      const idMatch = circleTag.match(/id="([^"]+)"/);
+      const portMatch = circleTag.match(/data-port="([^"]+)"/);
+      const typeMatch = circleTag.match(/data-type="([^"]+)"/);
+      const cxMatch = circleTag.match(/cx="([^"]+)"/);
+      const cyMatch = circleTag.match(/cy="([^"]+)"/);
+      
+      if (portMatch && cxMatch && cyMatch) {
+        points.push({
+          id: idMatch ? idMatch[1] : `cp_${portMatch[1]}`,
+          port: portMatch[1],
+          type: typeMatch ? typeMatch[1] : 'both',
+          cx: parseFloat(cxMatch[1]),
+          cy: parseFloat(cyMatch[1])
+        });
+      }
+    }
+    
+    return points;
+  }
+
+  /**
+   * Convert filename to symbol ID
+   */
+  _filenameToSymbolId(filename) {
+    // "Valve-Icon-handle-right-01.svg" -> "sym-valve-icon-handle-right"
+    return 'sym-' + filename
+      .replace(/\.(svg|SVG)$/, '')
+      .replace(/-\d+$/, '') // Remove version numbers
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-');
+  }
+
+  /**
+   * Generate <defs> block with all symbol definitions
+   */
+  _generateSVGDefs(symbols) {
+    if (Object.keys(symbols).length === 0) {
+      return `    <defs>
+      <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7cc8ff"></stop>
+        <stop offset="100%" stop-color="#2d8bd6"></stop>
+      </linearGradient>
+    </defs>`;
+    }
+
+    let defs = '    <defs>\n';
+    
+    // Add standard gradients
+    defs += `      <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7cc8ff"></stop>
+        <stop offset="100%" stop-color="#2d8bd6"></stop>
+      </linearGradient>\n\n`;
+    
+    // Add each symbol
+    for (const [filename, symbolData] of Object.entries(symbols)) {
+      defs += `      <!-- ${filename} -->\n`;
+      defs += `      <symbol id="${symbolData.id}" viewBox="${symbolData.viewBox}">\n`;
+      defs += `        ${symbolData.content}\n`;
+      defs += `      </symbol>\n\n`;
+    }
+    
+    defs += '    </defs>';
+    
+    return defs;
   }
 
   /**
    * Fetch all engine files from GitHub
    */
   async _fetchAllEngineFiles(progressUI) {
-    console.log(`📂 Fetching ${ENGINE_FILES.length} engine files from GitHub...`);
-    console.log(`🌐 Base URL: ${GITHUB_BASE_URL}`);
+    const total = ENGINE_FILES.length;
+    const fetchedFiles = [];
     
-    const codeBlocks = [];
-    const failedFiles = [];
-    let fetchedCount = 0;
-    
-    for (const path of ENGINE_FILES) {
-      const url = GITHUB_BASE_URL + path;
+    for (let i = 0; i < total; i++) {
+      const file = ENGINE_FILES[i];
+      const url = `${GITHUB_BASE_URL}${file}`;
+      const progress = Math.floor((i / total) * 60); // 0-60%
+      
+      progressUI.update(`⏳ Fetching ${file}...`, progress);
       
       try {
         const response = await fetch(url);
-        
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status} for ${file}`);
         }
-        
         const code = await response.text();
-        const filename = path.split('/').pop();
-        
-        codeBlocks.push(`
-// ============================================================================
-// ${filename}
-// Path: ${path}
-// Source: ${url}
-// ============================================================================
-${code}`);
-        
-        fetchedCount++;
-        const percent = Math.floor((fetchedCount / ENGINE_FILES.length) * 70); // 0-70%
-        progressUI.update('⏳ Fetching engine files from GitHub...', percent);
-        progressUI.setDetail(`✓ ${filename} (${fetchedCount}/${ENGINE_FILES.length})`);
-        
-        console.log(`  ✓ ${filename}`);
-        
-      } catch (error) {
-        console.error(`  ✗ Failed to fetch ${path}:`, error);
-        failedFiles.push({
-          path: path,
-          url: url,
-          error: error.message
-        });
+        fetchedFiles.push(`/* ===== ${file} ===== */\n${code}`);
+      } catch (err) {
+        console.error(`❌ Failed to fetch ${file}:`, err);
+        throw new Error(`Failed to fetch ${file}: ${err.message}`);
       }
     }
     
-    // If any files failed, throw error with details
-    if (failedFiles.length > 0) {
-      const errorDetails = {
-        failedFiles: failedFiles,
-        totalFiles: ENGINE_FILES.length,
-        successCount: fetchedCount,
-        failCount: failedFiles.length
-      };
-      throw new Error(JSON.stringify(errorDetails));
-    }
-    
-    const totalCode = codeBlocks.join('\n\n');
-    const sizeKB = (totalCode.length / 1024).toFixed(1);
-    console.log(`✅ All engine files fetched (${sizeKB} KB)`);
-    
-    return totalCode;
+    return fetchedFiles.join('\n\n');
   }
 
   /**
-   * Fetch valve.html from GitHub
+   * Fetch valve.html
    */
   async _fetchValveHTML() {
-    console.log('📂 Fetching valve.html from GitHub...');
-    
-    const url = GITHUB_BASE_URL + VALVE_HTML_FILE;
+    const url = `${GITHUB_BASE_URL}${VALVE_HTML_FILE}`;
     
     try {
       const response = await fetch(url);
-      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
-      
-      const html = await response.text();
-      console.log(`  ✓ valve.html (${(html.length / 1024).toFixed(1)} KB)`);
-      
-      return html;
-      
-    } catch (error) {
-      console.error('  ✗ Failed to fetch valve.html:', error);
-      
-      const errorDetails = {
-        failedFiles: [{
-          path: VALVE_HTML_FILE,
-          url: url,
-          error: error.message
-        }],
-        totalFiles: 1,
-        successCount: 0,
-        failCount: 1
-      };
-      throw new Error(JSON.stringify(errorDetails));
+      return await response.text();
+    } catch (err) {
+      console.error(`❌ Failed to fetch valve.html:`, err);
+      throw new Error(`Failed to fetch valve control: ${err.message}`);
     }
   }
 
   /**
-   * Show detailed error with failed files
+   * Create progress UI
    */
-  _showDetailedError(error) {
-    let errorDetails;
+  _createProgressUI() {
+    const overlay = document.createElement('div');
+    overlay.id = 'exportProgress';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
     
-    try {
-      errorDetails = JSON.parse(error.message);
-    } catch (e) {
-      // Not a structured error, show generic message
-      alert(`❌ Export Failed\n\n${error.message}\n\nCheck console for details.`);
-      return;
-    }
+    const box = document.createElement('div');
+    box.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      min-width: 300px;
+      text-align: center;
+    `;
     
-    // Build detailed error message
-    const failedList = errorDetails.failedFiles
-      .map(f => `• ${f.path}\n  URL: ${f.url}\n  Error: ${f.error}`)
-      .join('\n\n');
+    const message = document.createElement('div');
+    message.id = 'exportMessage';
+    message.style.cssText = 'margin-bottom: 15px; font-size: 14px;';
+    message.textContent = 'Preparing export...';
     
-    const message = `❌ Export Failed: Could Not Fetch Files from GitHub
-
-Failed Files (${errorDetails.failCount}/${errorDetails.totalFiles}):
-
-${failedList}
-
-Possible Causes:
-• No internet connection
-• GitHub Pages is down
-• Files have been moved/deleted
-• CORS/network firewall blocking requests
-
-What To Do:
-1. Check your internet connection
-2. Verify GitHub Pages is accessible:
-   ${GITHUB_BASE_URL}
-3. Try again in a few moments
-4. Check browser console for details
-
-If problem persists, contact support.`;
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+      width: 100%;
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+    `;
     
-    alert(message);
+    const progressFill = document.createElement('div');
+    progressFill.id = 'exportProgressFill';
+    progressFill.style.cssText = `
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+      transition: width 0.3s ease;
+    `;
     
-    // Also log to console for debugging
-    console.error('📋 Detailed Error Report:');
-    console.error('Failed files:', errorDetails.failedFiles);
-    console.error(`Success: ${errorDetails.successCount}/${errorDetails.totalFiles}`);
+    progressBar.appendChild(progressFill);
+    box.appendChild(message);
+    box.appendChild(progressBar);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    
+    return {
+      update: (msg, percent) => {
+        message.textContent = msg;
+        progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      },
+      remove: () => {
+        overlay.remove();
+      }
+    };
   }
 
   /**
    * Generate complete standalone HTML
    */
-  _generateStandaloneHTML(simName, cleanName, engineCode, valveHTML) {
-    const svg = document.getElementById('canvas');
-    const viewBox = svg ? svg.getAttribute('viewBox') : '0 0 1000 600';
-    
-    const componentsSVG = this._generateAllComponentsSVG();
-    const connectionsSVG = this._generateAllConnectionsSVG();
+  _generateStandaloneHTML(simName, cleanName, engineCode, valveHTML, symbols = {}) {
     const configJSON = this._generateDesignJSON(simName);
-    const valveContent = this._extractValveContent(valveHTML);
+    const componentsSVG = this._generateAllComponentsSVG(symbols);
+    const connectionsSVG = this._generateAllConnectionsSVG();
+    const defsBlock = this._generateSVGDefs(symbols);
+    const valveInline = this._prepareValveInline(valveHTML);
     
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${simName}</title>
-  <meta name="sim-name" content="${simName}">
-  <meta name="engine-version" content="${ENGINE_VERSION}">
-  <meta name="exporter-version" content="${EXPORTER_VERSION}">
-  <meta name="exported" content="${new Date().toISOString()}">
-  <meta name="source" content="${GITHUB_BASE_URL}">
   <style>
-/* ============================================================================
-   EMBEDDED STYLES
-   ============================================================================ */
-* { box-sizing: border-box; }
-body { margin: 0; }
-
-:root {
-  --bg: #0b1020;
-  --card: #121a33;
-  --ink: #e9f0ff;
-  --muted: #9bb0ff;
-  --accent: #7cc8ff;
-  --ok: #3ddc97;
-  --danger: #ff6b6b;
-}
-
-body {
-  margin: 0;
-  font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-  color: var(--ink);
-  background: radial-gradient(1200px 800px at 80% -10%, #1b2752 0%, var(--bg) 60%);
-  display: grid;
-  place-items: center;
-  padding: 18px;
-}
-
-.app { width: min(1100px, 95vw); }
-
-.card {
-  background: var(--card);
-  border: 1px solid #1f2a50;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-h1 { font-size: 20px; margin: 0 0 8px; }
-.sub { color: var(--muted); font-size: 13px; }
-
-.btn {
-  background: #172144;
-  color: var(--ink);
-  border: 1px solid #28366d;
-  padding: 10px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-}
-.btn:active { transform: translateY(1px); }
-
-.kv {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 10px;
-  font-variant-numeric: tabular-nums;
-}
-.kv div:nth-child(odd) { color: var(--muted); }
-
-.stage { display: flex; align-items: center; justify-content: center; }
-svg { width: 100%; height: auto; display: block; }
-
-/* Flow animation */
-.flow { stroke-dasharray: 10 12; }
-.flow.on { animation: dash var(--duration, 600ms) linear infinite; }
-@keyframes dash { to { stroke-dashoffset: -22; } }
-
-/* Controls toggle */
-.controls-toggle {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
-  background: #172144;
-  color: #e9f0ff;
-  border: 1px solid #28366d;
-  padding: 10px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-/* Controls drawer */
-.controls-drawer {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  pointer-events: none;
-}
-.controls-drawer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.controls-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: min(420px, 92vw);
-  background: var(--card);
-  border-left: 1px solid #1f2a50;
-  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.4);
-  transform: translateX(100%);
-  transition: transform 0.25s ease;
-  overflow: auto;
-  padding: 16px;
-  color: var(--ink);
-}
-.controls-close {
-  position: sticky;
-  top: 0;
-  float: right;
-  margin: -6px -6px 8px 8px;
-  background: transparent;
-  color: var(--ink);
-  border: 1px solid #28366d;
-  border-radius: 10px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 20px;
-}
-.controls-drawer.open { pointer-events: auto; }
-.controls-drawer.open::before { opacity: 1; }
-.controls-drawer.open .controls-panel { transform: translateX(0); }
-
-/* Valve modal */
-.valve-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.valve-modal-overlay.open { display: flex; opacity: 1; }
-
-.valve-modal-container {
-  position: relative;
-  width: min(600px, 90vw);
-  height: min(600px, 90vh);
-  background: #0b1330;
-  border-radius: 16px;
-  border: 2px solid #1fd4d6;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
-  transform: scale(0.9);
-  transition: transform 0.3s ease;
-}
-.valve-modal-overlay.open .valve-modal-container { transform: scale(1); }
-
-.valve-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 107, 107, 0.9);
-  border: 2px solid #ff8787;
-  border-radius: 50%;
-  color: white;
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-.valve-modal-close:hover {
-  background: rgba(255, 107, 107, 1);
-  transform: scale(1.1);
-}
-
-.valve-modal-title {
-  padding: 16px 24px;
-  background: rgba(31, 212, 214, 0.1);
-  border-bottom: 1px solid #1fd4d6;
-  color: #e9f0ff;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.valve-modal-content {
-  width: 100%;
-  height: calc(100% - 60px);
-  overflow: hidden;
-}
-
-/* Pump/valve interaction */
-.pump, .valve {
-  cursor: pointer;
-  outline: none;
-}
-.pump:focus-visible, .valve:focus-visible {
-  outline: 2px solid rgba(31, 212, 214, 0.6);
-  outline-offset: 4px;
-}
-.pump image, .valve image {
-  pointer-events: all;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
-}
-.pump:hover image {
-  transform: scale(1.08);
-  filter: brightness(1.2) drop-shadow(0 0 8px rgba(31, 212, 214, 0.4));
-}
-.valve:hover image {
-  transform: scale(1.12);
-  filter: brightness(1.25) drop-shadow(0 0 10px rgba(31, 212, 214, 0.5));
-}
-
-/* Tank level */
-.levelRect {
-  transition: height 120ms linear, y 120ms linear;
-}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0f1e;
+      color: #e8edf5;
+      overflow: hidden;
+    }
+    #container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+    #canvas {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0f1e 0%, #1a2332 100%);
+    }
+    svg {
+      max-width: 100%;
+      max-height: 100%;
+      filter: drop-shadow(0 10px 30px rgba(0,0,0,0.3));
+    }
+    .flow {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: flowAnimation 3s linear infinite;
+    }
+    @keyframes flowAnimation {
+      to { stroke-dashoffset: 0; }
+    }
+    .controls-drawer {
+      width: 320px;
+      background: #0e1734;
+      border-left: 1px solid #22305f;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .card {
+      background: #0e1734;
+      border: 1px solid #22305f;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    h1 { 
+      font-size: 18px; 
+      color: #9bb0ff; 
+      margin-bottom: 8px; 
+    }
+    .sub { 
+      font-size: 12px; 
+      color: #6b7ba8; 
+      margin-bottom: 16px; 
+    }
+    .btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      font-size: 13px;
+      color: #9bb0ff;
+    }
+    hr { 
+      border: none; 
+      border-top: 1px solid #22305f; 
+      margin: 14px 0; 
+      opacity: 0.5; 
+    }
+    .valve, .pump {
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .valve:hover, .pump:hover {
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
 
-<button id="controlsToggle" class="controls-toggle">Controls</button>
-
-<div class="app">
-  <div class="card stage">
-    <svg viewBox="${viewBox}" id="mainSVG">
-      <title>${simName}</title>
-      
-      <defs>
-        <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#7cc8ff"></stop>
-          <stop offset="100%" stop-color="#2d8bd6"></stop>
-        </linearGradient>
-      </defs>
+<div id="container">
+  <div id="canvas">
+    <svg viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+${defsBlock}
       
       <!-- Connections -->
       <g id="connections">
@@ -577,16 +568,15 @@ ${componentsSVG}
   </div>
 
   <!-- Controls Drawer -->
-  <aside id="controlsDrawer" class="controls-drawer" aria-hidden="true">
-    <div class="controls-panel card">
-      <button id="controlsClose" class="controls-close">×</button>
+  <aside class="controls-drawer">
+    <div class="card">
       <h1>${simName}</h1>
       <div class="sub">Interactive Process Simulator</div>
       <div style="margin-top:16px;">
         <button id="pauseBtn" class="btn">Pause</button>
         <button id="resetBtn" class="btn" style="margin-left:8px;">Reset</button>
       </div>
-      <hr style="border-color:#22305f;opacity:0.5;margin:14px 0;">
+      <hr>
       <h1>System Status</h1>
       <div class="kv" id="systemStatus">
         <div>Components</div><div id="compCount">${this.designer.components.size}</div>
@@ -611,6 +601,7 @@ ${configJSON}
    Source: ${GITHUB_BASE_URL}
    Components: ${this.designer.components.size}
    Connections: ${this.designer.connections.length}
+   SVG Symbols: ${Object.keys(symbols).length}
    ============================================================================ */
 
 ${engineCode}
@@ -622,65 +613,12 @@ ${engineCode}
 // Parse embedded config
 const designData = JSON.parse(document.getElementById('system-config').textContent);
 console.log('📋 Loaded design:', designData.metadata.name);
-console.log('  Components:', designData.components.length);
-console.log('  Connections:', designData.connections.length);
+console.log('🔧 Components:', designData.components.length);
+console.log('🔗 Connections:', designData.connections.length);
 
-// TODO: Convert design data to SYSTEM_CONFIG format
-// TODO: Initialize ComponentManager with SYSTEM_CONFIG
-// TODO: Start simulation
+// TODO: Initialize simulation engine with designData
+// This is where you'll instantiate your ComponentManager, FlowNetwork, etc.
 
-console.log('⚠️ Simulation initialization pending');
-console.log('✅ Engine loaded successfully');
-
-</script>
-
-<!-- Embedded Valve Control HTML -->
-<script id="valve-control-template" type="text/html">
-${valveContent}
-</script>
-
-<!-- UI Controls -->
-<script>
-// Controls drawer
-(function(){
-  const drawer = document.getElementById('controlsDrawer');
-  const toggle = document.getElementById('controlsToggle');
-  const closeBtn = document.getElementById('controlsClose');
-  
-  function openDrawer() {
-    drawer.classList.add('open');
-    drawer.setAttribute('aria-hidden', 'false');
-    toggle.setAttribute('aria-expanded', 'true');
-  }
-  
-  function closeDrawer() {
-    drawer.classList.remove('open');
-    drawer.setAttribute('aria-hidden', 'true');
-    toggle.setAttribute('aria-expanded', 'false');
-  }
-  
-  toggle.addEventListener('click', openDrawer);
-  closeBtn.addEventListener('click', closeDrawer);
-  drawer.addEventListener('click', (e) => {
-    if (e.target === drawer) closeDrawer();
-  });
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && drawer.classList.contains('open')) {
-      closeDrawer();
-    }
-  });
-  
-  // Pause/Reset buttons
-  document.getElementById('pauseBtn')?.addEventListener('click', () => {
-    console.log('Pause clicked');
-    // TODO: Connect to ComponentManager
-  });
-  
-  document.getElementById('resetBtn')?.addEventListener('click', () => {
-    console.log('Reset clicked');
-    // TODO: Connect to ComponentManager
-  });
-})();
 </script>
 
 </body>
@@ -688,9 +626,9 @@ ${valveContent}
   }
 
   /**
-   * Extract valve content (remove html/body tags, keep styles and content)
+   * Prepare valve.html for inline embedding
    */
-  _extractValveContent(valveHTML) {
+  _prepareValveInline(valveHTML) {
     const styleMatch = valveHTML.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const bodyMatch = valveHTML.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
     
@@ -736,20 +674,59 @@ ${valveContent}
   /**
    * Generate all components SVG
    */
-  _generateAllComponentsSVG() {
+  _generateAllComponentsSVG(symbols = {}) {
     let svg = '';
     
+    // Build reverse map: symbolId -> filename for quick lookup
+    const symbolMap = {};
+    for (const [filename, symbolData] of Object.entries(symbols)) {
+      symbolMap[symbolData.id] = { filename, ...symbolData };
+    }
+    
     for (const [id, comp] of this.designer.components) {
-      svg += '        ' + this._generateComponentSVG(comp) + '\n';
+      svg += '        ' + this._generateComponentSVG(comp, symbols) + '\n';
     }
     
     return svg;
   }
 
   /**
-   * Generate single component SVG
+   * Generate single component SVG using <use> references
    */
-  _generateComponentSVG(comp) {
+  _generateComponentSVG(comp, symbols = {}) {
+    const cleanId = this._sanitizeId(comp.id);
+    const svgFile = this._getSVGFileForComponent(comp);
+    
+    // If we have a symbol for this component, use it
+    if (svgFile && symbols[svgFile]) {
+      const symbolData = symbols[svgFile];
+      const symbolId = symbolData.id;
+      
+      // Special handling for tanks (need level indicator)
+      if (comp.type === 'tank') {
+        return `<g id="${cleanId}" transform="translate(${comp.x}, ${comp.y})" data-instance="${comp.id}">
+          <use href="#${symbolId}"></use>
+          <rect id="${cleanId}LevelRect" x="-74" y="88" width="148" height="0" fill="url(#liquid)"></rect>
+          <text x="0" y="-100" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
+        </g>`;
+      }
+      
+      // For valves and pumps, simple symbol reference
+      const labelY = comp.type === 'valve' ? -50 : -70;
+      return `<g id="${cleanId}" class="${comp.type}" transform="translate(${comp.x}, ${comp.y})" data-instance="${comp.id}" tabindex="0" role="button">
+          <use href="#${symbolId}"></use>
+          <text x="0" y="${labelY}" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
+        </g>`;
+    }
+    
+    // Fallback: use PNG-based rendering for components without SVGs
+    return this._generateComponentSVG_Legacy(comp);
+  }
+
+  /**
+   * Legacy PNG-based component generation (fallback)
+   */
+  _generateComponentSVG_Legacy(comp) {
     const cleanId = this._sanitizeId(comp.id);
     const template = window.COMPONENT_LIBRARY?.[comp.key] || {};
     const image = template.image;
@@ -901,5 +878,6 @@ ${valveContent}
 
 // Export
 window.SimulatorExporter = SimulatorExporter;
-console.log('✅ Exporter v3.1 loaded (GitHub Only)');
-console.log('🌐 Base URL:', GITHUB_BASE_URL);
+console.log('✅ Exporter v3.2 loaded (SVG Symbol Support)');
+console.log('🌐 Engine URL:', GITHUB_BASE_URL);
+console.log('🎨 SVG URL:', GITHUB_SVG_URL);
