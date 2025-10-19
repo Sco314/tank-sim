@@ -1,14 +1,6 @@
 /**
  * componentLibrary.js - Component definitions for designer
- * 
- * Connection Points:
- * - YES, keep them! Designer uses them for visual connection point markers
- * - They work with the SVG system: coordinates match the SVG .cp elements
- * - Designer calculates world coordinates: component.x + point.x
- * 
- * SVG Variants:
- * - Added orientation support for valves and pumps
- * - Exporter selects correct SVG based on orientation property
+ * FIXED: Added icon and name to CATEGORIES for proper UI display
  */
 
 const COMPONENT_LIBRARY = {
@@ -20,12 +12,16 @@ const COMPONENT_LIBRARY = {
     icon: '💧',
     color: '#3b82f6',
     description: 'Infinite water supply',
-    config: {
+    defaultConfig: {
       type: 'feed',
       supplyPressure: 3,
       maxFlow: null,
       temperature: 20
     },
+    properties: [
+      { name: 'supplyPressure', label: 'Supply Pressure (bar)', type: 'number', default: 3, min: 0, step: 0.1 },
+      { name: 'temperature', label: 'Temperature (°C)', type: 'number', default: 20, min: -10, max: 100 }
+    ],
     connectionPoints: [
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 20, y: 0 }
     ]
@@ -39,11 +35,14 @@ const COMPONENT_LIBRARY = {
     icon: '🚰',
     color: '#6366f1',
     description: 'Infinite discharge capacity',
-    config: {
+    defaultConfig: {
       type: 'drain',
       ambientPressure: 1,
       maxCapacity: null
     },
+    properties: [
+      { name: 'ambientPressure', label: 'Ambient Pressure (bar)', type: 'number', default: 1, min: 0, step: 0.1 }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -20, y: 0 }
     ]
@@ -60,12 +59,17 @@ const COMPONENT_LIBRARY = {
     image: 'https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png',
     svg: 'Tankstoragevessel-01.svg',
     imageSize: { w: 160, h: 180, x: -80, y: -90 },
-    config: {
+    defaultConfig: {
       type: 'tank',
       capacity: 10,
       initialLevel: 2,
       maxLevel: 9.5
     },
+    properties: [
+      { name: 'capacity', label: 'Capacity (m³)', type: 'number', default: 10, min: 0.1, step: 0.1 },
+      { name: 'initialLevel', label: 'Initial Level (m³)', type: 'number', default: 2, min: 0, step: 0.1 },
+      { name: 'maxLevel', label: 'Max Level (m³)', type: 'number', default: 9.5, min: 0, step: 0.1 }
+    ],
     connectionPoints: [
       { id: 'cp_top', name: 'top', type: 'input', x: 0, y: -90 },
       { id: 'cp_bottom', name: 'bottom', type: 'output', x: 0, y: 90 },
@@ -83,21 +87,24 @@ const COMPONENT_LIBRARY = {
     color: '#ec4899',
     description: 'ON/OFF pump (100% when running)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
-    svg: 'cent-pump-inlet-left-01.svg', // Default orientation
+    svg: 'cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
-    config: {
+    defaultConfig: {
       type: 'pumpFixed',
       head: 10,
       efficiency: 0.7,
       maxFlow: 1,
-      orientation: 'left' // 'left' or 'right'
+      orientation: 'left'
     },
-    // Connection points for LEFT orientation (inlet on left)
+    properties: [
+      { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
+      { name: 'efficiency', label: 'Efficiency', type: 'number', default: 0.7, min: 0, max: 1, step: 0.01 },
+      { name: 'maxFlow', label: 'Max Flow (m³/s)', type: 'number', default: 1, min: 0, step: 0.1 }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
     ],
-    // Variants for different orientations
     variants: {
       left: {
         svg: 'cent-pump-inlet-left-01.svg',
@@ -126,7 +133,7 @@ const COMPONENT_LIBRARY = {
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
     svg: 'cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
-    config: {
+    defaultConfig: {
       type: 'pumpVariable',
       head: 10,
       efficiency: 0.7,
@@ -134,6 +141,12 @@ const COMPONENT_LIBRARY = {
       minSpeed: 0.2,
       orientation: 'left'
     },
+    properties: [
+      { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
+      { name: 'efficiency', label: 'Efficiency', type: 'number', default: 0.7, min: 0, max: 1, step: 0.01 },
+      { name: 'maxFlow', label: 'Max Flow (m³/s)', type: 'number', default: 1, min: 0, step: 0.1 },
+      { name: 'minSpeed', label: 'Min Speed', type: 'number', default: 0.2, min: 0, max: 1, step: 0.05 }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
@@ -166,7 +179,7 @@ const COMPONENT_LIBRARY = {
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
     svg: 'cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
-    config: {
+    defaultConfig: {
       type: 'pump3Speed',
       head: 10,
       efficiency: 0.7,
@@ -174,6 +187,11 @@ const COMPONENT_LIBRARY = {
       speeds: [0.3, 0.6, 1.0],
       orientation: 'left'
     },
+    properties: [
+      { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
+      { name: 'efficiency', label: 'Efficiency', type: 'number', default: 0.7, min: 0, max: 1, step: 0.01 },
+      { name: 'maxFlow', label: 'Max Flow (m³/s)', type: 'number', default: 1, min: 0, step: 0.1 }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
@@ -205,20 +223,22 @@ const COMPONENT_LIBRARY = {
     color: '#10b981',
     description: 'Proportional control valve (0-100%)',
     image: 'https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png',
-    svg: 'Valve-Icon-handle-right-01.svg', // Default orientation
+    svg: 'Valve-Icon-handle-right-01.svg',
     imageSize: { w: 76, h: 76, x: -38, y: -38 },
-    config: {
+    defaultConfig: {
       type: 'valve',
       open: 82,
       kv: 1,
-      orientation: 'right' // 'right', 'left', or 'up'
+      orientation: 'right'
     },
-    // Connection points for RIGHT orientation (horizontal flow)
+    properties: [
+      { name: 'open', label: 'Opening (%)', type: 'number', default: 82, min: 0, max: 100, step: 1 },
+      { name: 'kv', label: 'Kv Coefficient', type: 'number', default: 1, min: 0.1, step: 0.1 }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -38, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 38, y: 0 }
     ],
-    // Variants for different handle orientations
     variants: {
       right: {
         svg: 'Valve-Icon-handle-right-01.svg',
@@ -252,11 +272,14 @@ const COMPONENT_LIBRARY = {
     icon: '📊',
     color: '#f59e0b',
     description: 'Pressure measurement',
-    config: {
+    defaultConfig: {
       type: 'pressureSensor',
       range: [0, 10],
       units: 'bar'
     },
+    properties: [
+      { name: 'range', label: 'Range (bar)', type: 'text', default: '0-10' }
+    ],
     connectionPoints: [
       { id: 'cp_tap', name: 'tap', type: 'input', x: 0, y: 0 }
     ]
@@ -269,11 +292,14 @@ const COMPONENT_LIBRARY = {
     icon: '🌊',
     color: '#f59e0b',
     description: 'Flow rate measurement',
-    config: {
+    defaultConfig: {
       type: 'flowSensor',
       range: [0, 5],
       units: 'm³/s'
     },
+    properties: [
+      { name: 'range', label: 'Range (m³/s)', type: 'text', default: '0-5' }
+    ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -20, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 20, y: 0 }
@@ -287,24 +313,47 @@ const COMPONENT_LIBRARY = {
     icon: '📏',
     color: '#f59e0b',
     description: 'Tank level measurement',
-    config: {
+    defaultConfig: {
       type: 'levelSensor',
       range: [0, 100],
       units: '%'
     },
+    properties: [
+      { name: 'range', label: 'Range (%)', type: 'text', default: '0-100' }
+    ],
     connectionPoints: [
       { id: 'cp_probe', name: 'probe', type: 'input', x: 0, y: 0 }
     ]
   }
 };
 
-// Category organization for library UI
+// FIXED: Category organization with icon and name for UI
 const CATEGORIES = {
-  'Boundary': ['feed', 'drain'],
-  'Storage': ['tank'],
-  'Pumps': ['fixedPump', 'variablePump', 'threeSpeedPump'],
-  'Valves': ['valve'],
-  'Sensors': ['pressureSensor', 'flowSensor', 'levelSensor']
+  'Boundary': {
+    name: 'Boundary',
+    icon: '🌊',
+    components: ['feed', 'drain']
+  },
+  'Storage': {
+    name: 'Storage',
+    icon: '🛢️',
+    components: ['tank']
+  },
+  'Pumps': {
+    name: 'Pumps',
+    icon: '⚙️',
+    components: ['fixedPump', 'variablePump', 'threeSpeedPump']
+  },
+  'Valves': {
+    name: 'Valves',
+    icon: '🔧',
+    components: ['valve']
+  },
+  'Sensors': {
+    name: 'Sensors',
+    icon: '📊',
+    components: ['pressureSensor', 'flowSensor', 'levelSensor']
+  }
 };
 
 /**
