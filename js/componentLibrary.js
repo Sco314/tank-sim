@@ -56,7 +56,7 @@ const COMPONENT_LIBRARY = {
     icon: '🛢️',
     color: '#8b5cf6',
     description: 'Liquid storage tank',
-    image: 'https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png',
+    image: 'https://sco314.github.io/tank-sim/assets/Tank-Icon-Transparent-bg.png',
     svg: 'Tankstoragevessel-01.svg',
     imageSize: { w: 160, h: 180, x: -80, y: -90 },
     defaultConfig: {
