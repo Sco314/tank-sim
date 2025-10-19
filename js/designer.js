@@ -11,12 +11,44 @@
 
 const DESIGNER_VERSION = '2.0.1';
 
+// REPLACEMENT for SPRITES constant in designer.js
+// Place this at the top of designer.js (around line 15)
+
 // === Shared component sprites (WYSIWYG with Sim) ===
+// FIXED: Updated paths to use /assets/ folder
 const SPRITES = {
-  tank:  { href: "https://sco314.github.io/tank-sim/Tank-Icon-Transparent-bg.png",   w: 160, h: 180, x: -80, y: -90,  labelDy: -100 },
-  pump:  { href: "https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png",     w: 120, h: 120, x: -60, y: -60,  labelDy: -70  },
-  valve: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png",  w:  76, h:  76, x: -38, y: -38,  labelDy: -50  },
-  default: { href: "https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png", w: 76, h: 76, x: -38, y: -38, labelDy: -50 }
+  tank:  { 
+    href: "https://sco314.github.io/tank-sim/assets/Tank-Icon-Transparent-bg.png",   
+    w: 160, 
+    h: 180, 
+    x: -80, 
+    y: -90,  
+    labelDy: -100 
+  },
+  pump:  { 
+    href: "https://sco314.github.io/tank-sim/assets/cent-pump-9-inlet-left.png",     
+    w: 120, 
+    h: 120, 
+    x: -60, 
+    y: -60,  
+    labelDy: -70  
+  },
+  valve: { 
+    href: "https://sco314.github.io/tank-sim/assets/Valve-Icon-Transparent-bg.png",  
+    w: 76, 
+    h: 76, 
+    x: -38, 
+    y: -38,  
+    labelDy: -50  
+  },
+  default: { 
+    href: "https://sco314.github.io/tank-sim/assets/Valve-Icon-Transparent-bg.png", 
+    w: 76, 
+    h: 76, 
+    x: -38, 
+    y: -38, 
+    labelDy: -50 
+  }
 };
 
 // Preload sprites
@@ -24,6 +56,8 @@ Object.values(SPRITES).forEach(sprite => {
   if (!sprite?.href) return;
   const img = new Image();
   img.src = sprite.href;
+  img.onload = () => console.log('✅ Loaded:', sprite.href.split('/').pop());
+  img.onerror = () => console.error('❌ Failed to load:', sprite.href);
 });
 
 class ProcessDesigner {
