@@ -327,6 +327,34 @@ const COMPONENT_LIBRARY = {
   }
 };
 
+
+// Get component list for sidebar (auto-generated)
+window.getComponentList = function() {
+  const lib = window.COMPONENT_LIBRARY;
+  const iconMap = {
+    feed: '💧',
+    drain: '🚰',
+    tank: '🪣',
+    fixedPump: '⚙️',
+    variablePump: '🔧',
+    threeSpeedPump: '⚡',
+    valve: '🔩',
+    pipe: '🔗',
+    pressureSensor: '📊',
+    sensor: '📊'
+  };
+  
+  return Object.entries(lib).map(([key, def]) => ({
+    key: key,
+    label: def.label || key,
+    type: def.type || key,
+    icon: iconMap[key] || '🔧',
+    image: def.image
+  }));
+};
+
+console.log('✅ getComponentList() registered with', Object.keys(window.COMPONENT_LIBRARY).length, 'components');
+
 // FIXED: Category organization with icon and name for UI
 const CATEGORIES = {
   'Boundary': {
