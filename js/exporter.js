@@ -1,13 +1,14 @@
 /**
- * exporter.js v3.2.1 — Root GitHub exporter with SVG symbols
+ * exporter.js v3.2.2 — Root GitHub exporter with SVG symbols
  * - Prompts for sim name, validates design
  * - Fetches CSS, engine files, and valve.html from root
  * - Exports 100% standalone HTML
  * - Embeds SVG <symbol> defs ONCE; instances are <use href="#...">
  * - Falls back to PNG <image> if a symbol isn’t available
+ * - Patch (v3.2.2a): adds #liquid gradient + broader library lookup
  */
 
-const EXPORTER_VERSION = '3.2.1';
+const EXPORTER_VERSION = '3.2.2';
 const ENGINE_VERSION   = '1.0.0';
 
 // Root GitHub Pages base (no subfolder)
@@ -23,7 +24,7 @@ const ENGINE_FILES = [
   'js/core/FlowNetwork.js',
   'js/core/ComponentManager.js',
 
-  // Config (keep here if you host SYSTEM_CONFIG separately)
+  // Config
   'js/config/systemConfig.js',
 
   // Boundary components
@@ -290,6 +291,12 @@ ${css}
     <svg id="canvas" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
       <!-- ========== Component Symbols (one-time) ========== -->
       <defs>
+        <!-- Liquid gradient for tanks (patch) -->
+        <linearGradient id="liquid" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"  style="stop-color:#4fc3f7;stop-opacity:0.9"/>
+          <stop offset="100%" style="stop-color:#0288d1;stop-opacity:1"/>
+        </linearGradient>
+
 ${svgSymbols}
       </defs>
 
@@ -359,8 +366,15 @@ ${engineCode}
   _extractSVGSymbols() {
     const out = [];
     const seen = new Set();
+    this._exportedSymbolTypes = new Set();  // track which types we actually exported
 
-    const lib = this.designer?.componentLibrary?.components || {};
+    // --- Patch: broader library lookup ---
+    const lib =
+      this.designer?.componentLibrary?.components ||
+      window.componentLibrary?.components ||
+      window.COMPONENT_LIBRARY?.components ||
+      {};
+
     const canvas = document.getElementById('canvas');
     const domDefs = canvas ? Array.from(canvas.querySelectorAll('symbol')) : [];
 
@@ -372,8 +386,12 @@ ${engineCode}
       // Prefer symbol string from library
       const libDef = lib[type];
       if (libDef && typeof libDef.symbol === 'string' && libDef.symbol.trim()) {
-        out.push(`        <symbol id="${symbolIdOut}" viewBox="0 0 60 60">\n${libDef.symbol}\n        </symbol>`);
+        const vb = (libDef.symbolViewBox || '0 0 60 60');
+        out.push(`        <symbol id="${symbolIdOut}" viewBox="${vb}">
+${libDef.symbol}
+        </symbol>`);
         seen.add(symbolIdOut);
+        this._exportedSymbolTypes.add(type);
         continue;
       }
 
@@ -383,6 +401,7 @@ ${engineCode}
         if (live) {
           out.push(`        <symbol id="${symbolIdOut}" viewBox="${live.getAttribute('viewBox') || '0 0 60 60'}">${live.innerHTML}</symbol>`);
           seen.add(symbolIdOut);
+          this._exportedSymbolTypes.add(type);
           continue;
         }
       }
@@ -408,12 +427,11 @@ ${engineCode}
     const cleanId = this._sanitizeId(comp.id);
     const type = comp.type || comp.key || 'component';
 
-    // Try to use a symbol if we exported one for this type
-    const exportedSymbolId = `symbol-${type}`;
-    const willUseSymbol = true; // we exported conditionally; if missing, <use> still renders nothing
+    // Prefer <use> only if a symbol was actually exported for this type
+    const hasSymbol = this._exportedSymbolTypes?.has(type);
 
     if (type === 'tank') {
-      // Simple native tank placeholder; your engine can replace/enhance
+      // Simple native tank placeholder; engine can update #LevelRect at runtime
       return `<g id="${cleanId}" class="tank" transform="translate(${comp.x}, ${comp.y})">
   <rect x="-80" y="-90" width="160" height="180" rx="12" fill="#0e1734" stroke="#2a3d78" stroke-width="3"></rect>
   <rect id="${cleanId}LevelRect" x="-74" y="88" width="148" height="0" fill="url(#liquid)"></rect>
@@ -421,16 +439,20 @@ ${engineCode}
 </g>`;
     }
 
-    // Prefer <use> if we provided a symbol for this type
-    if (willUseSymbol) {
+    if (hasSymbol) {
       return `<g id="${cleanId}" class="${type}" transform="translate(${comp.x}, ${comp.y})" tabindex="0" role="button">
-  <use href="#${exportedSymbolId}" width="60" height="60"></use>
+  <use href="#symbol-${type}" width="60" height="60"></use>
   <text x="0" y="-50" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
 </g>`;
     }
 
-    // Final fallback: PNG image if the library provides it
-    const template = (this.designer?.componentLibrary?.components || {})[type] || {};
+    // --- Patch: broader library lookup for PNG fallback ---
+    const lib =
+      this.designer?.componentLibrary?.components ||
+      window.componentLibrary?.components ||
+      window.COMPONENT_LIBRARY?.components ||
+      {};
+    const template = lib[type] || {};
     const image = template.image;
     const imageSize = template.imageSize || { w: 76, h: 76, x: -38, y: -38 };
 
@@ -448,22 +470,146 @@ ${engineCode}
 </g>`;
   }
 
+  /**
+   * ---------- Connection Point Helpers ----------
+   * These methods allow the exporter to snap pipes
+   * to actual .cp port coordinates defined in SVG symbols.
+   */
+
+  /**
+   * Build an index of local port coordinates from the component library’s symbol strings.
+   */
+  _buildSymbolPortIndex() {
+    const index = {};
+    // --- Patch: broader library lookup ---
+    const lib =
+      this.designer?.componentLibrary?.components ||
+      window.componentLibrary?.components ||
+      window.COMPONENT_LIBRARY?.components ||
+      {};
+    const parser = new DOMParser();
+
+    for (const [type, def] of Object.entries(lib)) {
+      const sym = def?.symbol;
+      if (!sym || typeof sym !== 'string') continue;
+
+      const doc = parser.parseFromString(
+        `<svg xmlns="http://www.w3.org/2000/svg">${sym}</svg>`,
+        'image/svg+xml'
+      );
+
+      const cps = Array.from(doc.querySelectorAll('.cp'));
+      if (!cps.length) continue;
+
+      index[type] = cps.map(el => ({
+        name: el.getAttribute('data-port') || el.getAttribute('id') || '',
+        role: el.getAttribute('data-type') || '',
+        cx: parseFloat(el.getAttribute('cx') || '0'),
+        cy: parseFloat(el.getAttribute('cy') || '0'),
+        r:  parseFloat(el.getAttribute('r')  || '0'),
+      }));
+    }
+
+    return index;
+  }
+
+  /**
+   * Apply transform (translate + rotate + scale) to a local point.
+   */
+  _applyTransform(comp, lx, ly) {
+    const rotDeg = (comp.rotation ?? comp.r ?? 0);
+    const rot = rotDeg * Math.PI / 180;
+
+    const sx = (comp.scaleX ?? comp.scale ?? 1);
+    const sy = (comp.scaleY ?? comp.scale ?? 1);
+
+    let x = lx * sx;
+    let y = ly * sy;
+
+    const xr = x * Math.cos(rot) - y * Math.sin(rot);
+    const yr = x * Math.sin(rot) + y * Math.cos(rot);
+
+    return { x: (comp.x ?? 0) + xr, y: (comp.y ?? 0) + yr };
+  }
+
+  /**
+   * Resolve a port world position for a component by (type, portName).
+   */
+  _getPortWorldPos(comp, portName) {
+    const type = comp.type || comp.key || 'component';
+
+    const ports = (this._portIndex?.[type] || []);
+    let p = null;
+    if (ports.length) {
+      p = ports.find(pt => pt.name === portName);
+      if (!p && portName) {
+        const wantOut = /out|discharge|right/i.test(portName);
+        const wantIn  = /in|suction|left/i.test(portName);
+        if (wantOut) p = ports.find(pt => /out/i.test(pt.role) || /out/i.test(pt.name));
+        if (!p && wantIn) p = ports.find(pt => /in/i.test(pt.role)  || /in/i.test(pt.name));
+      }
+      if (!p) p = ports[0];
+      if (p) return this._applyTransform(comp, p.cx, p.cy);
+    }
+
+    // Fallbacks
+    // --- Patch: broader library lookup ---
+    const lib =
+      this.designer?.componentLibrary?.components ||
+      window.componentLibrary?.components ||
+      window.COMPONENT_LIBRARY?.components ||
+      {};
+    const offPts = lib[type]?.connectionPoints || [];
+    if (offPts.length) {
+      const ofp = offPts.find(o => o.name === portName || o.id === portName) || offPts[0];
+      if (ofp) return { x: (comp.x ?? 0) + (ofp.x || 0), y: (comp.y ?? 0) + (ofp.y || 0) };
+    }
+
+    return { x: comp.x ?? 0, y: comp.y ?? 0 };
+  }
+
+  /**
+   * Resolve a default port name if none is given.
+   */
+  _pickDefaultPortName(type, wantRole) {
+    const ports = (this._portIndex?.[type] || []);
+    if (!ports.length) return null;
+    const byRole = ports.find(p => (wantRole === 'output' ? /out/i : /in/i).test(p.role || p.name || ''));
+    return byRole?.name || ports[0].name || null;
+  }
+
   _generateAllConnectionsSVG() {
+    // Build (or reuse) the symbol port index once
+    if (!this._portIndex) this._portIndex = this._buildSymbolPortIndex();
+
     let svg = '';
+
     this.designer.connections.forEach((conn, idx) => {
       const fromComp = this.designer.components.get(conn.from);
       const toComp   = this.designer.components.get(conn.to);
       if (!fromComp || !toComp) return;
 
-      // Current behavior: center → center (we can upgrade to .cp endpoints next)
-      const d = `M ${fromComp.x} ${fromComp.y} L ${toComp.x} ${toComp.y}`;
+      const fromType = fromComp.type || fromComp.key || 'component';
+      const toType   = toComp.type   || toComp.key   || 'component';
+
+      // Desired port names from the saved design, or role-based defaults
+      const fromName = conn.fromPoint || this._pickDefaultPortName(fromType, 'output') || 'outlet';
+      const toName   = conn.toPoint   || this._pickDefaultPortName(toType,   'input')  || 'inlet';
+
+      // Compute world positions (symbol local -> instance transform)
+      const P1 = this._getPortWorldPos(fromComp, fromName);
+      const P2 = this._getPortWorldPos(toComp,   toName);
+
+      // (Simple straight pipe; you can route later if needed)
+      const d = `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
       const pipeId = `pipe${idx + 1}`;
 
-      svg += `        <g id="${this._sanitizeId(pipeId)}">
+      svg += `        <g id="${this._sanitizeId(pipeId)}" data-from="${this._sanitizeId(fromComp.id)}" data-to="${this._sanitizeId(toComp.id)}" data-fp="${fromName}" data-tp="${toName}">
   <path d="${d}" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
   <path id="${this._sanitizeId(pipeId)}Flow" d="${d}" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
 </g>\n`;
     });
+
     return svg;
   }
 
@@ -576,5 +722,5 @@ ${body}
 
 // Export class
 window.SimulatorExporter = SimulatorExporter;
-console.log('✅ Exporter v3.2.1 loaded');
+console.log('✅ Exporter v3.2.2 loaded');
 console.log('🌐 Base URL:', GITHUB_BASE_URL);
