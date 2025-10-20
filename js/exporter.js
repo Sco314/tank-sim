@@ -1,14 +1,11 @@
 /**
- * exporter.js v3.2.2 — Root GitHub exporter with SVG symbols
- * - Prompts for sim name, validates design
- * - Fetches CSS, engine files, and valve.html from root
- * - Exports 100% standalone HTML
- * - Embeds SVG <symbol> defs ONCE; instances are <use href="#...">
- * - Falls back to PNG <image> if a symbol isn’t available
- * - Patch (v3.2.2a): adds #liquid gradient + broader library lookup
+ * exporter.js v3.2.3 — Fixed to match actual GitHub repo structure
+ * - Split into REQUIRED and OPTIONAL files
+ * - Only fails export if REQUIRED files are missing
+ * - Warns about optional files but continues export
  */
 
-const EXPORTER_VERSION = '3.2.2';
+const EXPORTER_VERSION = '3.2.3';
 const ENGINE_VERSION   = '1.0.0';
 
 // Root GitHub Pages base (no subfolder)
@@ -18,38 +15,44 @@ const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
 const CSS_FILE        = 'css/designer-style.css';
 const VALVE_HTML_FILE = 'valve.html';
 
-const ENGINE_FILES = [
-  // Core
+// ✅ REQUIRED FILES - These MUST exist or export fails
+const ENGINE_FILES_REQUIRED = [
+  // Core (verified working)
   'js/core/Component.js',
   'js/core/FlowNetwork.js',
   'js/core/ComponentManager.js',
 
-  // Config
-  'js/config/systemConfig.js',
-
-  // Boundary components
+  // Boundary components (verified working)
   'js/components/sources/Feed.js',
   'js/components/sinks/Drain.js',
 
-  // Tanks
+  // Pumps (verified working - consolidated into Pump.js)
+  'js/components/pumps/Pump.js',
+
+  // Valves (verified working)
+  'js/components/valves/Valve.js',
+
+  // Pipes (verified working)
+  'js/components/pipes/Pipe.js'
+];
+
+// ⚠️ OPTIONAL FILES - Nice to have but won't block export
+const ENGINE_FILES_OPTIONAL = [
+  // Config (doesn't exist yet)
+  'js/config/systemConfig.js',
+
+  // Tanks (if you add it later)
   'js/components/tanks/Tank.js',
 
-  // Pumps
-  'js/components/pumps/Pump.js',
+  // Specialized pumps (if you split them out from Pump.js)
   'js/components/pumps/FixedSpeedPump.js',
   'js/components/pumps/VariableSpeedPump.js',
   'js/components/pumps/ThreeSpeedPump.js',
 
-  // Valves
-  'js/components/valves/Valve.js',
-
-  // Pipes
-  'js/components/pipes/Pipe.js',
-
-  // Sensors
+  // Sensors (if you add them)
   'js/components/sensors/PressureSensor.js',
 
-  // Managers
+  // Managers (if you add them)
   'js/managers/TankManager.js',
   'js/managers/PumpManager.js',
   'js/managers/ValveManager.js',
@@ -105,7 +108,7 @@ class SimulatorExporter {
       progress.close();
       const fileSize = (html.length / 1024).toFixed(1);
       console.log(`✅ Export complete: ${cleanName}.html (${fileSize} KB)`);
-      alert(`✅ Export complete!\n\nFile: ${cleanName}.html\nSize: ${fileSize} KB\n\n✔ 100% standalone\n✔ Latest engine code from GitHub\n✔ SVG symbols (reused with <use>)`);
+      alert(`✅ Export complete!\n\nFile: ${cleanName}.html\nSize: ${fileSize} KB\n\n✓ 100% standalone\n✓ Latest engine code from GitHub\n✓ SVG symbols (reused with <use>)`);
     } catch (err) {
       progress.close();
       this._showDetailedError(err);
@@ -142,7 +145,7 @@ class SimulatorExporter {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`CSS HTTP ${res.status}: ${res.statusText}`);
       const css = await res.text();
-      console.log(`✔ CSS: ${CSS_FILE} (${(css.length / 1024).toFixed(1)} KB)`);
+      console.log(`✓ CSS: ${CSS_FILE} (${(css.length / 1024).toFixed(1)} KB)`);
       return css;
     } catch (e) {
       console.warn('⚠ CSS fetch failed, using minimal fallback', e);
@@ -158,35 +161,57 @@ class SimulatorExporter {
     const failed = [];
     let done = 0;
 
-    for (const path of ENGINE_FILES) {
+    // Combine required and optional files
+    const allFiles = ENGINE_FILES_REQUIRED.concat(ENGINE_FILES_OPTIONAL);
+    const totalFiles = allFiles.length;
+
+    for (const path of allFiles) {
       const url = GITHUB_BASE_URL + path;
+      const isOptional = ENGINE_FILES_OPTIONAL.includes(path);
+      
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         const code = await res.text();
         codeBlocks.push(`\n/* ============================================================================\n * ${path}\n * Source: ${url}\n * ============================================================================ */\n\n${code}\n`);
         done++;
-        const pct = 10 + Math.floor((done / ENGINE_FILES.length) * 65); // 10 → 75
+        const pct = 10 + Math.floor((done / totalFiles) * 65); // 10 → 75
         progressUI.update('⏳ Fetching engine files...', pct);
-        progressUI.setDetail(`✔ ${path} (${done}/${ENGINE_FILES.length})`);
-        console.log(`✔ ${path}`);
+        progressUI.setDetail(`✓ ${path} (${done}/${totalFiles})`);
+        console.log(`✓ ${path}`);
       } catch (e) {
-        console.error(`✗ ${path}`, e);
-        failed.push({ path, url, error: e.message });
+        failed.push({ path, url, error: e.message, optional: isOptional });
+        
+        if (isOptional) {
+          console.warn(`⚠ ${path} (optional - skipped)`, e.message);
+        } else {
+          console.error(`✗ ${path} (REQUIRED)`, e);
+        }
       }
     }
 
-    if (failed.length) {
+    // Only throw if REQUIRED files failed
+    const hardFails = failed.filter(f => !f.optional);
+    
+    if (hardFails.length) {
       throw new Error(JSON.stringify({
-        failedFiles: failed,
-        totalFiles: ENGINE_FILES.length,
-        successCount: done,
-        failCount: failed.length
+        failedFiles: hardFails,
+        totalFiles: ENGINE_FILES_REQUIRED.length,
+        successCount: ENGINE_FILES_REQUIRED.length - hardFails.length,
+        failCount: hardFails.length
       }));
+    }
+
+    // Log optional failures as warnings
+    const optionalFails = failed.filter(f => f.optional);
+    if (optionalFails.length) {
+      console.warn(`⚠ ${optionalFails.length} optional file(s) not found (continuing anyway):`, 
+        optionalFails.map(f => f.path));
     }
 
     const total = codeBlocks.join('\n');
     console.log(`✅ Engine fetched (${(total.length / 1024).toFixed(1)} KB)`);
+    console.log(`📊 Stats: ${done} loaded, ${optionalFails.length} optional skipped, ${hardFails.length} required failed`);
     return total;
   }
 
@@ -221,7 +246,7 @@ class SimulatorExporter {
     ).join('\n\n');
 
     alert(
-`❌ Export Failed: Could Not Fetch Files from GitHub
+`❌ Export Failed: Could Not Fetch Required Files from GitHub
 
 Failed Files (${details.failCount}/${details.totalFiles}):
 
@@ -358,17 +383,12 @@ ${engineCode}
 
   /**
    * Extract <symbol> defs exactly once.
-   * Strategy:
-   * 1) If designer.componentLibrary.components[type].symbol exists, use it.
-   * 2) Else, if the current DOM has a <symbol id="..."> referenced by symbolId, copy that.
-   * 3) Deduplicate by final symbol id (`symbol-${type}`).
    */
   _extractSVGSymbols() {
     const out = [];
     const seen = new Set();
-    this._exportedSymbolTypes = new Set();  // track which types we actually exported
+    this._exportedSymbolTypes = new Set();
 
-    // --- Patch: broader library lookup ---
     const lib =
       this.designer?.componentLibrary?.components ||
       window.componentLibrary?.components ||
@@ -383,7 +403,6 @@ ${engineCode}
       const symbolIdOut = `symbol-${type}`;
       if (seen.has(symbolIdOut)) continue;
 
-      // Prefer symbol string from library
       const libDef = lib[type];
       if (libDef && typeof libDef.symbol === 'string' && libDef.symbol.trim()) {
         const vb = (libDef.symbolViewBox || '0 0 60 60');
@@ -395,7 +414,6 @@ ${libDef.symbol}
         continue;
       }
 
-      // If library exposes a symbolId, try to copy from DOM
       if (libDef && libDef.symbolId) {
         const live = domDefs.find(s => s.id === libDef.symbolId);
         if (live) {
@@ -405,9 +423,6 @@ ${libDef.symbol}
           continue;
         }
       }
-
-      // Fallback: no symbol available — we’ll render this type with <image>
-      // (No push, so nothing added for this type.)
     }
 
     return out.join('\n');
@@ -427,11 +442,9 @@ ${libDef.symbol}
     const cleanId = this._sanitizeId(comp.id);
     const type = comp.type || comp.key || 'component';
 
-    // Prefer <use> only if a symbol was actually exported for this type
     const hasSymbol = this._exportedSymbolTypes?.has(type);
 
     if (type === 'tank') {
-      // Simple native tank placeholder; engine can update #LevelRect at runtime
       return `<g id="${cleanId}" class="tank" transform="translate(${comp.x}, ${comp.y})">
   <rect x="-80" y="-90" width="160" height="180" rx="12" fill="#0e1734" stroke="#2a3d78" stroke-width="3"></rect>
   <rect id="${cleanId}LevelRect" x="-74" y="88" width="148" height="0" fill="url(#liquid)"></rect>
@@ -446,7 +459,6 @@ ${libDef.symbol}
 </g>`;
     }
 
-    // --- Patch: broader library lookup for PNG fallback ---
     const lib =
       this.designer?.componentLibrary?.components ||
       window.componentLibrary?.components ||
@@ -463,25 +475,14 @@ ${libDef.symbol}
 </g>`;
     }
 
-    // Generic placeholder
     return `<g id="${cleanId}" class="${type}" transform="translate(${comp.x}, ${comp.y})">
   <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
   <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
 </g>`;
   }
 
-  /**
-   * ---------- Connection Point Helpers ----------
-   * These methods allow the exporter to snap pipes
-   * to actual .cp port coordinates defined in SVG symbols.
-   */
-
-  /**
-   * Build an index of local port coordinates from the component library’s symbol strings.
-   */
   _buildSymbolPortIndex() {
     const index = {};
-    // --- Patch: broader library lookup ---
     const lib =
       this.designer?.componentLibrary?.components ||
       window.componentLibrary?.components ||
@@ -513,9 +514,6 @@ ${libDef.symbol}
     return index;
   }
 
-  /**
-   * Apply transform (translate + rotate + scale) to a local point.
-   */
   _applyTransform(comp, lx, ly) {
     const rotDeg = (comp.rotation ?? comp.r ?? 0);
     const rot = rotDeg * Math.PI / 180;
@@ -532,9 +530,6 @@ ${libDef.symbol}
     return { x: (comp.x ?? 0) + xr, y: (comp.y ?? 0) + yr };
   }
 
-  /**
-   * Resolve a port world position for a component by (type, portName).
-   */
   _getPortWorldPos(comp, portName) {
     const type = comp.type || comp.key || 'component';
 
@@ -552,8 +547,6 @@ ${libDef.symbol}
       if (p) return this._applyTransform(comp, p.cx, p.cy);
     }
 
-    // Fallbacks
-    // --- Patch: broader library lookup ---
     const lib =
       this.designer?.componentLibrary?.components ||
       window.componentLibrary?.components ||
@@ -568,9 +561,6 @@ ${libDef.symbol}
     return { x: comp.x ?? 0, y: comp.y ?? 0 };
   }
 
-  /**
-   * Resolve a default port name if none is given.
-   */
   _pickDefaultPortName(type, wantRole) {
     const ports = (this._portIndex?.[type] || []);
     if (!ports.length) return null;
@@ -579,7 +569,6 @@ ${libDef.symbol}
   }
 
   _generateAllConnectionsSVG() {
-    // Build (or reuse) the symbol port index once
     if (!this._portIndex) this._portIndex = this._buildSymbolPortIndex();
 
     let svg = '';
@@ -592,15 +581,12 @@ ${libDef.symbol}
       const fromType = fromComp.type || fromComp.key || 'component';
       const toType   = toComp.type   || toComp.key   || 'component';
 
-      // Desired port names from the saved design, or role-based defaults
       const fromName = conn.fromPoint || this._pickDefaultPortName(fromType, 'output') || 'outlet';
       const toName   = conn.toPoint   || this._pickDefaultPortName(toType,   'input')  || 'inlet';
 
-      // Compute world positions (symbol local -> instance transform)
       const P1 = this._getPortWorldPos(fromComp, fromName);
       const P2 = this._getPortWorldPos(toComp,   toName);
 
-      // (Simple straight pipe; you can route later if needed)
       const d = `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
       const pipeId = `pipe${idx + 1}`;
 
@@ -613,7 +599,6 @@ ${libDef.symbol}
     return svg;
   }
 
-  // ========= Design JSON, valve iframe =========
   _generateDesignJSON(simName) {
     const config = {
       metadata: {
@@ -658,7 +643,6 @@ ${libDef.symbol}
   }
 
   _prepareValveForIframe(valveHTML) {
-    // Extract <style> and <body> content; fallback to full HTML if regex fails
     const styleMatch = valveHTML.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const bodyMatch  = valveHTML.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
@@ -674,7 +658,6 @@ ${body}
 </html>`;
   }
 
-  // ========= Validation & utils =========
   _validateDesign() {
     const errors = [];
 
@@ -722,5 +705,7 @@ ${body}
 
 // Export class
 window.SimulatorExporter = SimulatorExporter;
-console.log('✅ Exporter v3.2.2 loaded');
+console.log('✅ Exporter v3.2.3 loaded');
 console.log('🌐 Base URL:', GITHUB_BASE_URL);
+console.log('📦 Required files:', ENGINE_FILES_REQUIRED.length);
+console.log('⚠️  Optional files:', ENGINE_FILES_OPTIONAL.length);
