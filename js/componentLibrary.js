@@ -327,7 +327,6 @@ const COMPONENT_LIBRARY = {
   }
 };
 
-
 // Get component list for sidebar (auto-generated)
 window.getComponentList = function() {
   const lib = window.COMPONENT_LIBRARY;
@@ -341,19 +340,19 @@ window.getComponentList = function() {
     valve: '🔩',
     pipe: '🔗',
     pressureSensor: '📊',
+    flowSensor: '🌊',
+    levelSensor: '📏',
     sensor: '📊'
   };
   
   return Object.entries(lib).map(([key, def]) => ({
     key: key,
-    label: def.label || key,
+    label: def.name || def.label || key,
     type: def.type || key,
-    icon: iconMap[key] || '🔧',
+    icon: iconMap[key] || def.icon || '🔧',
     image: def.image
   }));
 };
-
-console.log('✅ getComponentList() registered with', Object.keys(window.COMPONENT_LIBRARY).length, 'components');
 
 // FIXED: Category organization with icon and name for UI
 const CATEGORIES = {
@@ -418,12 +417,14 @@ function getComponentConnectionPoints(component) {
   return def.connectionPoints || [];
 }
 
-// Export
+// ✅ Export FIRST (before any console.log that uses them)
 window.COMPONENT_LIBRARY = COMPONENT_LIBRARY;
 window.CATEGORIES = CATEGORIES;
 window.getComponentSVG = getComponentSVG;
 window.getComponentConnectionPoints = getComponentConnectionPoints;
 
+// ✅ Then log (after window.COMPONENT_LIBRARY exists)
 console.log('✅ Component Library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
-console.log('📐 Connection points: Enabled for designer hover markers');
+console.log('✅ getComponentList() registered');
+console.log('🔌 Connection points: Enabled for designer hover markers');
 console.log('🎨 SVG variants: Valve (3), Pump (2)');
