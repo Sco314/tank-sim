@@ -1,27 +1,13 @@
 /**
- * designer.js - Process Designer  (with connection points)
+ * designer.js - Process Designer v2.0 (with connection points + exporter delegation)
  *
- * Changes:
- * - Uses connection points for connections:
- *   • _completeConnection stores fromPoint/toPoint IDs
- *   • _renderConnection/_updateConnectionPath draw to those points
- * - Hover markers on components (pointer-events: none)
- * - Temp rubber-band line starts at nearest connection point on start component
+ * - Connection points: nearest CP snap, hover markers, ports stored in connections
+ * - Delegates all exporting to exporter.js (SimulatorExporter)
+ * - Renders components via SVG <symbol> (preferred) or image fallback
+ * - Drag to move components (updates connected pipes live)
  */
 
-const DESIGNER_VERSION = '2.0.1';
-
-// REPLACEMENT for SPRITES constant in designer.js
-/*********************************************
- * SPRITES and COMPONENT LIBRARY INTEGRATION
- * This version assumes a modern componentLibrary.js
- * that provides:
- *   - COMPONENT_LIBRARY: the map of components
- *   - getComponentList(): array for sidebar
- *   - getImageForKey(key): png fallback
- *   - getSVGVariant(type, orientation?): symbol string
- *   - getConnectionPoints(type): offsets if needed
- *********************************************/
+const DESIGNER_VERSION = '2.0.2';
 
 function byId(id) { return document.getElementById(id); }
 function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
@@ -53,7 +39,15 @@ class ProcessDesigner {
     this.connectionStart = null;
     this.tempConnectionLine = null;
 
-    this.componentLibrary = window.componentLibrary || window.COMPONENT_LIBRARY || {};
+    // dragging
+    this.selectedComponent = null;
+    this._dragState = null;
+
+    // Component library (robust lookup)
+    this.componentLibrary =
+      window.componentLibrary ||
+      window.COMPONENT_LIBRARY ||
+      {};
 
     this._init();
   }
@@ -62,7 +56,7 @@ class ProcessDesigner {
     this._setupSidebar();
     this._setupEventListeners();
     this._setupKeyboard();
-    this._ensureDefs();
+    this._ensureDefs(); // also loads SVG symbols into <defs>
     console.log(`Process Designer v${DESIGNER_VERSION} initialized`);
   }
 
@@ -73,7 +67,7 @@ class ProcessDesigner {
       this.canvas.insertBefore(defs, this.canvas.firstChild);
     }
 
-    // arrow marker once
+    // Arrow marker (once)
     if (!document.getElementById('arrowhead')) {
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
       marker.setAttribute('id', 'arrowhead');
@@ -84,6 +78,19 @@ class ProcessDesigner {
       marker.setAttribute('orient', 'auto');
       marker.innerHTML = '<polygon points="0 0, 10 3, 0 6" fill="#4f46e5" />';
       defs.appendChild(marker);
+    }
+
+    // 🔹 Load component SVG symbols into <defs> (once per type)
+    const lib = this.componentLibrary?.components || {};
+    for (const [type, def] of Object.entries(lib)) {
+      const symbolId = `symbol-${type}`;
+      if (def.symbol && !document.getElementById(symbolId)) {
+        const symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+        symbol.setAttribute('id', symbolId);
+        symbol.setAttribute('viewBox', def.symbolViewBox || '0 0 60 60');
+        symbol.innerHTML = def.symbol; // trusted library string
+        defs.appendChild(symbol);
+      }
     }
   }
 
@@ -130,17 +137,21 @@ class ProcessDesigner {
   }
 
   _setupEventListeners() {
-    const rect = this.canvas.getBoundingClientRect();
-
     this.canvas.addEventListener('click', (e) => this._handleCanvasClick(e));
     this.canvas.addEventListener('mousemove', (e) => this._handleCanvasMouseMove(e));
 
     // Toolbar buttons
     byId('selectTool')?.addEventListener('click', () => this._setTool('select'));
     byId('connectTool')?.addEventListener('click', () => this._setTool('connect'));
-    byId('exportBtn')?.addEventListener('click', (e) => this._onExportClicked(e));
 
-    // Export modal (if present)
+    // Primary export button
+    byId('exportBtn')?.addEventListener('click', (e) => this._onExportClicked(e));
+    // (Fixed) removed duplicate exportBtn listener
+
+    // Secondary export button (if present)
+    byId('exportBtn2')?.addEventListener('click', (e) => this._onExportClicked(e));
+
+    // Export modal wiring
     const exportModal = byId('exportModal');
     const exportModalClose = byId('exportModalClose');
     const exportConfirmBtn = byId('exportConfirmBtn');
@@ -163,18 +174,12 @@ class ProcessDesigner {
       });
     };
 
-    byId('exportBtn2')?.addEventListener('click', (e) => this._onExportClicked(e));
-
-    // Primary export button logic
-    byId('exportBtn')?.addEventListener('click', (e) => this._onExportClicked(e));
-
-    // Export modal actions
     exportConfirmBtn?.addEventListener('click', () => { doDirectExport(); closeExportModal(); });
     exportModal?.addEventListener('click', (e) => { if (e.target === exportModal) closeExportModal(); });
     exportModalClose?.addEventListener('click', closeExportModal);
     exportCancelBtn?.addEventListener('click', closeExportModal);
 
-    // Optional dedicated export buttons
+    // Optional dedicated export button (always delegates to exporter)
     byId('exportSingleFile')?.addEventListener('click', () => {
       const name = this.getSimulatorName();
       this._ensureExporter(() => {
@@ -188,7 +193,7 @@ class ProcessDesigner {
       });
     });
 
-
+    // Optional ZIP export (only if exporter supports it)
     byId('exportZip')?.addEventListener('click', () => {
       const name = this.getSimulatorName();
       this._ensureExporter(() => {
@@ -206,7 +211,19 @@ class ProcessDesigner {
       });
     });
 
+    // Dragging end on window mouseup (cleanup)
+    window.addEventListener('mouseup', () => { this._dragState = null; });
+
     console.log('✅ Event listeners set up');
+  }
+
+  _setupKeyboard() {
+    window.addEventListener('keydown', (e) => {
+      // Delete selected component
+      if (e.key === 'Delete' && this.selectedComponent) {
+        this._deleteComponent(this.selectedComponent);
+      }
+    });
   }
 
   _ensureExporter(cb) {
@@ -229,14 +246,13 @@ class ProcessDesigner {
     const connCount = byId('connCount');
 
     if (!modal) {
-      // no modal present — go straight to exporter
+      // Direct export path with warnings gate
       if (validation.warnings.length > 0) {
         const proceed = confirm(`⚠️ Warnings:\n\n${validation.warnings.join('\n')}\n\nProceed with export?`);
         if (!proceed) return;
       }
 
       if (e?.shiftKey) {
-        console.log('⏩ Shift+Export: forcing direct export');
         const name = prompt('Enter simulator name:', this.getSimulatorName());
         if (!name) return;
         this._ensureExporter(() => {
@@ -255,12 +271,11 @@ class ProcessDesigner {
       return;
     }
 
-    // Update modal stats
+    // Modal path
     if (simNameInput) simNameInput.value = this.getSimulatorName();
     if (compCount) compCount.textContent = this.components.size;
     if (connCount) connCount.textContent = this.connections.length;
 
-    // Show warnings inside modal
     const warningsEl = byId('exportWarnings');
     if (warningsEl) warningsEl.textContent = validation.warnings.join('\n');
 
@@ -276,6 +291,19 @@ class ProcessDesigner {
         });
       }
     }
+  }
+
+  _proceedWithExport() {
+    const name = this.getSimulatorName();
+    this._ensureExporter(() => {
+      try {
+        const exporter = new SimulatorExporter(this);
+        exporter.exportSimulator(name);
+      } catch (err) {
+        console.error('Export failed:', err);
+        alert('Export failed: ' + err.message);
+      }
+    });
   }
 
   // -----------------------------
@@ -348,19 +376,6 @@ class ProcessDesigner {
     return { warnings };
   }
 
-  _proceedWithExport() {
-    const name = this.getSimulatorName();
-    this._ensureExporter(() => {
-      try {
-        const exporter = new SimulatorExporter(this);
-        exporter.exportSimulator(name);
-      } catch (err) {
-        console.error('Export failed:', err);
-        alert('Export failed: ' + err.message);
-      }
-    });
-  }
-
   // ------------- Basic getters/setters -------------
   getSimulatorName() { return (this.designMetadata?.name || 'My Simulator'); }
   setSimulatorName(name) {
@@ -371,8 +386,8 @@ class ProcessDesigner {
   getConfiguration() { return JSON.parse(this.exportDesignJSON()); }
   loadConfiguration(cfg) { this.importConfig(cfg); }
 
+  // Deprecated: keep name for API compatibility; always delegates to exporter
   exportAsSingleFile() {
-    // Deprecated: always delegate to exporter
     const simName = this.getSimulatorName();
     this._ensureExporter(() => {
       try {
@@ -392,6 +407,9 @@ class ProcessDesigner {
 
     const componentId = target.dataset.id;
     const component = this.components.get(componentId);
+    this.selectedComponent = componentId;
+
+    if (this.tool === 'select') return; // selection only
 
     if (!this.connectionStart) {
       if (!this._canOutput(component)) { alert(`${component.name} cannot have outputs (it's a ${component.type})`); return; }
@@ -401,6 +419,11 @@ class ProcessDesigner {
       if (componentId === this.connectionStart) { alert('Cannot connect component to itself'); this._cancelConnection(); return; }
       this._completeConnection(componentId);
     }
+  }
+
+  // Deprecated (unused): kept as a no-op to avoid breakage
+  _handleConnectionClick(e) {
+    // Intentionally left empty — logic handled in _handleCanvasClick
   }
 
   _startConnection(componentId) {
@@ -437,7 +460,7 @@ class ProcessDesigner {
     const fromComp = this.components.get(fromId);
     const toComp   = this.components.get(toId);
 
-    // choose nearest CP on the "from" component (we already used it for the rubber band)
+    // choose nearest CP on the "from" component
     const fromCenter = this._getComponentCenter(fromComp);
     const fromCP = this._getNearestConnectionPoint(fromComp, fromCenter.x, fromCenter.y);
 
@@ -472,23 +495,43 @@ class ProcessDesigner {
   }
 
   _getNearestConnectionPoint(comp, tx, ty) {
-    // Pull CPs from symbol strings if available via componentLibrary
-    const type = comp.type || comp.key;
+    const type = (comp.type || comp.key || '').toLowerCase();
     const lib = (this.componentLibrary?.components || {});
     const def = lib[type] || {};
-    let candidates = (def.connectionPoints || []).map(p => ({ id: p.name || p.id, x: comp.x + p.x, y: comp.y + p.y }));
+    let candidates = (def.connectionPoints || []).map(p => ({
+      id: p.name || p.id,
+      x: comp.x + (p.x || 0),
+      y: comp.y + (p.y || 0)
+    }));
 
-    // If we don’t have offsets, use 4 cardinal points at radius 30
+    // Typed fallback if library has no offsets
     if (!candidates.length) {
       const r = 30;
-      candidates = [
-        { id: 'left',  x: comp.x - r, y: comp.y },
-        { id: 'right', x: comp.x + r, y: comp.y },
-        { id: 'top',   x: comp.x,     y: comp.y - r },
-        { id: 'bottom',x: comp.x,     y: comp.y + r }
-      ];
+      if (['pump','valve','pipe'].includes(type)) {
+        candidates = [
+          { id: 'inlet',  x: comp.x - r, y: comp.y },
+          { id: 'outlet', x: comp.x + r, y: comp.y }
+        ];
+      } else if (type === 'tank') {
+        candidates = [
+          { id: 'inlet',  x: comp.x, y: comp.y - r },
+          { id: 'outlet', x: comp.x, y: comp.y + r }
+        ];
+      } else if (type === 'feed') {
+        candidates = [{ id: 'outlet', x: comp.x + r, y: comp.y }];
+      } else if (type === 'drain') {
+        candidates = [{ id: 'inlet', x: comp.x - r, y: comp.y }];
+      } else {
+        candidates = [
+          { id: 'left',   x: comp.x - r, y: comp.y },
+          { id: 'right',  x: comp.x + r, y: comp.y },
+          { id: 'top',    x: comp.x,     y: comp.y - r },
+          { id: 'bottom', x: comp.x,     y: comp.y + r }
+        ];
+      }
     }
 
+    // Nearest by squared distance
     let best = candidates[0], bd = Infinity;
     for (const c of candidates) {
       const d = (c.x - tx) ** 2 + (c.y - ty) ** 2;
@@ -503,27 +546,92 @@ class ProcessDesigner {
     g.dataset.id = comp.id;
     g.setAttribute('transform', `translate(${comp.x}, ${comp.y})`);
 
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('r', '20');
-    circle.setAttribute('fill', '#0e1734');
-    circle.setAttribute('stroke', '#2a3d78');
-    circle.setAttribute('stroke-width', '2');
+    const type = (comp.type || comp.key || '').toLowerCase();
+    const symbolId = `symbol-${type}`;
+    const symbolEl = document.getElementById(symbolId);
 
+    if (symbolEl) {
+      // Preferred: reuse symbol
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${symbolId}`);
+      use.setAttribute('width', '60');
+      use.setAttribute('height', '60');
+      use.setAttribute('x', '-30');
+      use.setAttribute('y', '-30');
+      g.appendChild(use);
+    } else {
+      // PNG fallback from library (if available)
+      const lib = this.componentLibrary?.components || {};
+      const def = lib[type] || {};
+      if (def.image) {
+        const size = def.imageSize || { w: 60, h: 60, x: -30, y: -30 };
+        const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', def.image);
+        img.setAttribute('x', size.x);
+        img.setAttribute('y', size.y);
+        img.setAttribute('width', size.w);
+        img.setAttribute('height', size.h);
+        g.appendChild(img);
+      } else {
+        // Generic circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', '20');
+        circle.setAttribute('fill', '#0e1734');
+        circle.setAttribute('stroke', '#2a3d78');
+        circle.setAttribute('stroke-width', '2');
+        g.appendChild(circle);
+      }
+    }
+
+    // Label
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.textContent = comp.name || comp.type;
     label.setAttribute('x', '0');
-    label.setAttribute('y', '-28');
+    label.setAttribute('y', '-40');
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '12');
     label.setAttribute('fill', '#9bb0ff');
-
-    g.appendChild(circle);
     g.appendChild(label);
-    this.componentsLayer.appendChild(g);
 
-    // hover markers (for CPs)
+    // Hover markers for CPs
     g.addEventListener('mouseenter', () => this._showHoverMarkers(comp));
     g.addEventListener('mouseleave', () => this._clearHoverMarkers());
+
+    // Drag to move (in select tool)
+    g.addEventListener('mousedown', (e) => {
+      if (this.tool !== 'select') return;
+      const pt = this._getMouseSVGPoint(e);
+      this._dragState = { id: comp.id, dx: pt.x - comp.x, dy: pt.y - comp.y };
+      this.selectedComponent = comp.id;
+      e.stopPropagation();
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      if (!this._dragState) return;
+      const compId = this._dragState.id;
+      const c = this.components.get(compId);
+      if (!c) return;
+      const pt = this._getMouseSVGPoint(e);
+      c.x = pt.x - this._dragState.dx;
+      c.y = pt.y - this._dragState.dy;
+      const node = this.componentsLayer.querySelector(`[data-id="${compId}"]`);
+      node?.setAttribute('transform', `translate(${c.x}, ${c.y})`);
+      this._updateComponentConnections(compId);
+    });
+
+    this.componentsLayer.appendChild(g);
+  }
+
+  _updateComponentConnections(componentId) {
+    this.connections.forEach(conn => {
+      if (conn.from === componentId || conn.to === componentId) {
+        const g = document.getElementById(conn.id);
+        if (g) {
+          const path = g.querySelector('path');
+          if (path) this._updateConnectionPath(conn, path);
+        }
+      }
+    });
   }
 
   _renderConnection(conn) {
@@ -557,7 +665,7 @@ class ProcessDesigner {
   }
 
   _resolveCP(comp, pointName) {
-    const type = comp.type || comp.key;
+    const type = (comp.type || comp.key || '').toLowerCase();
     const lib = (this.componentLibrary?.components || {});
     const def = lib[type] || {};
     const offsets = def.connectionPoints || [];
@@ -568,7 +676,7 @@ class ProcessDesigner {
 
   _showHoverMarkers(comp) {
     this._clearHoverMarkers();
-    const type = comp.type || comp.key;
+    const type = (comp.type || comp.key || '').toLowerCase();
     const lib = (this.componentLibrary?.components || {});
     const def = lib[type] || {};
 
@@ -611,23 +719,6 @@ class ProcessDesigner {
     document.getElementById(`${tool}Tool`)?.classList.add('active');
     this.canvas.style.cursor = tool === 'connect' ? 'crosshair' : 'default';
     console.log(`Tool changed to: ${tool}`);
-  }
-
-  _handleConnectionClick(e) {
-    const target = e.target.closest('.canvas-component');
-    if (!target) { this._cancelConnection(); return; }
-
-    const componentId = target.dataset.id;
-    const component = this.components.get(componentId);
-
-    if (!this.connectionStart) {
-      if (!this._canOutput(component)) { alert(`${component.name} cannot have outputs (it's a ${component.type})`); return; }
-      this._startConnection(componentId);
-    } else {
-      if (!this._canInput(component)) { alert(`${component.name} cannot have inputs (it's a ${component.type})`); this._cancelConnection(); return; }
-      if (componentId === this.connectionStart) { alert('Cannot connect component to itself'); this._cancelConnection(); return; }
-      this._completeConnection(componentId);
-    }
   }
 
   _canOutput(comp) {
@@ -676,49 +767,8 @@ class ProcessDesigner {
     console.log(`Added ${comp.name} at (${pos.x}, ${pos.y})`);
   }
 
-  // ------------- Template-based HTML builder (legacy — no longer used for export) -------------
-  // Keeping these helpers for now; they’re unused after delegation to exporter.
-
-  buildHTMLTemplate(simName, css, rawHtml, valveInline, combinedJS, configJSON) {
-    // Simple sanitize to strip duplicate <html>/<head>/<body> wrappers from rawHtml
-    const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    const processedBody = bodyMatch ? bodyMatch[1] : rawHtml;
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${simName}</title>
-  <meta name="sim-name" content="${(simName || '').replace(/"/g, '&quot;')}">
-  <meta name="engine-version" content="${(window.ENGINE_VERSION || 'unversioned')}">
-  <style>
-${css}
-  </style>
-</head>
-<body>
-
-${processedBody}
-
-<!-- System Configuration (for re-import or engine boot) -->
-<script id="system-config" type="application/json">
-${configJSON}
-</script>
-
-<!-- Engine + UI code -->
-<script>
-${combinedJS}
-</script>
-
-<!-- Valve modal template -->
-<script id="valve-template" type="text/html">
-${valveInline}
-</script>
-
-</body>
-</html>`;
-  }
-
+  // -------- Legacy builder helpers (unused after delegation to exporter) --------
+  buildHTMLTemplate() { /* unused; kept for reference */ }
   prepareValveInline(valveHtml) {
     const styleMatch = valveHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const bodyMatch  = valveHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
@@ -726,31 +776,7 @@ ${valveInline}
     const body       = bodyMatch  ? bodyMatch[1]  : valveHtml;
     return `<style>${styles}</style>\n${body}`;
   }
-
-  getAllJSPaths() {
-    // Legacy builder paths — kept for reference, no longer used.
-    return [
-      '../js/core/Component.js',
-      '../js/core/FlowNetwork.js',
-      '../js/core/ComponentManager.js',
-      '../js/config/systemConfig.js',
-      '../js/components/sources/Feed.js',
-      '../js/components/sinks/Drain.js',
-      '../js/components/tanks/Tank.js',
-      '../js/components/pumps/Pump.js',
-      '../js/components/pumps/FixedSpeedPump.js',
-      '../js/components/pumps/VariableSpeedPump.js',
-      '../js/components/pumps/ThreeSpeedPump.js',
-      '../js/components/valves/Valve.js',
-      '../js/components/pipes/Pipe.js',
-      '../js/components/sensors/PressureSensor.js',
-      '../js/managers/TankManager.js',
-      '../js/managers/PumpManager.js',
-      '../js/managers/ValveManager.js',
-      '../js/managers/PipeManager.js',
-      '../js/managers/PressureManager.js'
-    ];
-  }
+  getAllJSPaths() { return []; }
 
   downloadFile(content, filename) {
     const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
@@ -766,7 +792,7 @@ ${valveInline}
 // expose
 window.ProcessDesigner = ProcessDesigner;
 
-// bootstrap (if needed)
+// bootstrap
 window.addEventListener('DOMContentLoaded', () => {
   console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
 });
