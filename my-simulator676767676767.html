@@ -1,0 +1,5526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>My Simulator676767676767</title>
+  <meta name="generator" content="Tank Simulator Exporter v3.2.3">
+  <meta name="export-date" content="2025-10-20T20:45:47.596Z">
+  <meta name="engine-version" content="1.0.0">
+  <meta name="source" content="https://sco314.github.io/tank-sim/">
+  <style>
+/**
+ * designer-style.css - Process Simulator Designer v2.0 Styles
+ */
+
+/* ============================================================================
+   RESET & BASE
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0b1020;
+  --card: #121a33;
+  --ink: #e9f0ff;
+  --muted: #9bb0ff;
+  --accent: #7cc8ff;
+  --primary: #4f46e5;
+  --success: #3ddc97;
+  --warning: #ffc107;
+  --danger: #ff6b6b;
+  --border: #2a3d78;
+}
+
+html, body {
+  height: 100%;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ============================================================================
+   LAYOUT
+   ============================================================================ */
+
+.designer-container {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ============================================================================
+   LEFT PANEL - COMPONENT LIBRARY
+   ============================================================================ */
+
+.library-panel {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.library-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.library-header h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.library-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.component-category {
+  margin-bottom: 4px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  background: rgba(127, 200, 255, 0.05);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.category-header:hover {
+  background: rgba(127, 200, 255, 0.1);
+}
+
+.category-icon {
+  font-size: 18px;
+}
+
+.category-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.category-toggle {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.category-items {
+  padding: 4px 8px;
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.category-items.collapsed {
+  max-height: 0;
+}
+
+.component-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 4px 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.2s;
+}
+
+.component-item:hover {
+  background: rgba(127, 200, 255, 0.1);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.component-item:active {
+  cursor: grabbing;
+}
+
+.component-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.component-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.component-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.component-name {
+  display: block;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.component-desc {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   CENTER PANEL - CANVAS
+   ============================================================================ */
+
+.canvas-area {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.tool-btn:hover {
+  background: rgba(127, 200, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.tool-btn.active {
+  background: rgba(79, 70, 229, 0.2);
+  border-color: var(--primary);
+  color: var(--accent);
+}
+
+.toolbar-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toolbar-option input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.btn {
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: rgba(127, 200, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background: #6366f1;
+  border-color: #6366f1;
+}
+
+.btn-warning {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.btn-warning:hover {
+  background: rgba(255, 193, 7, 0.2);
+}
+
+.btn-danger {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+.canvas-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.design-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: radial-gradient(circle at 20% 50%, rgba(79, 70, 229, 0.05), transparent 50%);
+}
+
+.canvas-component {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.canvas-component:hover .selection-ring {
+  opacity: 0.3 !important;
+}
+
+.canvas-component.selected .selection-ring {
+  opacity: 1 !important;
+}
+
+.connection-line {
+  cursor: pointer;
+  transition: stroke-width 0.2s, opacity 0.2s;
+}
+
+.connection-line:hover {
+  stroke-width: 5 !important;
+  opacity: 0.8;
+}
+
+.hidden {
+  display: none;
+}
+
+/* ============================================================================
+   RIGHT PANEL - PROPERTIES
+   ============================================================================ */
+
+.properties-panel {
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.properties-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.properties-header h2 {
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.property-group {
+  margin-bottom: 24px;
+}
+
+.property-group h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.property-field {
+  margin-bottom: 12px;
+}
+
+.property-label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.property-input,
+.text-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.property-input:focus,
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.connections-list {
+  margin-top: 8px;
+}
+
+.connection-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.btn-remove {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.btn-remove:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.empty-text {
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ============================================================================
+   EXPORT MODAL
+   ============================================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+}
+
+.modal-container {
+  position: relative;
+  background: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  width: min(500px, 90vw);
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.open .modal-container {
+  transform: scale(1);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 107, 107, 0.9);
+  border: 2px solid #ff8787;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.modal-close:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.export-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(127, 200, 255, 0.05);
+  border-radius: 8px;
+}
+
+.info-row span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.info-row strong {
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.form-field {
+  margin-bottom: 20px;
+}
+
+.form-field label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.export-note {
+  background: rgba(79, 70, 229, 0.1);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.export-note strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+.export-note pre {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ============================================================================
+   VALIDATION MODAL
+   ============================================================================ */
+
+.validation-success {
+  color: var(--success);
+  background: rgba(61, 220, 151, 0.1);
+  border: 1px solid var(--success);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-weight: 500;
+}
+
+.validation-error {
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--danger);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-weight: 500;
+}
+
+.validation-section {
+  margin: 20px 0;
+}
+
+.validation-section h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.validation-section ul {
+  margin: 0;
+  padding-left: 24px;
+  list-style: disc;
+}
+
+.validation-section li {
+  margin: 8px 0;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.validation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================================================
+   PREVIEW MODAL
+   ============================================================================ */
+
+.preview-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.preview-modal-content {
+  background: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--ink);
+  position: relative;
+}
+
+.preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 107, 107, 0.9);
+  border: 2px solid #ff8787;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.preview-close:hover {
+  background: var(--danger);
+  transform: scale(1.1);
+}
+
+.preview-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.preview-stat {
+  padding: 12px;
+  background: rgba(127, 200, 255, 0.1);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.preview-stat strong {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.preview-canvas-container {
+  max-height: 50vh;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================================================
+   SCROLLBARS
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 1200px) {
+  .designer-container {
+    grid-template-columns: 250px 1fr 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .designer-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .library-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 200px;
+  }
+
+  .properties-panel {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 250px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-stats {
+    flex-basis: 100%;
+    margin-top: 8px;
+    justify-content: space-between;
+  }
+}
+
+/* ============================================================================
+   UTILITIES
+   ============================================================================ */
+
+.text-center {
+  text-align: center;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+
+/* Minimal extras */
+.flow       { stroke-dasharray: 20 10; }
+.flow.on    { animation: flow 2s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -30; } }
+
+#valveFrame {
+  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:400px; height:300px; border:2px solid #7cc8ff; border-radius:8px; background:#fff; z-index:1000;
+  box-shadow:0 10px 40px rgba(0,0,0,.3);
+}
+  </style>
+</head>
+<body>
+  <div id="simulator-container">
+    <svg id="canvas" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+      <!-- ========== Component Symbols (one-time) ========== -->
+      <defs>
+        <!-- Liquid gradient for tanks (patch) -->
+        <linearGradient id="liquid" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"  style="stop-color:#4fc3f7;stop-opacity:0.9"/>
+          <stop offset="100%" style="stop-color:#0288d1;stop-opacity:1"/>
+        </linearGradient>
+
+
+      </defs>
+
+      <!-- Optional grid -->
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M20 0 L0 0 0 20" fill="none" stroke="#22305f" stroke-width="1"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" opacity="0.35"/>
+
+      <!-- ========== Connections ========== -->
+      <g id="connectionsLayer">
+        <g id="pipe1" data-from="1" data-to="4" data-fp="outlet" data-tp="outlet">
+  <path d="M 48.37208938598633 124.65116119384766 L 201.86045837402344 117.20929718017578" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe1Flow" d="M 48.37208938598633 124.65116119384766 L 201.86045837402344 117.20929718017578" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+        <g id="pipe2" data-from="4" data-to="5" data-fp="inlet" data-tp="top">
+  <path d="M 201.86045837402344 117.20929718017578 L 205.1162872314453 212.093017578125" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe2Flow" d="M 201.86045837402344 117.20929718017578 L 205.1162872314453 212.093017578125" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+        <g id="pipe3" data-from="5" data-to="3" data-fp="left" data-tp="left">
+  <path d="M 205.1162872314453 212.093017578125 L 315.3488464355469 120.46512603759766" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe3Flow" d="M 205.1162872314453 212.093017578125 L 315.3488464355469 120.46512603759766" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+        <g id="pipe4" data-from="3" data-to="2" data-fp="left" data-tp="inlet">
+  <path d="M 315.3488464355469 120.46512603759766 L 824.1860961914062 127.906982421875" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
+  <path id="pipe4Flow" d="M 315.3488464355469 120.46512603759766 L 824.1860961914062 127.906982421875" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
+</g>
+
+      </g>
+
+      <!-- ========== Components ========== -->
+      <g id="componentsLayer">
+        <g id="1" class="feed" transform="translate(48.37208938598633, 124.65116119384766)">
+  <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">Feed (Water Supply)</text>
+</g>
+        <g id="2" class="drain" transform="translate(824.1860961914062, 127.906982421875)">
+  <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">Drain (Discharge)</text>
+</g>
+        <g id="3" class="pump3Speed" transform="translate(315.3488464355469, 120.46512603759766)">
+  <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">3-Speed Pump</text>
+</g>
+        <g id="4" class="tank" transform="translate(201.86045837402344, 117.20929718017578)">
+  <rect x="-80" y="-90" width="160" height="180" rx="12" fill="#0e1734" stroke="#2a3d78" stroke-width="3"></rect>
+  <rect id="4LevelRect" x="-74" y="88" width="148" height="0" fill="url(#liquid)"></rect>
+  <text x="0" y="-100" text-anchor="middle" fill="#9bb0ff" font-size="12">Tank</text>
+</g>
+        <g id="5" class="pressureSensor" transform="translate(205.1162872314453, 212.093017578125)">
+  <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
+  <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">Pressure Sensor</text>
+</g>
+
+      </g>
+    </svg>
+
+    <iframe id="valveFrame" title="Valve Control"></iframe>
+  </div>
+
+  <!-- ========== Embedded Design JSON ========== -->
+  <script id="design-data" type="application/json">
+{
+  "metadata": {
+    "version": "3.2.3",
+    "created": "2025-10-20T20:45:40.549Z",
+    "modified": "2025-10-20T20:45:47.596Z",
+    "name": "My Simulator676767676767",
+    "exported": "2025-10-20T20:45:47.596Z",
+    "source": "https://sco314.github.io/tank-sim/"
+  },
+  "components": [
+    {
+      "id": "1",
+      "key": "feed",
+      "type": "feed",
+      "name": "Feed (Water Supply)",
+      "x": 48.37208938598633,
+      "y": 124.65116119384766,
+      "config": {}
+    },
+    {
+      "id": "2",
+      "key": "drain",
+      "type": "drain",
+      "name": "Drain (Discharge)",
+      "x": 824.1860961914062,
+      "y": 127.906982421875,
+      "config": {}
+    },
+    {
+      "id": "3",
+      "key": "threeSpeedPump",
+      "type": "pump3Speed",
+      "name": "3-Speed Pump",
+      "x": 315.3488464355469,
+      "y": 120.46512603759766,
+      "config": {}
+    },
+    {
+      "id": "4",
+      "key": "tank",
+      "type": "tank",
+      "name": "Tank",
+      "x": 201.86045837402344,
+      "y": 117.20929718017578,
+      "config": {}
+    },
+    {
+      "id": "5",
+      "key": "pressureSensor",
+      "type": "pressureSensor",
+      "name": "Pressure Sensor",
+      "x": 205.1162872314453,
+      "y": 212.093017578125,
+      "config": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "from": "1",
+      "to": "4",
+      "fromPoint": "outlet",
+      "toPoint": "outlet"
+    },
+    {
+      "id": "conn2",
+      "from": "4",
+      "to": "5",
+      "fromPoint": "inlet",
+      "toPoint": "top"
+    },
+    {
+      "id": "conn3",
+      "from": "5",
+      "to": "3",
+      "fromPoint": "left",
+      "toPoint": "left"
+    },
+    {
+      "id": "conn4",
+      "from": "3",
+      "to": "2",
+      "fromPoint": "left",
+      "toPoint": "inlet"
+    }
+  ],
+  "nextId": 6,
+  "nextConnectionId": 5,
+  "gridSize": 20,
+  "viewBox": {
+    "width": 1000,
+    "height": 600
+  }
+}
+  </script>
+
+  <!-- ========== Embedded Engine Code ========== -->
+  <script>
+/* ============================================================================
+ * Tank Simulator Engine v1.0.0
+ * Exported: 2025-10-20T20:45:47.596Z
+ * Source: https://sco314.github.io/tank-sim/
+ * ============================================================================ */
+
+/* ============================================================================
+ * js/core/Component.js
+ * Source: https://sco314.github.io/tank-sim/js/core/Component.js
+ * ============================================================================ */
+
+/**
+ * Component.js - Base class for all system components
+ * 
+ * All components (tanks, pumps, valves, pipes, feeds, drains) inherit from this.
+ * Supports boundary components with no inputs (feeds) or no outputs (drains).
+ */
+
+class Component {
+  constructor(config) {
+    this.id = config.id;
+    this.type = config.type; // 'tank', 'pump', 'valve', 'pipe', 'sensor', 'feed', 'drain'
+    this.name = config.name || this.id;
+    
+    // CRITICAL: Store flowNetwork reference
+    this.flowNetwork = config.flowNetwork || null;
+    
+    // Flow connections
+    this.inputs = config.inputs || [];
+    this.outputs = config.outputs || [];
+    
+    // Visual
+    this.svgElement = config.svgElement || null;
+    this.position = config.position || [0, 0]; // [x, y]
+    
+    // State
+    this.enabled = config.enabled !== false; // Default enabled
+    this.state = {}; // Component-specific state
+    
+    // Callbacks
+    this.onChange = null; // Called when component changes
+    
+    // Validate configuration
+    this._validateConfiguration();
+    
+    console.log(`Component created: ${this.type} - ${this.id}`);
+  }
+
+  /**
+   * Validate component configuration
+   * Relaxed for boundary components (feeds can have no inputs, drains can have no outputs)
+   */
+  _validateConfiguration() {
+    // Check for required fields
+    if (!this.id) {
+      console.error('Component must have an ID');
+      return;
+    }
+    
+    if (!this.type) {
+      console.error(`Component ${this.id} must have a type`);
+      return;
+    }
+    
+    // Boundary components have relaxed validation
+    if (this.isBoundary()) {
+      if (this.type === 'feed' || this.type === 'source') {
+        // Feeds/sources should have NO inputs, but must have outputs
+        if (this.inputs.length > 0) {
+          console.warn(`${this.type} ${this.id} should not have inputs (boundary condition)`);
+        }
+        if (this.outputs.length === 0) {
+          console.warn(`${this.type} ${this.id} has no outputs - will not supply flow to anything`);
+        }
+      } else if (this.type === 'drain' || this.type === 'sink') {
+        // Drains/sinks should have NO outputs, but must have inputs
+        if (this.outputs.length > 0) {
+          console.warn(`${this.type} ${this.id} should not have outputs (boundary condition)`);
+        }
+        if (this.inputs.length === 0) {
+          console.warn(`${this.type} ${this.id} has no inputs - will not receive flow from anything`);
+        }
+      }
+    } else {
+      // Non-boundary components should generally have both inputs and outputs
+      // (though some exceptions like sensors might only have inputs)
+      if (this.inputs.length === 0 && this.type !== 'sensor') {
+        console.warn(`${this.type} ${this.id} has no inputs - may not receive flow`);
+      }
+      if (this.outputs.length === 0 && this.type !== 'sensor') {
+        console.warn(`${this.type} ${this.id} has no outputs - may not supply flow`);
+      }
+    }
+  }
+
+  /**
+   * Check if this component is a boundary node (source or sink)
+   * Override in subclasses or check type
+   */
+  isBoundary() {
+    return this.type === 'feed' || 
+           this.type === 'source' || 
+           this.type === 'drain' || 
+           this.type === 'sink';
+  }
+
+  /**
+   * Get DOM element
+   */
+  getElement() {
+    if (!this.svgElement) return null;
+    if (typeof this.svgElement === 'string') {
+      return document.querySelector(this.svgElement);
+    }
+    return this.svgElement;
+  }
+
+  /**
+   * Enable/disable component
+   */
+  setEnabled(enabled) {
+    this.enabled = !!enabled;
+    this.notifyChange();
+  }
+
+  isEnabled() {
+    return this.enabled;
+  }
+
+  /**
+   * Notify system of changes
+   */
+  notifyChange() {
+    if (this.onChange) {
+      this.onChange(this);
+    }
+  }
+
+  /**
+   * Get input flow (override in subclasses)
+   */
+  getInputFlow() {
+    return 0;
+  }
+
+  /**
+   * Get output flow (override in subclasses)
+   */
+  getOutputFlow() {
+    return 0;
+  }
+
+  /**
+   * Update component state (override in subclasses)
+   */
+  update(dt) {
+    // Override in subclasses
+  }
+
+  /**
+   * Render visual representation (override in subclasses)
+   */
+  render() {
+    // Override in subclasses
+  }
+
+  /**
+   * Get component info for debugging
+   */
+  getInfo() {
+    return {
+      id: this.id,
+      type: this.type,
+      name: this.name,
+      enabled: this.enabled,
+      isBoundary: this.isBoundary(),
+      inputs: this.inputs,
+      outputs: this.outputs,
+      state: this.state
+    };
+  }
+
+  /**
+   * Reset component to initial state (override in subclasses)
+   */
+  reset() {
+    this.enabled = true;
+    this.state = {};
+  }
+
+  /**
+   * Destroy component (cleanup)
+   */
+  destroy() {
+    this.onChange = null;
+    this.svgElement = null;
+    this.flowNetwork = null;
+  }
+}
+
+// Export
+window.Component = Component;
+
+
+
+/* ============================================================================
+ * js/core/FlowNetwork.js
+ * Source: https://sco314.github.io/tank-sim/js/core/FlowNetwork.js
+ * ============================================================================ */
+
+/**
+ * FlowNetwork.js - Manages flow calculations between components
+ * 
+ * Component-only topology: no pipes in flow routing
+ * Supports boundary conditions (feeds and drains)
+ */
+
+class FlowNetwork {
+  constructor() {
+    this.components = new Map(); // Map<id, Component>
+    this.flows = new Map(); // Map<'from->to', flowRate>
+    this.pressures = new Map(); // Map<id, pressure> (optional)
+  }
+
+  /**
+   * Register a component in the network
+   */
+  addComponent(component) {
+    if (!component.id) {
+      console.error('Component must have an ID');
+      return;
+    }
+    
+    // Store reference to this network in the component
+    component.flowNetwork = this;
+    
+    this.components.set(component.id, component);
+    console.log(`Added ${component.type} to flow network: ${component.id}`);
+  }
+
+  /**
+   * Remove a component from the network
+   */
+  removeComponent(componentId) {
+    const component = this.components.get(componentId);
+    if (component) {
+      component.flowNetwork = null;
+    }
+    
+    this.components.delete(componentId);
+    
+    // Clear flows involving this component
+    for (const [key, value] of this.flows.entries()) {
+      if (key.includes(componentId)) {
+        this.flows.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Get a component by ID
+   */
+  getComponent(id) {
+    return this.components.get(id);
+  }
+
+  /**
+   * Get all components of a specific type
+   */
+  getComponentsByType(type) {
+    const result = [];
+    for (const component of this.components.values()) {
+      if (component.type === type) {
+        result.push(component);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Set flow rate between two components
+   */
+  setFlow(fromId, toId, flowRate) {
+    const key = `${fromId}->${toId}`;
+    this.flows.set(key, flowRate);
+  }
+
+  /**
+   * Get flow rate between two components
+   */
+  getFlow(fromId, toId) {
+    const key = `${fromId}->${toId}`;
+    return this.flows.get(key) || 0;
+  }
+
+  /**
+   * Get total input flow to a component
+   */
+  getInputFlow(componentId) {
+    let total = 0;
+    for (const [key, flow] of this.flows.entries()) {
+      if (key.endsWith(`->${componentId}`)) {
+        total += flow;
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Get total output flow from a component
+   */
+  getOutputFlow(componentId) {
+    let total = 0;
+    for (const [key, flow] of this.flows.entries()) {
+      if (key.startsWith(`${componentId}->`)) {
+        total += flow;
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Calculate all flows in the network
+   * Component-only topology with boundary handling
+   */
+  calculateFlows(dt) {
+    // Clear existing flows
+    this.flows.clear();
+
+    // CRITICAL: Processing order for component-only topology
+    // - 'feed': Boundary sources (infinite supply)
+    // - 'valve': Flow controllers
+    // - 'pump': Active movers (creates tank->pump flow)
+    // - 'drain': Boundary sinks (infinite capacity)
+    // - 'sensor': Monitors only
+    // 
+    // NOTE: 'tank' is NOT in the list - tanks are passive
+    // NOTE: 'pipe' is NOT in the list - pipes are visual only
+    const order = ['feed', 'valve', 'pump', 'drain', 'sensor'];
+    
+    for (const type of order) {
+      const components = this.getComponentsByType(type);
+      
+      for (const component of components) {
+        if (!component.enabled) continue;
+        
+        // Calculate output flow for this component
+        const outputFlow = component.getOutputFlow();
+        
+        // Distribute flow to all outputs
+        if (component.outputs && component.outputs.length > 0) {
+          const flowPerOutput = outputFlow / component.outputs.length;
+          
+          for (const outputId of component.outputs) {
+            this.setFlow(component.id, outputId, flowPerOutput);
+          }
+        }
+      }
+    }
+    
+    // BOUNDARY HANDLING: Ensure boundary conditions are satisfied
+    this._applyBoundaryConditions();
+  }
+
+  /**
+   * Apply boundary conditions (feeds and drains)
+   */
+  _applyBoundaryConditions() {
+    // Feeds inject flow at their outputs
+    const feeds = this.getComponentsByType('feed');
+    for (const feed of feeds) {
+      if (!feed.enabled) continue;
+      
+      // Feed provides flow based on downstream demand
+      // This is already handled in calculateFlows, but we could
+      // add pressure-based calculations here in the future
+    }
+    
+    // Drains accept all incoming flow
+    const drains = this.getComponentsByType('drain');
+    for (const drain of drains) {
+      if (!drain.enabled) continue;
+      
+      // Drain accepts whatever flows into it
+      // No action needed - just verify flow is recorded
+      const inflow = this.getInputFlow(drain.id);
+      if (inflow > 0) {
+        // Flow successfully reaches drain
+      }
+    }
+  }
+
+  /**
+   * Update all components in the network
+   */
+  updateComponents(dt) {
+    for (const component of this.components.values()) {
+      if (component.enabled) {
+        component.update(dt);
+      }
+    }
+  }
+
+  /**
+   * Render all components
+   */
+  renderComponents() {
+    for (const component of this.components.values()) {
+      component.render();
+    }
+  }
+
+  /**
+   * Build network from config and validate
+   * Component-only topology with clear error messages
+   */
+  buildFromConfig(config) {
+    console.log('Building flow network from config...');
+    
+    // Components are added by their respective managers
+    // This method validates connections
+    
+    let validConnections = 0;
+    let invalidConnections = 0;
+    const errors = [];
+    
+    for (const component of this.components.values()) {
+      // Check if all inputs exist and are valid
+      for (const inputId of component.inputs) {
+        const inputComponent = this.components.get(inputId);
+        
+        if (inputComponent) {
+          validConnections++;
+        } else {
+          // CLEAR ERROR MESSAGE
+          const errorMsg = `Component "${component.id}" (${component.type}) has invalid input: "${inputId}" - component does not exist`;
+          errors.push(errorMsg);
+          console.error(`❌ ${errorMsg}`);
+          invalidConnections++;
+        }
+      }
+      
+      // Check if all outputs exist and are valid
+      for (const outputId of component.outputs) {
+        const outputComponent = this.components.get(outputId);
+        
+        if (outputComponent) {
+          validConnections++;
+        } else {
+          // CLEAR ERROR MESSAGE
+          const errorMsg = `Component "${component.id}" (${component.type}) has invalid output: "${outputId}" - component does not exist`;
+          errors.push(errorMsg);
+          console.error(`❌ ${errorMsg}`);
+          invalidConnections++;
+        }
+      }
+      
+      // Validate boundary components
+      if (component.isBoundary && component.isBoundary()) {
+        if (component.type === 'feed' && component.inputs.length > 0) {
+          console.warn(`⚠️ Feed "${component.id}" has inputs - feeds should have no inputs (boundary condition)`);
+        }
+        if (component.type === 'drain' && component.outputs.length > 0) {
+          console.warn(`⚠️ Drain "${component.id}" has outputs - drains should have no outputs (boundary condition)`);
+        }
+      }
+    }
+    
+    // Report results
+    const summary = `Network built: ${this.components.size} components, ${validConnections} valid connections, ${invalidConnections} invalid`;
+    
+    if (invalidConnections > 0) {
+      console.error(`❌ ${summary}`);
+      console.error('❌ Invalid connections found:', errors);
+    } else {
+      console.log(`✅ ${summary}`);
+    }
+    
+    // Log topology for debugging
+    if (invalidConnections === 0) {
+      this._logTopology();
+    }
+  }
+
+  /**
+   * Log network topology for debugging
+   */
+  _logTopology() {
+    console.log('📊 Network Topology:');
+    
+    // Find the flow path from feed to drain
+    const feeds = this.getComponentsByType('feed');
+    const drains = this.getComponentsByType('drain');
+    
+    if (feeds.length > 0 && drains.length > 0) {
+      const path = this._findPath(feeds[0].id, drains[0].id);
+      if (path) {
+        console.log('Flow path:', path.join(' → '));
+      }
+    }
+    
+    // List all components by type
+    const types = ['feed', 'valve', 'tank', 'pump', 'drain', 'sensor', 'pipe'];
+    for (const type of types) {
+      const components = this.getComponentsByType(type);
+      if (components.length > 0) {
+        console.log(`  ${type}s (${components.length}):`, components.map(c => c.id).join(', '));
+      }
+    }
+  }
+
+  /**
+   * Find path between two components (for debugging)
+   */
+  _findPath(startId, endId, visited = new Set()) {
+    if (startId === endId) return [endId];
+    if (visited.has(startId)) return null;
+    
+    visited.add(startId);
+    const component = this.getComponent(startId);
+    if (!component) return null;
+    
+    for (const outputId of component.outputs) {
+      const path = this._findPath(outputId, endId, visited);
+      if (path) {
+        return [startId, ...path];
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get network info for debugging
+   */
+  getNetworkInfo() {
+    const info = {
+      componentCount: this.components.size,
+      components: [],
+      flows: [],
+      boundaries: {
+        feeds: [],
+        drains: []
+      }
+    };
+    
+    for (const component of this.components.values()) {
+      const componentInfo = component.getInfo();
+      info.components.push(componentInfo);
+      
+      // Track boundary components
+      if (component.type === 'feed') {
+        info.boundaries.feeds.push(component.id);
+      } else if (component.type === 'drain') {
+        info.boundaries.drains.push(component.id);
+      }
+    }
+    
+    for (const [key, flow] of this.flows.entries()) {
+      info.flows.push({ connection: key, flow });
+    }
+    
+    return info;
+  }
+
+  /**
+   * Verify network integrity (diagnostic tool)
+   */
+  verifyIntegrity() {
+    console.log('🔍 Verifying network integrity...');
+    
+    const issues = [];
+    
+    // Check for orphaned components
+    for (const component of this.components.values()) {
+      if (component.type === 'feed' || component.type === 'drain') continue;
+      
+      if (component.inputs.length === 0 && component.outputs.length === 0) {
+        issues.push(`Component "${component.id}" is orphaned (no connections)`);
+      }
+    }
+    
+    // Check for flow continuity
+    const feeds = this.getComponentsByType('feed');
+    const drains = this.getComponentsByType('drain');
+    
+    if (feeds.length === 0) {
+      issues.push('No feed (source) components found - system has no inlet');
+    }
+    
+    if (drains.length === 0) {
+      issues.push('No drain (sink) components found - system has no outlet');
+    }
+    
+    // Check for path from feed to drain
+    if (feeds.length > 0 && drains.length > 0) {
+      const path = this._findPath(feeds[0].id, drains[0].id);
+      if (!path) {
+        issues.push('No valid flow path from feed to drain');
+      }
+    }
+    
+    if (issues.length > 0) {
+      console.warn('⚠️ Network integrity issues:', issues);
+      return false;
+    } else {
+      console.log('✅ Network integrity verified');
+      return true;
+    }
+  }
+
+  /**
+   * Reset entire network
+   */
+  reset() {
+    this.flows.clear();
+    this.pressures.clear();
+    
+    for (const component of this.components.values()) {
+      component.reset();
+    }
+    
+    console.log('Flow network reset');
+  }
+
+  /**
+   * Clear network
+   */
+  clear() {
+    for (const component of this.components.values()) {
+      component.destroy();
+    }
+    
+    this.components.clear();
+    this.flows.clear();
+    this.pressures.clear();
+    
+    console.log('Flow network cleared');
+  }
+}
+
+// Export
+window.FlowNetwork = FlowNetwork;
+
+
+
+/* ============================================================================
+ * js/core/ComponentManager.js
+ * Source: https://sco314.github.io/tank-sim/js/core/ComponentManager.js
+ * ============================================================================ */
+
+/**
+ * ComponentManager.js - Master orchestrator with boundary component support
+ */
+
+class ComponentManager {
+  constructor(config) {
+    this.config = config;
+    this.flowNetwork = new FlowNetwork();
+    
+    // Component managers
+    this.valveManager = null;
+    this.pumpManager = null;
+    this.tankManager = null;
+    this.pipeManager = null;
+    this.pressureManager = null;
+    
+    // Boundary components (no managers needed - simple instantiation)
+    this.feeds = {};
+    this.drains = {};
+    
+    // Simulation state
+    this.running = false;
+    this.paused = false;
+    this.lastTime = performance.now();
+    
+    console.log('ComponentManager initialized');
+  }
+
+  /**
+   * Initialize all component managers
+   */
+  async initialize() {
+    console.log('Initializing component managers...');
+    
+    try {
+      // CRITICAL: Initialize in correct order
+      // 1. Boundary conditions first
+      await this._initializeBoundaries();
+      
+      // 2. Physical components
+      await this._initializeTanks();
+      await this._initializePumps();
+      await this._initializeValves();
+      
+      // 3. Sensors and visual elements
+      await this._initializePressureSensors();
+      await this._initializePipes();
+      
+      // Build and validate flow network
+      this.flowNetwork.buildFromConfig(this.config);
+      this.flowNetwork.verifyIntegrity();
+      
+      console.log('All component managers initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize component managers:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Initialize boundary conditions (feeds and drains)
+   */
+  async _initializeBoundaries() {
+    // Initialize feeds
+    if (this.config.feeds && window.Feed) {
+      for (const [key, cfg] of Object.entries(this.config.feeds)) {
+        const feed = new Feed(cfg);
+        this.feeds[key] = feed;
+        this.flowNetwork.addComponent(feed);
+        console.log(`✓ Feed created: ${feed.id}`);
+      }
+    }
+    
+    // Initialize drains
+    if (this.config.drains && window.Drain) {
+      for (const [key, cfg] of Object.entries(this.config.drains)) {
+        const drain = new Drain(cfg);
+        this.drains[key] = drain;
+        this.flowNetwork.addComponent(drain);
+        console.log(`✓ Drain created: ${drain.id}`);
+      }
+    }
+    
+    console.log('✓ Boundary components ready');
+  }
+
+  /**
+   * Initialize tank manager
+   */
+  async _initializeTanks() {
+    if (!this.config.tanks || !window.TankManager) return;
+    
+    this.tankManager = new TankManager(this.config.tanks, this.flowNetwork);
+    console.log('✓ TankManager ready');
+  }
+
+  /**
+   * Initialize pump manager
+   */
+  async _initializePumps() {
+    if (!this.config.pumps || !window.PumpManager) return;
+    
+    this.pumpManager = new PumpManager(this.config.pumps, this.flowNetwork);
+    console.log('✓ PumpManager ready');
+  }
+
+  /**
+   * Initialize valve manager
+   */
+  async _initializeValves() {
+    if (!this.config.valves || !window.ValveManager) return;
+    
+    this.valveManager = new ValveManager(this.config.valves, this.flowNetwork);
+    console.log('✓ ValveManager ready');
+  }
+
+  /**
+   * Initialize pipe manager (VISUAL ONLY)
+   */
+  async _initializePipes() {
+    if (!this.config.pipes || !window.PipeManager) return;
+    
+    this.pipeManager = new PipeManager(this.config.pipes, this.flowNetwork);
+    console.log('✓ PipeManager ready (visual only)');
+  }
+
+  /**
+   * Initialize pressure sensor manager
+   */
+  async _initializePressureSensors() {
+    if (!this.config.pressureSensors || !window.PressureManager) return;
+    
+    this.pressureManager = new PressureManager(this.config.pressureSensors, this.flowNetwork);
+    console.log('✓ PressureManager ready');
+  }
+
+  /**
+   * Start simulation
+   */
+  start() {
+    if (this.running) return;
+    
+    this.running = true;
+    this.paused = false;
+    this.lastTime = performance.now();
+    
+    this._simulationLoop();
+    console.log('Simulation started');
+  }
+
+  /**
+   * Pause simulation
+   */
+  pause() {
+    this.paused = true;
+    console.log('Simulation paused');
+  }
+
+  /**
+   * Resume simulation
+   */
+  resume() {
+    if (!this.running) {
+      this.start();
+      return;
+    }
+    
+    this.paused = false;
+    this.lastTime = performance.now();
+    console.log('Simulation resumed');
+  }
+
+  /**
+   * Stop simulation
+   */
+  stop() {
+    this.running = false;
+    this.paused = false;
+    console.log('Simulation stopped');
+  }
+
+  /**
+   * Main simulation loop
+   */
+  _simulationLoop() {
+    if (!this.running) return;
+    
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+    
+    if (!this.paused) {
+      // Calculate flows in the network
+      this.flowNetwork.calculateFlows(dt);
+      
+      // Update all components
+      this.flowNetwork.updateComponents(dt);
+      
+      // Render all components
+      this.flowNetwork.renderComponents();
+    }
+    
+    // Continue loop
+    requestAnimationFrame(() => this._simulationLoop());
+  }
+
+  /**
+   * Reset all components
+   */
+  reset() {
+    this.flowNetwork.reset();
+    
+    if (this.tankManager) this.tankManager.reset();
+    if (this.pumpManager) this.pumpManager.reset();
+    if (this.valveManager) this.valveManager.reset();
+    if (this.pipeManager) this.pipeManager.reset();
+    if (this.pressureManager) this.pressureManager.reset();
+    
+    // Reset boundaries
+    for (const feed of Object.values(this.feeds)) {
+      feed.reset();
+    }
+    for (const drain of Object.values(this.drains)) {
+      drain.reset();
+    }
+    
+    console.log('All components reset');
+  }
+
+  /**
+   * Get component by ID
+   */
+  getComponent(id) {
+    return this.flowNetwork.getComponent(id);
+  }
+
+  /**
+   * Get system info
+   */
+  getSystemInfo() {
+    return {
+      running: this.running,
+      paused: this.paused,
+      network: this.flowNetwork.getNetworkInfo(),
+      managers: {
+        feeds: Object.keys(this.feeds).length,
+        tanks: this.tankManager ? Object.keys(this.tankManager.tanks || {}).length : 0,
+        pumps: this.pumpManager ? Object.keys(this.pumpManager.pumps || {}).length : 0,
+        valves: this.valveManager ? Object.keys(this.valveManager.valves || {}).length : 0,
+        drains: Object.keys(this.drains).length,
+        pipes: this.pipeManager ? Object.keys(this.pipeManager.pipes || {}).length : 0,
+        pressureSensors: this.pressureManager ? Object.keys(this.pressureManager.sensors || {}).length : 0
+      }
+    };
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    this.stop();
+    
+    if (this.tankManager) this.tankManager.destroy();
+    if (this.pumpManager) this.pumpManager.destroy();
+    if (this.valveManager) this.valveManager.destroy();
+    if (this.pipeManager) this.pipeManager.destroy();
+    if (this.pressureManager) this.pressureManager.destroy();
+    
+    for (const feed of Object.values(this.feeds)) {
+      feed.destroy();
+    }
+    for (const drain of Object.values(this.drains)) {
+      drain.destroy();
+    }
+    
+    this.flowNetwork.clear();
+    
+    console.log('ComponentManager destroyed');
+  }
+}
+
+// Export
+window.ComponentManager = ComponentManager;
+
+
+
+/* ============================================================================
+ * js/components/sources/Feed.js
+ * Source: https://sco314.github.io/tank-sim/js/components/sources/Feed.js
+ * ============================================================================ */
+
+/**
+ * Feed.js - Source/inlet boundary condition component
+ * 
+ * Represents an infinite supply (e.g., water main, process feed)
+ * Has no inputs, provides flow to downstream components
+ */
+
+class Feed extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'feed';
+    
+    // Boundary condition properties
+    this.supplyPressure = config.supplyPressure || 3.0; // bar (typical water main)
+    this.maxFlow = config.maxFlow || Infinity; // m³/s (unlimited by default)
+    this.temperature = config.temperature || 20; // °C (for future use)
+    
+    // Supply characteristics
+    this.available = config.available !== false; // Can be shut off
+    this.flowRate = 0; // Current flow rate (determined by downstream demand)
+    
+    console.log(`Feed created: ${this.name} (${this.supplyPressure} bar, max ${this.maxFlow === Infinity ? 'unlimited' : this.maxFlow + ' m³/s'})`);
+  }
+
+  /**
+   * Feed supplies flow based on downstream demand
+   * Infinite source, but can be limited by maxFlow
+   */
+  getOutputFlow() {
+    if (!this.available) return 0;
+    
+    // Feed provides whatever downstream needs, up to maxFlow
+    // (Downstream components like valves will limit actual flow)
+    return this.maxFlow;
+  }
+
+  /**
+   * Get supply pressure (for future pressure-based calculations)
+   */
+  getSupplyPressure() {
+    return this.available ? this.supplyPressure : 0;
+  }
+
+  /**
+   * Enable/disable feed
+   */
+  setAvailable(available) {
+    this.available = !!available;
+    this.notifyChange();
+    console.log(`${this.name} ${this.available ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Update feed state
+   */
+  update(dt) {
+    // Track actual flow rate (read from network)
+    if (this.flowNetwork) {
+      this.flowRate = this.flowNetwork.getOutputFlow(this.id);
+    }
+  }
+
+  /**
+   * Render (feeds are typically non-visual)
+   */
+  render() {
+    // Feed has no visual representation in this version
+    // Could add a supply indicator icon in future
+  }
+
+  /**
+   * Reset feed
+   */
+  reset() {
+    super.reset();
+    this.available = true;
+    this.flowRate = 0;
+  }
+
+  /**
+   * Check if feed is a boundary node
+   */
+  isBoundary() {
+    return true;
+  }
+
+  /**
+   * Get feed info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      available: this.available,
+      supplyPressure: this.supplyPressure + ' bar',
+      maxFlow: this.maxFlow === Infinity ? 'unlimited' : this.maxFlow + ' m³/s',
+      currentFlow: this.flowRate.toFixed(3) + ' m³/s',
+      temperature: this.temperature + ' °C'
+    };
+  }
+}
+
+// Export
+window.Feed = Feed;
+
+
+
+/* ============================================================================
+ * js/components/sinks/Drain.js
+ * Source: https://sco314.github.io/tank-sim/js/components/sinks/Drain.js
+ * ============================================================================ */
+
+/**
+ * Drain.js - Sink/outlet boundary condition component
+ * 
+ * Represents infinite discharge capacity (e.g., sewer, process outlet)
+ * Has inputs, no outputs, accepts any flow
+ */
+
+class Drain extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'drain';
+    
+    // Boundary condition properties
+    this.ambientPressure = config.ambientPressure || 1.0; // bar (atmospheric)
+    this.maxCapacity = config.maxCapacity || Infinity; // m³/s (unlimited by default)
+    this.backpressure = config.backpressure || 0; // bar (resistance, for future use)
+    
+    // Discharge characteristics
+    this.open = config.open !== false; // Can be closed
+    this.flowRate = 0; // Current flow rate
+    this.totalDischarge = 0; // Cumulative volume discharged (m³)
+    
+    console.log(`Drain created: ${this.name} (${this.ambientPressure} bar, capacity ${this.maxCapacity === Infinity ? 'unlimited' : this.maxCapacity + ' m³/s'})`);
+  }
+
+  /**
+   * Drain accepts infinite flow (is a sink)
+   */
+  getOutputFlow() {
+    return 0; // Sinks don't output
+  }
+
+  /**
+   * Get ambient pressure at drain (for future pressure-based calculations)
+   */
+  getAmbientPressure() {
+    return this.open ? this.ambientPressure : Infinity; // Infinite resistance if closed
+  }
+
+  /**
+   * Get backpressure (resistance to flow)
+   */
+  getBackpressure() {
+    return this.open ? this.backpressure : Infinity;
+  }
+
+  /**
+   * Open/close drain
+   */
+  setOpen(open) {
+    this.open = !!open;
+    this.notifyChange();
+    console.log(`${this.name} ${this.open ? 'opened' : 'closed'}`);
+  }
+
+  /**
+   * Update drain state
+   */
+  update(dt) {
+    // Track actual flow rate (read from network)
+    if (this.flowNetwork) {
+      this.flowRate = this.flowNetwork.getInputFlow(this.id);
+      
+      // Accumulate total discharge
+      this.totalDischarge += this.flowRate * dt;
+    }
+  }
+
+  /**
+   * Render (drains are typically non-visual)
+   */
+  render() {
+    // Drain has no visual representation in this version
+    // Could add a discharge indicator icon in future
+  }
+
+  /**
+   * Reset drain
+   */
+  reset() {
+    super.reset();
+    this.open = true;
+    this.flowRate = 0;
+    this.totalDischarge = 0;
+  }
+
+  /**
+   * Check if drain is a boundary node
+   */
+  isBoundary() {
+    return true;
+  }
+
+  /**
+   * Get drain info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      open: this.open,
+      ambientPressure: this.ambientPressure + ' bar',
+      maxCapacity: this.maxCapacity === Infinity ? 'unlimited' : this.maxCapacity + ' m³/s',
+      currentFlow: this.flowRate.toFixed(3) + ' m³/s',
+      totalDischarge: this.totalDischarge.toFixed(3) + ' m³',
+      backpressure: this.backpressure + ' bar'
+    };
+  }
+}
+
+// Export
+window.Drain = Drain;
+
+
+
+/* ============================================================================
+ * js/components/pumps/Pump.js
+ * Source: https://sco314.github.io/tank-sim/js/components/pumps/Pump.js
+ * ============================================================================ */
+
+/**
+ * Pump.js - Base pump component with proper flow constraints
+ * 
+ * Pump reads available supply from tank and constrains by valve position
+ */
+
+class Pump extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'pump';
+    this.pumpType = config.pumpType || 'fixed';
+    
+    // Physical properties
+    this.capacity = config.capacity || 1.0;
+    this.efficiency = config.efficiency || 0.95;
+    this.power = config.power || 0;
+    
+    // Operating state
+    this.running = false;
+    this.speed = config.initialSpeed || 0;
+    this.requiresMinLevel = config.requiresMinLevel || 0;
+    
+    // Cavitation
+    this.cavitation = {
+      enabled: config.cavitation?.enabled || false,
+      triggerTime: config.cavitation?.triggerTime || 60,
+      duration: config.cavitation?.duration || 5,
+      flowReduction: config.cavitation?.flowReduction || 0.3,
+      active: false,
+      startTime: null,
+      elapsedTime: 0
+    };
+    
+    // Tracking
+    this.runTime = 0;
+    this.startCount = 0;
+  }
+
+  start() {
+    if (this.running) return;
+    
+    this.running = true;
+    this.startCount++;
+    
+    if (this.cavitation.enabled && this.cavitation.triggerTime === null) {
+      this._startCavitation();
+    }
+    
+    this.notifyChange();
+    console.log(`${this.name} started (start count: ${this.startCount})`);
+  }
+
+  stop() {
+    if (!this.running) return;
+    
+    this.running = false;
+    this.cavitation.active = false;
+    this.cavitation.startTime = null;
+    
+    this.notifyChange();
+    console.log(`${this.name} stopped`);
+  }
+
+  setSpeed(speed) {
+    this.speed = Math.max(0, Math.min(1, speed));
+    this.notifyChange();
+  }
+
+  canRun(sourceLevel) {
+    if (sourceLevel === undefined) return true;
+    return sourceLevel >= this.requiresMinLevel;
+  }
+
+  _startCavitation() {
+    if (!this.cavitation.enabled) return;
+    
+    this.cavitation.active = true;
+    this.cavitation.startTime = performance.now();
+    console.warn(`⚠️ ${this.name} CAVITATION STARTED!`);
+  }
+
+  _updateCavitation(dt) {
+    if (!this.cavitation.enabled || !this.running) return;
+    
+    this.cavitation.elapsedTime += dt;
+    
+    if (!this.cavitation.active && 
+        this.cavitation.triggerTime !== null && 
+        this.cavitation.elapsedTime >= this.cavitation.triggerTime) {
+      this._startCavitation();
+    }
+    
+    if (this.cavitation.active) {
+      const cavitationDuration = (performance.now() - this.cavitation.startTime) / 1000;
+      if (cavitationDuration >= this.cavitation.duration) {
+        this.cavitation.active = false;
+        this.cavitation.startTime = null;
+        console.log(`${this.name} cavitation ended`);
+      }
+    }
+  }
+
+  /**
+   * SMART OUTPUT: Pump constrains flow based on:
+   * 1. Available supply from tank (read from network)
+   * 2. Pump capacity
+   * 3. Downstream valve position
+   */
+getOutputFlow() {
+  if (!this.running) return 0;
+  
+  let maxFlow = this.capacity * this.speed * this.efficiency;
+  
+  if (this.cavitation.active) {
+    maxFlow *= this.cavitation.flowReduction;
+  }
+  
+  if (!this.flowNetwork) return maxFlow;
+  
+  // CONSTRAINT 1: Check tank availability
+  let availableFromTank = Infinity;
+  let tankComponent = null;
+  
+  for (const inputId of this.inputs) {
+    const tank = this._findUpstreamComponent(inputId, 'tank');
+    if (tank) {
+      tankComponent = tank;
+      // Tank can supply based on current volume (50% per second max)
+      availableFromTank = Math.min(availableFromTank, tank.volume * 0.5);
+      
+      if (tank.level < this.requiresMinLevel) {
+        console.warn(`${this.name} stopped - tank level below minimum`);
+        return 0;
+      }
+    }
+  }
+  
+  // CONSTRAINT 2: Check valve
+  let valveLimit = Infinity;
+  for (const outputId of this.outputs) {
+    const valve = this._findDownstreamComponent(outputId, 'valve');
+    if (valve) {
+      valveLimit = Math.min(valveLimit, valve.maxFlow * valve.position);
+    }
+  }
+  
+  // Actual flow = minimum of all constraints
+  const actualFlow = Math.min(maxFlow, availableFromTank, valveLimit);
+  
+  // CRITICAL: Create the tank->pump flow so tank drains correctly
+  if (tankComponent && actualFlow > 0) {
+    this.flowNetwork.setFlow(tankComponent.id, this.id, actualFlow);
+  }
+  
+  return actualFlow;
+}
+
+  /**
+   * Helper: Find upstream component by type (looks through pipes)
+   */
+  _findUpstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    if (component.type === targetType) return component;
+    
+    if (component.type === 'pipe' && component.inputs && component.inputs.length > 0) {
+      for (const inputId of component.inputs) {
+        const result = this._findUpstreamComponent(inputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Helper: Find downstream component by type (looks through pipes)
+   */
+  _findDownstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    if (component.type === targetType) return component;
+    
+    if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
+      for (const outputId of component.outputs) {
+        const result = this._findDownstreamComponent(outputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
+  }
+
+  update(dt) {
+    if (!this.running) return;
+    
+    this.runTime += dt;
+    this._updateCavitation(dt);
+  }
+
+  reset() {
+    super.reset();
+    this.running = false;
+    this.speed = 0;
+    this.runTime = 0;
+    this.startCount = 0;
+    this.cavitation.active = false;
+    this.cavitation.startTime = null;
+    this.cavitation.elapsedTime = 0;
+  }
+
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      pumpType: this.pumpType,
+      running: this.running,
+      speed: this.speed,
+      capacity: this.capacity,
+      outputFlow: this.getOutputFlow(),
+      cavitation: this.cavitation.active,
+      runTime: this.runTime.toFixed(1),
+      startCount: this.startCount
+    };
+  }
+}
+
+// Export
+window.Pump = Pump;
+
+
+
+/* ============================================================================
+ * js/components/valves/Valve.js
+ * Source: https://sco314.github.io/tank-sim/js/components/valves/Valve.js
+ * ============================================================================ */
+
+/**
+ * Valve.js - Valve component with proportional control
+ * 
+ * Supports 0-100% positioning via interactive wheel control
+ */
+
+class Valve extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'valve';
+    
+    // Physical properties
+    this.maxFlow = config.maxFlow || 1.0; // Max flow rate when fully open (m³/s)
+    
+    // Operating state
+    this.position = config.initialPosition || 0; // 0 = closed, 1 = fully open
+    
+    // Valve characteristics
+    this.responseTime = config.responseTime || 0.1; // Time to change position (seconds)
+    this.targetPosition = this.position; // Target position for smooth transitions
+    
+    console.log(`Valve created: ${this.name} (max flow: ${this.maxFlow})`);
+  }
+
+  /**
+   * Set valve position (0-1)
+   */
+  setPosition(pos) {
+    pos = Math.max(0, Math.min(1, pos));
+    this.targetPosition = pos;
+    this.notifyChange();
+  }
+
+  /**
+   * Get current valve position (0-1)
+   */
+  getPosition() {
+    return this.position;
+  }
+
+  /**
+   * Get position as percentage (0-100)
+   */
+  getPositionPercent() {
+    return Math.round(this.position * 100);
+  }
+
+  /**
+   * Open valve fully
+   */
+  open() {
+    this.setPosition(1.0);
+  }
+
+  /**
+   * Close valve fully
+   */
+  close() {
+    this.setPosition(0);
+  }
+
+  /**
+   * Check if valve is open (>5%)
+   */
+  isOpen() {
+    return this.position > 0.05;
+  }
+
+  /**
+   * Check if valve is closed (<5%)
+   */
+  isClosed() {
+    return this.position < 0.05;
+  }
+
+  /**
+   * Check if valve is fully open (>95%)
+   */
+  isFullyOpen() {
+    return this.position > 0.95;
+  }
+
+  /**
+   * Get current flow rate through valve
+   */
+  getOutputFlow() {
+    // Flow is proportional to valve position
+    return this.maxFlow * this.position;
+  }
+
+  /**
+   * Update valve state (smooth position transitions)
+   */
+  update(dt) {
+    // Smooth transition to target position
+    if (Math.abs(this.position - this.targetPosition) > 0.001) {
+      const delta = this.targetPosition - this.position;
+      const step = (delta / this.responseTime) * dt;
+      
+      this.position += step;
+      this.position = Math.max(0, Math.min(1, this.position));
+      
+      // Snap to target if very close
+      if (Math.abs(this.position - this.targetPosition) < 0.001) {
+        this.position = this.targetPosition;
+      }
+    }
+  }
+
+  /**
+   * Reset valve
+   */
+  reset() {
+    super.reset();
+    this.position = 0;
+    this.targetPosition = 0;
+  }
+
+  /**
+   * Get valve info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      position: this.position,
+      positionPercent: this.getPositionPercent() + '%',
+      targetPosition: this.targetPosition,
+      maxFlow: this.maxFlow,
+      currentFlow: this.getOutputFlow().toFixed(3),
+      status: this.isClosed() ? 'CLOSED' : this.isFullyOpen() ? 'OPEN' : 'PARTIAL'
+    };
+  }
+}
+
+// Export
+window.Valve = Valve;
+
+
+
+/* ============================================================================
+ * js/components/pipes/Pipe.js
+ * Source: https://sco314.github.io/tank-sim/js/components/pipes/Pipe.js
+ * ============================================================================ */
+
+/**
+ * Pipe.js - Visual-only pipe component
+ * 
+ * Pipes READ flows from the network (they don't create flows)
+ * They animate based on actual component-to-component flows
+ */
+
+class Pipe extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'pipe';
+    
+    // Physical properties
+    this.diameter = config.diameter || 0.05; // meters (50mm default)
+    this.length = config.length || 1.0; // meters
+    this.roughness = config.roughness || 0.000045; // meters (steel pipe)
+    
+    // Flow state (read from network, not calculated here)
+    this.flowRate = 0; // m³/s
+    this.velocity = 0; // m/s
+    this.reynoldsNumber = 0;
+    this.regime = 'Laminar'; // 'Laminar', 'Transitional', 'Turbulent'
+    
+    // Animation state
+    this.animating = false;
+    
+    // Visual element
+    this.flowPath = null;
+    
+    this._initializeVisuals();
+    
+    console.log(`Pipe created: ${this.name} (${this.diameter * 1000}mm × ${this.length}m)`);
+  }
+
+  _initializeVisuals() {
+    const element = this.getElement();
+    if (element) {
+      this.flowPath = element;
+    } else if (this.svgElement) {
+      this.flowPath = document.querySelector(this.svgElement);
+    }
+    
+    if (!this.flowPath) {
+      console.warn(`Flow path not found for pipe ${this.name}`);
+    }
+  }
+
+  /**
+   * CRITICAL: Pipes DON'T create flow - they only visualize it
+   */
+  getOutputFlow() {
+    return 0; // Pipes never processed in calculateFlows
+  }
+
+  /**
+   * Update pipe state - READ flow from network
+   */
+  update(dt) {
+    if (!this.flowNetwork) return;
+    
+    // READ the actual flow between the components this pipe connects
+    // Example: pipe2 connects inletValve → tank1
+    // So we read the flow from inletValve to tank1
+    
+    if (this.inputs.length > 0 && this.outputs.length > 0) {
+      const fromId = this.inputs[0];
+      const toId = this.outputs[0];
+      
+      // Read flow from network
+      this.flowRate = this.flowNetwork.getFlow(fromId, toId);
+    } else {
+      this.flowRate = 0;
+    }
+    
+    // Calculate derived properties
+    this._calculateFlowProperties();
+    
+    // Update animation state
+    this._updateAnimation();
+  }
+
+  /**
+   * Calculate flow properties (velocity, Reynolds number, regime)
+   */
+  _calculateFlowProperties() {
+    // Cross-sectional area
+    const area = Math.PI * Math.pow(this.diameter / 2, 2);
+    
+    // Velocity: v = Q / A
+    this.velocity = area > 0 ? this.flowRate / area : 0;
+    
+    // Reynolds number: Re = ρ * v * D / μ
+    // For water at 20°C: ρ = 1000 kg/m³, μ = 0.001 Pa·s
+    const density = 1000; // kg/m³
+    const viscosity = 0.001; // Pa·s
+    
+    this.reynoldsNumber = (density * this.velocity * this.diameter) / viscosity;
+    
+    // Flow regime
+    if (this.reynoldsNumber < 2300) {
+      this.regime = 'Laminar';
+    } else if (this.reynoldsNumber < 4000) {
+      this.regime = 'Transitional';
+    } else {
+      this.regime = 'Turbulent';
+    }
+  }
+
+  /**
+   * Update animation based on flow rate
+   */
+  _updateAnimation() {
+    if (!this.flowPath) return;
+    
+    const hasFlow = this.flowRate > 0.001; // Threshold to avoid noise
+    
+    if (hasFlow) {
+      // Start animation
+      if (!this.animating) {
+        this.flowPath.classList.add('on');
+        this.animating = true;
+      }
+      
+      // Adjust animation speed based on flow rate
+      // Higher flow = faster animation
+      // Speed range: 200ms (fast) to 2000ms (slow)
+      const maxFlow = 1.0; // m³/s (assumed max for scaling)
+      const normalizedFlow = Math.min(1, this.flowRate / maxFlow);
+      const duration = 2000 - (1800 * normalizedFlow); // 2000ms to 200ms
+      
+      this.flowPath.style.setProperty('--duration', `${duration}ms`);
+    } else {
+      // Stop animation
+      if (this.animating) {
+        this.flowPath.classList.remove('on');
+        this.animating = false;
+      }
+    }
+  }
+
+  /**
+   * Render pipe visual state
+   */
+  render() {
+    // Animation is handled by CSS and update()
+    // Could add color coding based on flow rate or regime here
+    
+    if (!this.flowPath) return;
+    
+    // Optional: Change color based on regime
+    if (this.flowRate > 0) {
+      if (this.regime === 'Turbulent') {
+        // Could add a class for turbulent flow visualization
+      }
+    }
+  }
+
+  /**
+   * Get flow velocity
+   */
+  getVelocity() {
+    return this.velocity;
+  }
+
+  /**
+   * Get Reynolds number
+   */
+  getReynoldsNumber() {
+    return this.reynoldsNumber;
+  }
+
+  /**
+   * Get flow regime
+   */
+  getFlowRegime() {
+    return this.regime;
+  }
+
+  /**
+   * Check if pipe is flowing
+   */
+  isFlowing() {
+    return this.flowRate > 0.001;
+  }
+
+  /**
+   * Calculate pressure drop (for future use)
+   */
+  getPressureDrop() {
+    // Darcy-Weisbach equation: ΔP = f * (L/D) * (ρv²/2)
+    // Simplified for now
+    
+    if (this.velocity === 0) return 0;
+    
+    // Friction factor (simplified - use Moody chart for accuracy)
+    let frictionFactor;
+    if (this.reynoldsNumber < 2300) {
+      // Laminar: f = 64/Re
+      frictionFactor = 64 / this.reynoldsNumber;
+    } else {
+      // Turbulent: Colebrook-White (simplified)
+      frictionFactor = 0.02; // Approximation
+    }
+    
+    const density = 1000; // kg/m³
+    const pressureDrop = frictionFactor * 
+                        (this.length / this.diameter) * 
+                        (density * Math.pow(this.velocity, 2) / 2);
+    
+    return pressureDrop / 100000; // Convert Pa to bar
+  }
+
+  /**
+   * Reset pipe
+   */
+  reset() {
+    super.reset();
+    this.flowRate = 0;
+    this.velocity = 0;
+    this.reynoldsNumber = 0;
+    this.regime = 'Laminar';
+    this.animating = false;
+    
+    if (this.flowPath) {
+      this.flowPath.classList.remove('on');
+    }
+  }
+
+  /**
+   * Get pipe info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      flowRate: this.flowRate.toFixed(3) + ' m³/s',
+      velocity: this.velocity.toFixed(2) + ' m/s',
+      reynolds: Math.round(this.reynoldsNumber),
+      regime: this.regime,
+      diameter: (this.diameter * 1000).toFixed(0) + ' mm',
+      length: this.length.toFixed(1) + ' m',
+      pressureDrop: this.getPressureDrop().toFixed(3) + ' bar',
+      animating: this.animating
+    };
+  }
+}
+
+// Export
+window.Pipe = Pipe;
+
+
+
+/* ============================================================================
+ * js/config/systemConfig.js
+ * Source: https://sco314.github.io/tank-sim/js/config/systemConfig.js
+ * ============================================================================ */
+
+/**
+ * systemConfig.js - System configuration with component-only topology
+ * 
+ * Flow path: feed1 → inletValve → tank1 → pump1 → outletValve → drain
+ * Pipes are visual only and read flows from the network
+ */
+
+const SYSTEM_CONFIG = {
+  
+  // ============================================================================
+  // BOUNDARY CONDITIONS (New!)
+  // ============================================================================
+  feeds: {
+    mainFeed: {
+      id: 'feed1',
+      name: 'Main Water Supply',
+      type: 'feed',
+      
+      // Boundary properties
+      supplyPressure: 3.0,    // bar (typical municipal water)
+      maxFlow: Infinity,      // Unlimited supply
+      temperature: 20,        // °C
+      available: true,        // Supply available
+      
+      // Connections (no inputs, outputs to first valve)
+      inputs: [],
+      outputs: ['inletValve']
+    }
+  },
+  
+  drains: {
+    mainDrain: {
+      id: 'drain',
+      name: 'System Discharge',
+      type: 'drain',
+      
+      // Boundary properties
+      ambientPressure: 1.0,   // bar (atmospheric)
+      maxCapacity: Infinity,  // Unlimited discharge
+      backpressure: 0,        // No resistance
+      open: true,             // Drain open
+      
+      // Connections (inputs from last valve, no outputs)
+      inputs: ['outletValve'],
+      outputs: []
+    }
+  },
+  
+  // ============================================================================
+  // VALVES
+  // ============================================================================
+  valves: {
+    inlet: {
+      id: 'inletValve',
+      name: 'Inlet Valve',
+      type: 'valve',
+      
+      // Physical properties
+      maxFlow: 0.3,
+      
+      // Operating parameters
+      initialPosition: 0,
+      responseTime: 0.1,
+      
+      // Visual properties
+      svgElement: '#valve',
+      position: [230, 53],
+      
+      // Connections (component to component)
+      inputs: ['feed1'],      // ← From feed
+      outputs: ['tank1'],     // ← To tank
+      
+      // UI
+      modalTitle: 'Inlet Valve Control',
+      iframeUrl: 'valve.html'
+    },
+    
+    outlet: {
+      id: 'outletValve',
+      name: 'Outlet Valve',
+      type: 'valve',
+      
+      maxFlow: 0.6,
+      initialPosition: 1.0,
+      responseTime: 0.1,
+      
+      svgElement: '#outletValve',
+      position: [890, 278],
+      
+      // Connections (component to component)
+      inputs: ['pump1'],      // ← From pump
+      outputs: ['drain'],     // ← To drain
+      
+      modalTitle: 'Outlet Valve Control',
+      iframeUrl: 'valve.html'
+    }
+  },
+  
+  // ============================================================================
+  // TANKS
+  // ============================================================================
+  tanks: {
+    mainTank: {
+      id: 'tank1',
+      name: 'Main Storage Tank',
+      type: 'tank',
+      
+      // Physical properties
+      area: 2.5,              // m² (cross-sectional area)
+      maxHeight: 1.2,         // m (height)
+      // maxVolume = 2.5 × 1.2 = 3.0 m³
+      
+      // Initial conditions
+      initialVolume: 0,       // Start empty
+      
+      // Visual properties
+      svgElement: '#tank',
+      position: [340, 120],
+      levelRectHeight: 360,   // px
+      levelRectY: 360,        // px
+      
+      // Thresholds
+      lowThreshold: 0.1,      // 10% = low alarm
+      highThreshold: 0.9,     // 90% = high alarm
+      
+      // Connections (component to component)
+      inputs: ['inletValve'], // ← From inlet valve
+      outputs: ['pump1']      // ← To pump
+    }
+  },
+  
+  // ============================================================================
+  // PUMPS
+  // ============================================================================
+  pumps: {
+    mainPump: {
+      id: 'pump1',
+      name: 'Main Centrifugal Pump',
+      type: 'pump',
+      pumpType: 'fixed',
+      
+      // Physical properties
+      capacity: 0.5,          // m³/s (max flow rate)
+      efficiency: 0.95,       // 95% efficient
+      power: 5.5,             // kW
+      
+      // Operating parameters
+      initialSpeed: 0,        // Start OFF
+      requiresMinLevel: 0,    // No minimum level required
+      
+      // Cavitation (disabled for now)
+      cavitation: {
+        enabled: false,
+        triggerTime: 60,
+        duration: 5,
+        flowReduction: 0.3
+      },
+      
+      // Visual properties
+      svgElement: '#pump',
+      position: [790, 460],
+      
+      // Connections (component to component)
+      inputs: ['tank1'],      // ← From tank
+      outputs: ['outletValve'], // ← To outlet valve
+      
+      // UI
+      modalTitle: 'Main Pump Control'
+    }
+  },
+  
+  // ============================================================================
+  // PIPES (Visual Only - No Flow Routing)
+  // ============================================================================
+  pipes: {
+    sourceToInlet: {
+      id: 'pipe1',
+      name: 'Source to Inlet Valve',
+      type: 'pipe',
+      
+      diameter: 0.05,         // 50mm
+      length: 0.5,            // 0.5m
+      
+      svgElement: '#pipe1Flow',
+      
+      // Visual connections (reads flow from feed1→inletValve)
+      inputs: ['feed1'],
+      outputs: ['inletValve']
+    },
+    
+    inletToTank: {
+      id: 'pipe2',
+      name: 'Inlet Valve to Tank',
+      type: 'pipe',
+      
+      diameter: 0.05,
+      length: 1.0,
+      
+      svgElement: '#pipe2Flow',
+      
+      // Visual connections (reads flow from inletValve→tank1)
+      inputs: ['inletValve'],
+      outputs: ['tank1']
+    },
+    
+    tankToPump: {
+      id: 'pipe3',
+      name: 'Tank to Pump',
+      type: 'pipe',
+      
+      diameter: 0.05,
+      length: 0.5,
+      
+      svgElement: '#pipe3Flow',
+      
+      // Visual connections (reads flow from tank1→pump1)
+      inputs: ['tank1'],
+      outputs: ['pump1']
+    },
+    
+    pumpToOutlet: {
+      id: 'pipe4',
+      name: 'Pump to Outlet Valve',
+      type: 'pipe',
+      
+      diameter: 0.05,
+      length: 1.5,
+      
+      svgElement: '#pipe4Flow',
+      
+      // Visual connections (reads flow from pump1→outletValve)
+      inputs: ['pump1'],
+      outputs: ['outletValve']
+    },
+    
+    outletToDrain: {
+      id: 'pipe5',
+      name: 'Outlet Valve to Drain',
+      type: 'pipe',
+      
+      diameter: 0.05,
+      length: 0.5,
+      
+      svgElement: '#pipe5Flow',
+      
+      // Visual connections (reads flow from outletValve→drain)
+      inputs: ['outletValve'],
+      outputs: ['drain']
+    }
+  },
+  
+  // ============================================================================
+  // PRESSURE SENSORS
+  // ============================================================================
+  pressureSensors: {
+    tankBottom: {
+      id: 'p1',
+      name: 'Tank Bottom Pressure',
+      type: 'sensor',
+      
+      measurementPoint: 'tank_bottom',
+      range: [0, 2],          // 0-2 bar
+      alarmLow: 0.5,          // Low pressure alarm
+      alarmHigh: 1.8,         // High pressure alarm
+      
+      svgElement: null,       // Non-visual for now
+      
+      inputs: ['tank1'],
+      outputs: []
+    },
+    
+    pumpInlet: {
+      id: 'p2',
+      name: 'Pump Suction Pressure',
+      type: 'sensor',
+      
+      measurementPoint: 'pump_inlet',
+      range: [0, 2],
+      alarmLow: 0.3,          // Cavitation risk
+      alarmHigh: 1.8,
+      
+      svgElement: null,
+      
+      inputs: ['tank1'],
+      outputs: []
+    },
+    
+    pumpOutlet: {
+      id: 'p3',
+      name: 'Pump Discharge Pressure',
+      type: 'sensor',
+      
+      measurementPoint: 'pump_outlet',
+      range: [0, 15],         // Higher range for discharge
+      alarmLow: 0.5,
+      alarmHigh: 12,          // Overpressure protection
+      
+      svgElement: null,
+      
+      inputs: ['pump1'],
+      outputs: []
+    },
+    
+    systemOutlet: {
+      id: 'p4',
+      name: 'System Outlet Pressure',
+      type: 'sensor',
+      
+      measurementPoint: 'static',
+      range: [0, 10],
+      alarmLow: 0.8,
+      alarmHigh: 8,
+      
+      svgElement: null,
+      
+      inputs: ['outletValve'],
+      outputs: []
+    }
+  },
+  
+  // ============================================================================
+  // COMPONENT TEMPLATES (for easy expansion)
+  // ============================================================================
+  templates: {
+    pump: {
+      fixed: { 
+        pumpType: 'fixed', 
+        capacity: 1.0, 
+        efficiency: 0.95 
+      },
+      variable: { 
+        pumpType: 'variable', 
+        capacity: 1.0, 
+        minSpeed: 0.1 
+      },
+      threeSpeed: { 
+        pumpType: '3-speed', 
+        speeds: [0.3, 0.6, 1.0] 
+      }
+    },
+    valve: {
+      standard: { 
+        maxFlow: 0.5, 
+        responseTime: 0.1 
+      },
+      slowActing: { 
+        maxFlow: 0.5, 
+        responseTime: 0.5 
+      },
+      quickActing: { 
+        maxFlow: 0.5, 
+        responseTime: 0.05 
+      }
+    },
+    tank: {
+      small: { 
+        area: 1.0, 
+        maxHeight: 1.0 
+      },
+      medium: { 
+        area: 2.0, 
+        maxHeight: 1.5 
+      },
+      large: { 
+        area: 3.0, 
+        maxHeight: 2.0 
+      }
+    },
+    feed: {
+      lowPressure: { 
+        supplyPressure: 2.0, 
+        maxFlow: Infinity 
+      },
+      highPressure: { 
+        supplyPressure: 5.0, 
+        maxFlow: Infinity 
+      },
+      limited: { 
+        supplyPressure: 3.0, 
+        maxFlow: 1.0 
+      }
+    },
+    drain: {
+      atmospheric: { 
+        ambientPressure: 1.0, 
+        maxCapacity: Infinity 
+      },
+      pressurized: { 
+        ambientPressure: 2.0, 
+        backpressure: 0.5 
+      }
+    }
+  },
+  
+  // ============================================================================
+  // GLOBAL SETTINGS
+  // ============================================================================
+  settings: {
+    // Simulation
+    timeStep: 0.016,          // Target dt (60 FPS)
+    maxTimeStep: 0.1,         // Cap dt to prevent instability
+    
+    // Physics
+    gravity: 9.81,            // m/s²
+    fluidDensity: 1000,       // kg/m³ (water)
+    
+    // UI
+    updateInterval: 16,       // Update UI every 16ms (60 FPS)
+    
+    // Debug
+    debugMode: true,          // Show debug info in console
+    logFlows: false           // Log flow rates to console
+  }
+};
+
+// ============================================================================
+// HELPER: Validate configuration
+// ============================================================================
+function validateConfig(config) {
+  const errors = [];
+  const warnings = [];
+  
+  // Build list of all component IDs
+  const allComponentIds = new Set();
+  
+  for (const [category, items] of Object.entries(config)) {
+    if (category === 'settings' || category === 'templates') continue;
+    
+    for (const [key, item] of Object.entries(items)) {
+      if (!item.id) {
+        errors.push(`${category}.${key} missing ID`);
+        continue;
+      }
+      
+      // Check for duplicate IDs
+      if (allComponentIds.has(item.id)) {
+        errors.push(`Duplicate ID found: ${item.id}`);
+      }
+      allComponentIds.add(item.id);
+    }
+  }
+  
+  // Validate connections
+  for (const [category, items] of Object.entries(config)) {
+    if (category === 'settings' || category === 'templates') continue;
+    
+    for (const [key, item] of Object.entries(items)) {
+      // Check inputs
+      if (item.inputs) {
+        for (const inputId of item.inputs) {
+          if (!allComponentIds.has(inputId)) {
+            errors.push(`${item.id}.inputs references missing component: ${inputId}`);
+          }
+        }
+      }
+      
+      // Check outputs
+      if (item.outputs) {
+        for (const outputId of item.outputs) {
+          if (!allComponentIds.has(outputId)) {
+            errors.push(`${item.id}.outputs references missing component: ${outputId}`);
+          }
+        }
+      }
+      
+      // Check boundary components
+      if (item.type === 'feed' && item.inputs && item.inputs.length > 0) {
+        warnings.push(`${item.id} is a feed but has inputs (should be empty)`);
+      }
+      if (item.type === 'drain' && item.outputs && item.outputs.length > 0) {
+        warnings.push(`${item.id} is a drain but has outputs (should be empty)`);
+      }
+    }
+  }
+  
+  // Report results
+  if (errors.length > 0) {
+    console.error('❌ Configuration validation errors:', errors);
+    return false;
+  }
+  
+  if (warnings.length > 0) {
+    console.warn('⚠️ Configuration warnings:', warnings);
+  }
+  
+  console.log('✓ Configuration validated successfully');
+  return true;
+}
+
+// ============================================================================
+// EXPORT
+// ============================================================================
+window.SYSTEM_CONFIG = SYSTEM_CONFIG;
+window.validateConfig = validateConfig;
+
+// Auto-validate on load
+if (validateConfig(SYSTEM_CONFIG)) {
+  console.log('✅ System configuration loaded and validated');
+  console.log('📋 Components:', {
+    feeds: Object.keys(SYSTEM_CONFIG.feeds || {}).length,
+    tanks: Object.keys(SYSTEM_CONFIG.tanks || {}).length,
+    pumps: Object.keys(SYSTEM_CONFIG.pumps || {}).length,
+    valves: Object.keys(SYSTEM_CONFIG.valves || {}).length,
+    drains: Object.keys(SYSTEM_CONFIG.drains || {}).length,
+    pressureSensors: Object.keys(SYSTEM_CONFIG.pressureSensors || {}).length
+  });
+}
+
+
+
+/* ============================================================================
+ * js/components/tanks/Tank.js
+ * Source: https://sco314.github.io/tank-sim/js/components/tanks/Tank.js
+ * ============================================================================ */
+
+class Tank extends Component {
+  constructor(config) {
+    super(config);
+    this.type = 'tank';
+    this.area = config.area || 1.0;
+    this.maxHeight = config.maxHeight || 1.0;
+    this.maxVolume = this.area * this.maxHeight;
+    this.volume = config.initialVolume || 0;
+    this.level = this.volume / this.maxVolume;
+    this.levelRect = null;
+    this.levelRectHeight = config.levelRectHeight || 360;
+    this.levelRectY = config.levelRectY || 360;
+    this.lowThreshold = config.lowThreshold || 0.1;
+    this.highThreshold = config.highThreshold || 0.9;
+    this.lastInputFlow = 0;
+    this.lastOutputFlow = 0;
+    this._initializeVisuals();
+    console.log('Tank created: ' + this.name);
+  }
+
+  _initializeVisuals() {
+    const element = this.getElement();
+    if (!element) return;
+    this.levelRect = element.querySelector('#levelRect') || element.querySelector('.levelRect');
+    if (!this.levelRect) {
+      console.warn('Level rect not found for tank ' + this.name);
+    }
+  }
+
+  getOutputFlow() {
+    return 0;
+  }
+
+  update(dt) {
+    const Qin = this.flowNetwork ? this.flowNetwork.getInputFlow(this.id) : 0;
+    const Qout = this.flowNetwork ? this.flowNetwork.getOutputFlow(this.id) : 0;
+    this.lastInputFlow = Qin;
+    this.lastOutputFlow = Qout;
+    const dV = (Qin - Qout) * dt;
+    this.volume += dV;
+    this.volume = Math.max(0, Math.min(this.maxVolume, this.volume));
+    this.level = this.volume / this.maxVolume;
+  }
+
+  render() {
+    if (!this.levelRect) return;
+    const heightPx = this.levelRectHeight * this.level;
+    const yPx = this.levelRectY - heightPx;
+    this.levelRect.setAttribute('height', heightPx);
+    this.levelRect.setAttribute('y', yPx);
+    if (this.level < this.lowThreshold) {
+      this.levelRect.setAttribute('opacity', '0.6');
+    } else if (this.level > this.highThreshold) {
+      this.levelRect.setAttribute('opacity', '1.0');
+    } else {
+      this.levelRect.setAttribute('opacity', '0.8');
+    }
+  }
+
+  getLevel() {
+    return this.level;
+  }
+
+  getLevelPercent() {
+    return Math.round(this.level * 100);
+  }
+
+  isEmpty() {
+    return this.volume < 0.001;
+  }
+
+  isFull() {
+    return this.volume >= this.maxVolume - 0.001;
+  }
+
+  isLow() {
+    return this.level < this.lowThreshold;
+  }
+
+  isHigh() {
+    return this.level > this.highThreshold;
+  }
+
+  setVolume(volume) {
+    this.volume = Math.max(0, Math.min(this.maxVolume, volume));
+    this.level = this.volume / this.maxVolume;
+    this.notifyChange();
+  }
+
+  setLevelPercent(percent) {
+    const fraction = Math.max(0, Math.min(100, percent)) / 100;
+    this.setVolume(fraction * this.maxVolume);
+  }
+
+  reset() {
+    super.reset();
+    this.volume = 0;
+    this.level = 0;
+    this.lastInputFlow = 0;
+    this.lastOutputFlow = 0;
+  }
+
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      volume: this.volume.toFixed(3) + ' m³',
+      level: this.getLevelPercent() + '%',
+      maxVolume: this.maxVolume.toFixed(2) + ' m³',
+      inputFlow: this.lastInputFlow.toFixed(3) + ' m³/s',
+      outputFlow: this.lastOutputFlow.toFixed(3) + ' m³/s',
+      status: this.isEmpty() ? 'EMPTY' : this.isFull() ? 'FULL' : this.isLow() ? 'LOW' : this.isHigh() ? 'HIGH' : 'NORMAL'
+    };
+  }
+}
+
+window.Tank = Tank;
+
+
+
+/* ============================================================================
+ * js/components/pumps/FixedSpeedPump.js
+ * Source: https://sco314.github.io/tank-sim/js/components/pumps/FixedSpeedPump.js
+ * ============================================================================ */
+
+/**
+ * FixedSpeedPump.js - Fixed speed pump (ON/OFF only)
+ * 
+ * Simple pump with just two states: ON or OFF
+ */
+
+class FixedSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: 'fixed'
+    });
+    
+    // Fixed speed pumps always run at 100% when ON
+    this.speed = 1.0;
+  }
+
+  /**
+   * Start pump (always at full speed)
+   */
+  start() {
+    this.speed = 1.0;
+    super.start();
+  }
+
+  /**
+   * Stop pump
+   */
+  stop() {
+    this.speed = 0;
+    super.stop();
+  }
+
+  /**
+   * Toggle pump ON/OFF
+   */
+  toggle() {
+    if (this.running) {
+      this.stop();
+    } else {
+      this.start();
+    }
+  }
+
+  /**
+   * Fixed speed pumps don't allow speed changes
+   */
+  setSpeed(speed) {
+    console.warn(`${this.name} is a fixed speed pump - speed cannot be adjusted`);
+    this.speed = this.running ? 1.0 : 0;
+  }
+}
+
+// Export
+window.FixedSpeedPump = FixedSpeedPump;
+
+
+
+/* ============================================================================
+ * js/components/pumps/VariableSpeedPump.js
+ * Source: https://sco314.github.io/tank-sim/js/components/pumps/VariableSpeedPump.js
+ * ============================================================================ */
+
+/**
+ * VariableSpeedPump.js - Variable speed pump (0-100% control)
+ * 
+ * Pump with continuous speed control via slider
+ */
+
+class VariableSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: 'variable'
+    });
+    
+    // Variable speed pumps can run at any speed 0-100%
+    this.minSpeed = config.minSpeed || 0.1; // Minimum operating speed (10%)
+    this.speed = config.initialSpeed || 0;
+  }
+
+  /**
+   * Start pump at current speed
+   */
+  start() {
+    // If speed is too low, start at minimum speed
+    if (this.speed < this.minSpeed) {
+      this.speed = this.minSpeed;
+    }
+    super.start();
+  }
+
+  /**
+   * Stop pump (speed goes to 0)
+   */
+  stop() {
+    this.speed = 0;
+    super.stop();
+  }
+
+  /**
+   * Set pump speed (0-1)
+   */
+  setSpeed(speed) {
+    // Clamp speed to valid range
+    speed = Math.max(0, Math.min(1, speed));
+    
+    // If pump is running, enforce minimum speed
+    if (this.running && speed > 0 && speed < this.minSpeed) {
+      speed = this.minSpeed;
+    }
+    
+    this.speed = speed;
+    
+    // Auto-start if speed > 0 and pump not running
+    if (speed > 0 && !this.running) {
+      super.start();
+    }
+    
+    // Auto-stop if speed = 0 and pump running
+    if (speed === 0 && this.running) {
+      super.stop();
+    }
+    
+    this.notifyChange();
+  }
+
+  /**
+   * Increase speed by amount
+   */
+  increaseSpeed(amount = 0.1) {
+    this.setSpeed(this.speed + amount);
+  }
+
+  /**
+   * Decrease speed by amount
+   */
+  decreaseSpeed(amount = 0.1) {
+    this.setSpeed(this.speed - amount);
+  }
+
+  /**
+   * Get speed percentage (0-100)
+   */
+  getSpeedPercent() {
+    return Math.round(this.speed * 100);
+  }
+}
+
+// Export
+window.VariableSpeedPump = VariableSpeedPump;
+
+
+
+/* ============================================================================
+ * js/components/pumps/ThreeSpeedPump.js
+ * Source: https://sco314.github.io/tank-sim/js/components/pumps/ThreeSpeedPump.js
+ * ============================================================================ */
+
+/**
+ * ThreeSpeedPump.js - Three-speed pump (Low/Med/High)
+ * 
+ * Pump with three discrete speed settings
+ */
+
+class ThreeSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: '3-speed'
+    });
+    
+    // Three discrete speed levels
+    this.speeds = config.speeds || [0.3, 0.6, 1.0]; // Low, Med, High
+    this.speedNames = ['Low', 'Medium', 'High'];
+    this.currentSpeedIndex = 0; // 0 = Low, 1 = Med, 2 = High
+    
+    // Set initial speed
+    if (config.initialSpeed !== undefined) {
+      this.setSpeedIndex(config.initialSpeed);
+    } else {
+      this.speed = 0;
+    }
+  }
+
+  /**
+   * Start pump at current speed setting
+   */
+  start() {
+    // If speed is 0, start at low speed
+    if (this.speed === 0) {
+      this.setSpeedIndex(0);
+    }
+    super.start();
+  }
+
+  /**
+   * Stop pump
+   */
+  stop() {
+    super.stop();
+  }
+
+  /**
+   * Set speed by index (0, 1, or 2)
+   */
+  setSpeedIndex(index) {
+    index = Math.max(0, Math.min(2, index));
+    this.currentSpeedIndex = index;
+    this.speed = this.speeds[index];
+    
+    // Auto-start if not running
+    if (!this.running) {
+      super.start();
+    }
+    
+    this.notifyChange();
+    console.log(`${this.name} set to ${this.speedNames[index]} (${(this.speed * 100).toFixed(0)}%)`);
+  }
+
+  /**
+   * Set to Low speed
+   */
+  setLow() {
+    this.setSpeedIndex(0);
+  }
+
+  /**
+   * Set to Medium speed
+   */
+  setMedium() {
+    this.setSpeedIndex(1);
+  }
+
+  /**
+   * Set to High speed
+   */
+  setHigh() {
+    this.setSpeedIndex(2);
+  }
+
+  /**
+   * Cycle to next speed
+   */
+  nextSpeed() {
+    this.setSpeedIndex((this.currentSpeedIndex + 1) % 3);
+  }
+
+  /**
+   * Cycle to previous speed
+   */
+  previousSpeed() {
+    this.setSpeedIndex((this.currentSpeedIndex - 1 + 3) % 3);
+  }
+
+  /**
+   * Get current speed name
+   */
+  getSpeedName() {
+    return this.speedNames[this.currentSpeedIndex];
+  }
+
+  /**
+   * Get current speed index (0, 1, or 2)
+   */
+  getSpeedIndex() {
+    return this.currentSpeedIndex;
+  }
+
+  /**
+   * Override setSpeed to snap to nearest discrete speed
+   */
+  setSpeed(speed) {
+    // Find nearest speed
+    let nearestIndex = 0;
+    let minDiff = Math.abs(speed - this.speeds[0]);
+    
+    for (let i = 1; i < this.speeds.length; i++) {
+      const diff = Math.abs(speed - this.speeds[i]);
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearestIndex = i;
+      }
+    }
+    
+    this.setSpeedIndex(nearestIndex);
+  }
+
+  /**
+   * Get pump info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      speedSetting: this.getSpeedName(),
+      speedIndex: this.currentSpeedIndex
+    };
+  }
+}
+
+// Export
+window.ThreeSpeedPump = ThreeSpeedPump;
+
+
+
+/* ============================================================================
+ * js/components/sensors/PressureSensor.js
+ * Source: https://sco314.github.io/tank-sim/js/components/sensors/PressureSensor.js
+ * ============================================================================ */
+
+/**
+ * PressureSensor.js - Pressure sensor component
+ * 
+ * Monitors pressure at any point in the system
+ */
+
+class PressureSensor extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'sensor';
+    this.sensorType = 'pressure';
+    
+    // Measurement properties
+    this.range = config.range || [0, 10]; // [min, max] in bar
+    this.units = config.units || 'bar';
+    this.accuracy = config.accuracy || 0.01; // Reading precision
+    
+    // Location in system
+    this.measurementPoint = config.measurementPoint || 'static'; // 'static', 'pump_inlet', 'pump_outlet', 'tank_bottom'
+    this.heightOffset = config.heightOffset || 0; // Height above datum (m)
+    
+    // Current reading
+    this.pressure = 0; // Current pressure reading (bar)
+    this.trend = 0; // Rate of change (bar/s)
+    this.previousPressure = 0;
+    
+    // Alarm thresholds
+    this.lowAlarm = config.lowAlarm || null; // Low pressure alarm (bar)
+    this.highAlarm = config.highAlarm || null; // High pressure alarm (bar)
+    this.alarmActive = false;
+    
+    // Physical constants
+    this.fluidDensity = config.fluidDensity || 1000; // kg/m³ (water)
+    this.gravity = config.gravity || 9.81; // m/s²
+    
+    // Visual gauge element
+    this.gaugeElement = null;
+    
+    this._initializeVisuals();
+    
+    console.log(`Pressure sensor created: ${this.name} (${this.range[0]}-${this.range[1]} ${this.units})`);
+  }
+
+  /**
+   * Initialize visual elements
+   */
+  _initializeVisuals() {
+    const element = this.getElement();
+    if (element) {
+      this.gaugeElement = element.querySelector('.pressure-gauge');
+    }
+  }
+
+  /**
+   * Calculate pressure based on sensor location and system state
+   */
+  calculatePressure() {
+    let pressure = 0; // in Pascals
+    
+    switch (this.measurementPoint) {
+      case 'atmospheric':
+        // Atmospheric pressure (1 bar = 100,000 Pa)
+        pressure = 101325; // Pa (1 atm)
+        break;
+        
+      case 'tank_bottom':
+        // Static pressure from liquid column: P = ρgh
+        const tank = this._getTankFromInputs();
+        if (tank) {
+          const liquidHeight = tank.level * tank.maxHeight; // meters
+          pressure = this.fluidDensity * this.gravity * liquidHeight;
+          pressure += 101325; // Add atmospheric
+        } else {
+          pressure = 101325; // Just atmospheric if no tank
+        }
+        break;
+        
+      case 'pump_inlet':
+        // Suction pressure (may be below atmospheric)
+        const sourceTank = this._getTankFromInputs();
+        if (sourceTank) {
+          const liquidHeight = sourceTank.level * sourceTank.maxHeight;
+          // Account for elevation difference
+          const elevationDiff = this.heightOffset;
+          const netHead = liquidHeight - elevationDiff;
+          pressure = this.fluidDensity * this.gravity * netHead;
+          pressure += 101325; // Add atmospheric
+          
+          // Subtract dynamic losses (simplified)
+          const flow = this.flowNetwork.getInputFlow(this.id);
+          const velocityHead = 0.5 * this.fluidDensity * Math.pow(flow * 4, 2); // Simplified v²
+          pressure -= velocityHead * 0.1; // 10% loss factor
+        } else {
+          pressure = 101325;
+        }
+        break;
+        
+      case 'pump_outlet':
+        // Discharge pressure (pump adds energy)
+        const pump = this._getPumpFromInputs();
+        if (pump && pump.running) {
+          // Base pressure from inlet
+          const inletPressure = this.calculateInletPressure();
+          
+          // Add pump head (simplified: 10m head per m³/s capacity)
+          const pumpHead = pump.capacity * 10; // meters of head
+          const pumpPressure = this.fluidDensity * this.gravity * pumpHead;
+          
+          pressure = inletPressure + pumpPressure;
+        } else {
+          pressure = this.calculateInletPressure(); // No boost if pump off
+        }
+        break;
+        
+      case 'static':
+      default:
+        // Simple static pressure at height offset
+        pressure = 101325 + (this.fluidDensity * this.gravity * this.heightOffset);
+        break;
+    }
+    
+    // Convert to bar (1 bar = 100,000 Pa)
+    return pressure / 100000;
+  }
+
+  /**
+   * Helper: Calculate inlet pressure (used by pump_outlet)
+   */
+  calculateInletPressure() {
+    const tank = this._getTankFromInputs();
+    if (tank) {
+      const liquidHeight = tank.level * tank.maxHeight;
+      return 101325 + (this.fluidDensity * this.gravity * liquidHeight);
+    }
+    return 101325;
+  }
+
+  /**
+   * Helper: Get tank from input connections
+   */
+  _getTankFromInputs() {
+    if (!this.flowNetwork) return null;
+    
+    for (const inputId of this.inputs) {
+      const component = this.flowNetwork.getComponent(inputId);
+      if (component && component.type === 'tank') {
+        return component;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Helper: Get pump from input connections
+   */
+  _getPumpFromInputs() {
+    if (!this.flowNetwork) return null;
+    
+    for (const inputId of this.inputs) {
+      const component = this.flowNetwork.getComponent(inputId);
+      if (component && component.type === 'pump') {
+        return component;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Update sensor reading
+   */
+  update(dt) {
+    // Store previous reading
+    this.previousPressure = this.pressure;
+    
+    // Calculate new pressure
+    this.pressure = this.calculatePressure();
+    
+    // Apply accuracy (round to sensor precision)
+    this.pressure = Math.round(this.pressure / this.accuracy) * this.accuracy;
+    
+    // Calculate trend (rate of change)
+    this.trend = (this.pressure - this.previousPressure) / dt;
+    
+    // Check alarms
+    this._checkAlarms();
+  }
+
+  /**
+   * Check if pressure is outside alarm limits
+   */
+  _checkAlarms() {
+    const wasActive = this.alarmActive;
+    
+    if (this.lowAlarm !== null && this.pressure < this.lowAlarm) {
+      this.alarmActive = true;
+      if (!wasActive) {
+        console.warn(`⚠️ Low pressure alarm: ${this.name} (${this.pressure.toFixed(2)} ${this.units})`);
+      }
+    } else if (this.highAlarm !== null && this.pressure > this.highAlarm) {
+      this.alarmActive = true;
+      if (!wasActive) {
+        console.warn(`⚠️ High pressure alarm: ${this.name} (${this.pressure.toFixed(2)} ${this.units})`);
+      }
+    } else {
+      if (wasActive) {
+        console.log(`✅ Pressure normal: ${this.name}`);
+      }
+      this.alarmActive = false;
+    }
+  }
+
+  /**
+   * Render visual gauge (if element exists)
+   */
+  render() {
+    if (!this.gaugeElement) return;
+    
+    // Calculate gauge position (0-100%)
+    const [min, max] = this.range;
+    const percent = Math.max(0, Math.min(100, 
+      ((this.pressure - min) / (max - min)) * 100
+    ));
+    
+    // Update gauge needle or bar
+    const needle = this.gaugeElement.querySelector('.gauge-needle');
+    if (needle) {
+      needle.style.transform = `rotate(${percent * 1.8 - 90}deg)`; // -90° to 90°
+    }
+    
+    // Update reading text
+    const reading = this.gaugeElement.querySelector('.gauge-reading');
+    if (reading) {
+      reading.textContent = `${this.pressure.toFixed(2)} ${this.units}`;
+    }
+    
+    // Update alarm indicator
+    if (this.alarmActive) {
+      this.gaugeElement.classList.add('alarm');
+    } else {
+      this.gaugeElement.classList.remove('alarm');
+    }
+  }
+
+  /**
+   * Get current pressure
+   */
+  getPressure() {
+    return this.pressure;
+  }
+
+  /**
+   * Get pressure as string with units
+   */
+  getPressureString() {
+    return `${this.pressure.toFixed(2)} ${this.units}`;
+  }
+
+  /**
+   * Check if pressure is in normal range
+   */
+  isNormal() {
+    return !this.alarmActive;
+  }
+
+  /**
+   * Get sensor status
+   */
+  getStatus() {
+    if (this.lowAlarm !== null && this.pressure < this.lowAlarm) {
+      return 'LOW';
+    }
+    if (this.highAlarm !== null && this.pressure > this.highAlarm) {
+      return 'HIGH';
+    }
+    return 'NORMAL';
+  }
+
+  /**
+   * Reset sensor
+   */
+  reset() {
+    super.reset();
+    this.pressure = 0;
+    this.previousPressure = 0;
+    this.trend = 0;
+    this.alarmActive = false;
+  }
+
+  /**
+   * Get sensor info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      pressure: this.getPressureString(),
+      trend: this.trend.toFixed(3) + ' bar/s',
+      measurementPoint: this.measurementPoint,
+      range: `${this.range[0]}-${this.range[1]} ${this.units}`,
+      status: this.getStatus(),
+      alarm: this.alarmActive
+    };
+  }
+}
+
+// Export
+window.PressureSensor = PressureSensor;
+
+
+
+/* ============================================================================
+ * js/managers/TankManager.js
+ * Source: https://sco314.github.io/tank-sim/js/managers/TankManager.js
+ * ============================================================================ */
+
+/**
+ * TankManager.js - Manages all tanks in the system
+ * 
+ * Creates, configures, and updates all tank components
+ */
+
+class TankManager {
+  constructor(config, flowNetwork) {
+    this.config = config;
+    this.flowNetwork = flowNetwork;
+    this.tanks = {};
+    
+    this._initializeTanks();
+    this._setupStatusDisplay();
+    
+    console.log(`TankManager initialized with ${Object.keys(this.tanks).length} tanks`);
+  }
+
+  /**
+   * Initialize all tanks from config
+   */
+  _initializeTanks() {
+    for (const [key, cfg] of Object.entries(this.config)) {
+      const tank = new Tank({
+        ...cfg,
+        flowNetwork: this.flowNetwork
+      });
+      
+      this.tanks[key] = tank;
+      this.flowNetwork.addComponent(tank);
+      
+      // Setup change callback
+      tank.onChange = (t) => this._onTankChange(key, t);
+      
+      // Initial render
+      tank.render();
+    }
+  }
+
+  /**
+   * Setup status display updates
+   */
+  _setupStatusDisplay() {
+    // Update tank status displays every 100ms (10Hz)
+    this.statusInterval = setInterval(() => {
+      this._updateStatusDisplays();
+    }, 100);
+  }
+
+  /**
+   * Update all status displays
+   */
+  _updateStatusDisplays() {
+    for (const [key, tank] of Object.entries(this.tanks)) {
+      // Update any status elements that exist
+      const statusEl = document.getElementById(`${tank.id}Status`);
+      const levelEl = document.getElementById(`${tank.id}Level`);
+      const volumeEl = document.getElementById(`${tank.id}Volume`);
+      const flowInEl = document.getElementById(`${tank.id}FlowIn`);
+      const flowOutEl = document.getElementById(`${tank.id}FlowOut`);
+      
+      if (statusEl) {
+        statusEl.textContent = tank.isEmpty() ? '⚠️ EMPTY' : 
+                               tank.isFull() ? '⚠️ FULL' : 
+                               tank.isLow() ? '⚠️ LOW' : 
+                               tank.isHigh() ? '⚠️ HIGH' : '✅ OK';
+        
+        // Color coding
+        if (tank.isEmpty() || tank.isFull()) {
+          statusEl.style.color = '#ff6b6b';
+        } else if (tank.isLow() || tank.isHigh()) {
+          statusEl.style.color = '#ffc107';
+        } else {
+          statusEl.style.color = '#3ddc97';
+        }
+      }
+      
+      if (levelEl) {
+        levelEl.textContent = tank.getLevelPercent() + '%';
+      }
+      
+      if (volumeEl) {
+        volumeEl.textContent = tank.volume.toFixed(3) + ' m³';
+      }
+      
+      if (flowInEl) {
+        flowInEl.textContent = tank.lastInputFlow.toFixed(2) + ' m³/s';
+      }
+      
+      if (flowOutEl) {
+        flowOutEl.textContent = tank.lastOutputFlow.toFixed(2) + ' m³/s';
+      }
+    }
+  }
+
+  /**
+   * Called when tank state changes
+   */
+  _onTankChange(key, tank) {
+    console.log(`Tank ${key} changed:`, tank.getInfo());
+  }
+
+  /**
+   * Get tank by key
+   */
+  getTank(key) {
+    return this.tanks[key];
+  }
+
+  /**
+   * Get all tanks
+   */
+  getAllTanks() {
+    return this.tanks;
+  }
+
+  /**
+   * Set tank level by key
+   */
+  setTankLevel(key, percent) {
+    const tank = this.tanks[key];
+    if (!tank) {
+      console.warn(`Tank ${key} not found`);
+      return;
+    }
+    
+    tank.setLevelPercent(percent);
+  }
+
+  /**
+   * Check if any tank is overflowing
+   */
+  hasOverflow() {
+    for (const tank of Object.values(this.tanks)) {
+      if (tank.isFull()) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if any tank is empty
+   */
+  hasEmpty() {
+    for (const tank of Object.values(this.tanks)) {
+      if (tank.isEmpty()) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get total system volume
+   */
+  getTotalVolume() {
+    let total = 0;
+    for (const tank of Object.values(this.tanks)) {
+      total += tank.volume;
+    }
+    return total;
+  }
+
+  /**
+   * Get total system capacity
+   */
+  getTotalCapacity() {
+    let total = 0;
+    for (const tank of Object.values(this.tanks)) {
+      total += tank.maxVolume;
+    }
+    return total;
+  }
+
+  /**
+   * Get system-wide fill percentage
+   */
+  getSystemFillPercent() {
+    const capacity = this.getTotalCapacity();
+    if (capacity === 0) return 0;
+    return Math.round((this.getTotalVolume() / capacity) * 100);
+  }
+
+  /**
+   * Reset all tanks
+   */
+  reset() {
+    for (const tank of Object.values(this.tanks)) {
+      tank.reset();
+      tank.render();
+    }
+    console.log('All tanks reset');
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    // Clear status interval
+    if (this.statusInterval) {
+      clearInterval(this.statusInterval);
+    }
+    
+    for (const tank of Object.values(this.tanks)) {
+      tank.destroy();
+    }
+    
+    this.tanks = {};
+  }
+}
+
+// Export
+window.TankManager = TankManager;
+
+
+
+/* ============================================================================
+ * js/managers/PumpManager.js
+ * Source: https://sco314.github.io/tank-sim/js/managers/PumpManager.js
+ * ============================================================================ */
+
+/**
+ * PumpManager.js - Manages all pumps in the system
+ * 
+ * Creates, configures, and controls all pump types with modal interfaces
+ */
+
+class PumpManager {
+  constructor(config, flowNetwork) {
+    this.config = config;
+    this.flowNetwork = flowNetwork;
+    this.pumps = {};
+    this.modals = {};
+    
+    this._initializePumps();
+    this._createModals();
+    this._setupEventListeners();
+    
+    console.log(`PumpManager initialized with ${Object.keys(this.pumps).length} pumps`);
+  }
+
+  /**
+   * Initialize all pumps from config
+   */
+  _initializePumps() {
+    for (const [key, cfg] of Object.entries(this.config)) {
+      let pump;
+      
+      // Create appropriate pump type
+      switch (cfg.pumpType) {
+        case 'fixed':
+          pump = new FixedSpeedPump(cfg);
+          break;
+        case 'variable':
+          pump = new VariableSpeedPump(cfg);
+          break;
+        case '3-speed':
+          pump = new ThreeSpeedPump(cfg);
+          break;
+        default:
+          console.warn(`Unknown pump type: ${cfg.pumpType}, defaulting to fixed`);
+          pump = new FixedSpeedPump(cfg);
+      }
+      
+      this.pumps[key] = pump;
+      this.flowNetwork.addComponent(pump);
+      
+      // Setup change callback
+      pump.onChange = (p) => this._onPumpChange(key, p);
+    }
+  }
+
+  /**
+   * Create modal for each pump
+   */
+  _createModals() {
+    for (const [key, pump] of Object.entries(this.pumps)) {
+      const modal = this._createModalElement(key, pump);
+      document.body.appendChild(modal);
+      this.modals[key] = modal;
+    }
+  }
+
+  /**
+   * Create modal HTML for a pump
+   */
+  _createModalElement(key, pump) {
+    const overlay = document.createElement('div');
+    overlay.id = `${pump.id}Modal`;
+    overlay.className = 'valve-modal-overlay'; // Reuse valve modal styles
+    overlay.setAttribute('aria-hidden', 'true');
+    
+    const title = pump.config?.modalTitle || `${pump.name} Control`;
+    
+    // Create modal content based on pump type
+    let controlsHTML = '';
+    
+    if (pump.pumpType === 'fixed') {
+      controlsHTML = `
+        <div class="pump-controls">
+          <button type="button" class="btn toggle pump-toggle" data-pump="${key}" aria-pressed="false">
+            Start Pump
+          </button>
+          <div class="pump-status">
+            <div class="kv">
+              <div>Status</div><div class="pump-status-text">OFF</div>
+              <div>Flow Rate</div><div class="pump-flow">0.00 m³/s</div>
+              <div>Run Time</div><div class="pump-runtime">0s</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (pump.pumpType === 'variable') {
+      controlsHTML = `
+        <div class="pump-controls">
+          <div class="row">
+            <button type="button" class="btn pump-stop" data-pump="${key}">Stop</button>
+            <button type="button" class="btn toggle pump-toggle" data-pump="${key}" aria-pressed="false">
+              Start
+            </button>
+          </div>
+          <div class="row" style="margin-top: 16px;">
+            <label for="${pump.id}Speed">Speed</label>
+            <input type="range" id="${pump.id}Speed" class="grow pump-speed-slider" 
+                   data-pump="${key}" min="0" max="100" step="1" value="0"/>
+            <output class="pump-speed-output">0%</output>
+          </div>
+          <div class="pump-status">
+            <div class="kv">
+              <div>Status</div><div class="pump-status-text">OFF</div>
+              <div>Flow Rate</div><div class="pump-flow">0.00 m³/s</div>
+              <div>Run Time</div><div class="pump-runtime">0s</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (pump.pumpType === '3-speed') {
+      controlsHTML = `
+        <div class="pump-controls">
+          <div class="row">
+            <button type="button" class="btn pump-stop" data-pump="${key}">Stop</button>
+          </div>
+          <div class="row" style="margin-top: 12px; gap: 8px;">
+            <button type="button" class="btn pump-speed-btn" data-pump="${key}" data-speed="0">Low</button>
+            <button type="button" class="btn pump-speed-btn" data-pump="${key}" data-speed="1">Medium</button>
+            <button type="button" class="btn pump-speed-btn" data-pump="${key}" data-speed="2">High</button>
+          </div>
+          <div class="pump-status">
+            <div class="kv">
+              <div>Status</div><div class="pump-status-text">OFF</div>
+              <div>Speed</div><div class="pump-speed-setting">-</div>
+              <div>Flow Rate</div><div class="pump-flow">0.00 m³/s</div>
+              <div>Run Time</div><div class="pump-runtime">0s</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Add cavitation warning if enabled
+    if (pump.cavitation.enabled) {
+      controlsHTML += `
+        <div class="pump-cavitation-warning" style="display: none; margin-top: 16px; padding: 12px; background: rgba(255, 107, 107, 0.1); border: 1px solid #ff6b6b; border-radius: 8px; color: #ff6b6b;">
+          ⚠️ <strong>CAVITATION DETECTED</strong><br>
+          <small>Flow reduced - Check suction conditions</small>
+        </div>
+      `;
+    }
+    
+    overlay.innerHTML = `
+      <div class="valve-modal-container">
+        <button type="button" aria-label="Close ${title}" class="valve-modal-close pump-modal-close" data-pump="${key}">×</button>
+        <div class="valve-modal-title">${title}</div>
+        <div style="padding: 20px;">
+          ${controlsHTML}
+        </div>
+      </div>
+    `;
+    
+    return overlay;
+  }
+
+  /**
+   * Setup event listeners for all pumps and modals
+   */
+  _setupEventListeners() {
+    for (const [key, pump] of Object.entries(this.pumps)) {
+      const svgElement = document.querySelector(pump.svgElement);
+      const modal = this.modals[key];
+      
+      if (!svgElement) {
+        console.warn(`SVG element ${pump.svgElement} not found for pump ${key}`);
+        continue;
+      }
+      
+      // Click pump to open modal
+      svgElement.addEventListener('click', () => this.openModal(key));
+      svgElement.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          this.openModal(key);
+        }
+      });
+      
+      // Close button
+      const closeBtn = modal.querySelector('.pump-modal-close');
+      closeBtn?.addEventListener('click', () => this.closeModal(key));
+      
+      // Click outside to close
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.closeModal(key);
+      });
+      
+      // Setup pump-specific controls
+      this._setupPumpControls(key, pump, modal);
+    }
+    
+    // Global escape key handler
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        for (const key of Object.keys(this.modals)) {
+          if (this.modals[key].classList.contains('open')) {
+            this.closeModal(key);
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Setup pump-specific controls in modal
+   */
+  _setupPumpControls(key, pump, modal) {
+    if (pump.pumpType === 'fixed') {
+      // Fixed speed: toggle button
+      const toggle = modal.querySelector('.pump-toggle');
+      toggle?.addEventListener('click', () => {
+        pump.toggle();
+        this._updateModalUI(key);
+      });
+      
+    } else if (pump.pumpType === 'variable') {
+      // Variable speed: start, stop, slider
+      const startBtn = modal.querySelector('.pump-toggle');
+      const stopBtn = modal.querySelector('.pump-stop');
+      const slider = modal.querySelector('.pump-speed-slider');
+      const output = modal.querySelector('.pump-speed-output');
+      
+      startBtn?.addEventListener('click', () => {
+        pump.start();
+        this._updateModalUI(key);
+      });
+      
+      stopBtn?.addEventListener('click', () => {
+        pump.stop();
+        this._updateModalUI(key);
+      });
+      
+      slider?.addEventListener('input', (e) => {
+        const speed = parseInt(e.target.value) / 100;
+        pump.setSpeed(speed);
+        if (output) output.textContent = e.target.value + '%';
+        this._updateModalUI(key);
+      });
+      
+    } else if (pump.pumpType === '3-speed') {
+      // 3-speed: stop button + speed buttons
+      const stopBtn = modal.querySelector('.pump-stop');
+      const speedBtns = modal.querySelectorAll('.pump-speed-btn');
+      
+      stopBtn?.addEventListener('click', () => {
+        pump.stop();
+        this._updateModalUI(key);
+      });
+      
+      speedBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const speedIndex = parseInt(btn.dataset.speed);
+          pump.setSpeedIndex(speedIndex);
+          this._updateModalUI(key);
+        });
+      });
+    }
+  }
+
+  /**
+   * Open pump modal
+   */
+  openModal(key) {
+    const modal = this.modals[key];
+    if (!modal) return;
+    
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    
+    this._updateModalUI(key);
+    
+    console.log(`Opened ${this.pumps[key].name} modal`);
+  }
+
+  /**
+   * Close pump modal
+   */
+  closeModal(key) {
+    const modal = this.modals[key];
+    if (!modal) return;
+    
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  /**
+   * Update modal UI to reflect pump state
+   */
+  _updateModalUI(key) {
+    const pump = this.pumps[key];
+    const modal = this.modals[key];
+    if (!modal) return;
+    
+    // Update status text
+    const statusText = modal.querySelector('.pump-status-text');
+    if (statusText) {
+      statusText.textContent = pump.running ? 'RUNNING' : 'OFF';
+      statusText.style.color = pump.running ? '#3ddc97' : '#9bb0ff';
+    }
+    
+    // Update flow rate
+    const flowText = modal.querySelector('.pump-flow');
+    if (flowText) {
+      flowText.textContent = pump.getOutputFlow().toFixed(2) + ' m³/s';
+    }
+    
+    // Update runtime
+    const runtimeText = modal.querySelector('.pump-runtime');
+    if (runtimeText) {
+      runtimeText.textContent = Math.floor(pump.runTime) + 's';
+    }
+    
+    // Update pump-type-specific UI
+    if (pump.pumpType === 'fixed') {
+      const toggle = modal.querySelector('.pump-toggle');
+      if (toggle) {
+        toggle.setAttribute('aria-pressed', pump.running);
+        toggle.textContent = pump.running ? 'Stop Pump' : 'Start Pump';
+      }
+      
+    } else if (pump.pumpType === 'variable') {
+      const slider = modal.querySelector('.pump-speed-slider');
+      const output = modal.querySelector('.pump-speed-output');
+      if (slider && output) {
+        const speedPercent = pump.getSpeedPercent();
+        slider.value = speedPercent;
+        output.textContent = speedPercent + '%';
+      }
+      
+    } else if (pump.pumpType === '3-speed') {
+      const speedSetting = modal.querySelector('.pump-speed-setting');
+      if (speedSetting) {
+        speedSetting.textContent = pump.running ? pump.getSpeedName() : '-';
+      }
+      
+      // Highlight active speed button
+      const speedBtns = modal.querySelectorAll('.pump-speed-btn');
+      speedBtns.forEach((btn, index) => {
+        if (index === pump.getSpeedIndex() && pump.running) {
+          btn.classList.add('toggle');
+          btn.setAttribute('aria-pressed', 'true');
+        } else {
+          btn.classList.remove('toggle');
+          btn.setAttribute('aria-pressed', 'false');
+        }
+      });
+    }
+    
+    // Update cavitation warning
+    const cavWarning = modal.querySelector('.pump-cavitation-warning');
+    if (cavWarning) {
+      cavWarning.style.display = pump.cavitation.active ? 'block' : 'none';
+    }
+  }
+
+  /**
+   * Called when pump changes
+   */
+  _onPumpChange(key, pump) {
+    // Update modal if open
+    if (this.modals[key]?.classList.contains('open')) {
+      this._updateModalUI(key);
+    }
+    
+    // Update SVG element state
+    const svgElement = document.querySelector(pump.svgElement);
+    if (svgElement) {
+      svgElement.setAttribute('aria-pressed', pump.running);
+    }
+    
+    console.log(`Pump ${key} changed:`, pump.getInfo());
+  }
+
+  /**
+   * Get pump by key
+   */
+  getPump(key) {
+    return this.pumps[key];
+  }
+
+  /**
+   * Get all pumps
+   */
+  getAllPumps() {
+    return this.pumps;
+  }
+
+  /**
+   * Reset all pumps
+   */
+  reset() {
+    for (const pump of Object.values(this.pumps)) {
+      pump.reset();
+    }
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    for (const pump of Object.values(this.pumps)) {
+      pump.destroy();
+    }
+    
+    for (const modal of Object.values(this.modals)) {
+      modal.remove();
+    }
+    
+    this.pumps = {};
+    this.modals = {};
+  }
+}
+
+// Export
+window.PumpManager = PumpManager;
+
+
+
+/* ============================================================================
+ * js/managers/ValveManager.js
+ * Source: https://sco314.github.io/tank-sim/js/managers/ValveManager.js
+ * ============================================================================ */
+
+/**
+ * ValveManager.js - Manages all valves with interactive wheel controls
+ * 
+ * Creates modals with iframe valve controls for each valve
+ */
+
+class ValveManager {
+  constructor(config, flowNetwork) {
+    this.config = config;
+    this.flowNetwork = flowNetwork;
+    this.valves = {};
+    this.modals = {};
+    this.iframes = {};
+    
+    this._initializeValves();
+    this._createModals();
+    this._setupEventListeners();
+    this._setupPostMessageListener();
+    
+    console.log(`ValveManager initialized with ${Object.keys(this.valves).length} valves`);
+  }
+
+  /**
+   * Initialize all valves from config
+   */
+  _initializeValves() {
+  for (const [key, cfg] of Object.entries(this.config)) {
+    const valve = new Valve({
+      ...cfg,
+      flowNetwork: this.flowNetwork  // ✅ ADD THIS
+    });
+    this.valves[key] = valve;
+    this.flowNetwork.addComponent(valve);
+    
+    valve.onChange = (v) => this._onValveChange(key, v);
+  }
+}
+
+  /**
+   * Create modal for each valve with iframe
+   */
+  _createModals() {
+    for (const [key, valve] of Object.entries(this.valves)) {
+      const modal = this._createModalElement(key, valve);
+      document.body.appendChild(modal);
+      this.modals[key] = modal;
+      this.iframes[key] = modal.querySelector('iframe');
+      
+      // Setup iframe communication after it loads
+      this._setupIframeSync(key, this.iframes[key]);
+    }
+  }
+
+  /**
+   * Create modal HTML with iframe for a valve
+   */
+  _createModalElement(key, valve) {
+    const overlay = document.createElement('div');
+    overlay.id = `${valve.id}Modal`;
+    overlay.className = 'valve-modal-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    
+    const title = valve.config?.modalTitle || `${valve.name} Control`;
+    const iframeUrl = valve.config?.iframeUrl || 'valve.html';
+    
+    overlay.innerHTML = `
+      <div class="valve-modal-container">
+        <button type="button" aria-label="Close ${title}" class="valve-modal-close valve-close-btn" data-valve="${key}">×</button>
+        <div class="valve-modal-title">${title}</div>
+        <iframe src="${iframeUrl}" title="${title}" class="valve-iframe"></iframe>
+      </div>
+    `;
+    
+    return overlay;
+  }
+
+  /**
+   * Setup iframe communication for a valve
+   */
+  _setupIframeSync(key, iframe) {
+    if (!iframe) return;
+    
+    iframe.addEventListener('load', () => {
+      console.log(`Valve iframe loaded: ${key}`);
+      
+      // Wait for ValveTop to initialize
+      setTimeout(() => {
+        const valve = this.valves[key];
+        
+        // Set initial position
+        this._sendValvePosition(iframe, valve.position);
+        
+        // Setup onChange callback (direct API - works on web server)
+        try {
+          if (iframe.contentWindow && iframe.contentWindow.ValveTop) {
+            iframe.contentWindow.ValveTop.onChange((pos) => {
+              this._onIframePositionChange(key, pos);
+            });
+            console.log(`✅ Valve ${key} direct onChange callback set`);
+          }
+        } catch(e) {
+          console.warn(`⚠️ Direct callback failed for valve ${key}, using postMessage fallback`);
+        }
+      }, 150);
+    });
+  }
+
+  /**
+   * Setup global postMessage listener (fallback for file:// protocol)
+   */
+  _setupPostMessageListener() {
+    window.addEventListener('message', (event) => {
+      // Check if message is from a valve iframe
+      if (event.data && event.data.type === 'valve:changed') {
+        // Find which valve sent this message
+        for (const [key, iframe] of Object.entries(this.iframes)) {
+          if (event.source === iframe.contentWindow) {
+            const position = Math.max(0, Math.min(1, parseFloat(event.data.value) || 0));
+            this._onIframePositionChange(key, position);
+            console.log(`📨 Valve ${key} updated via postMessage: ${(position * 100).toFixed(0)}%`);
+            break;
+          }
+        }
+      }
+    });
+    console.log('✅ PostMessage listener active for valve updates');
+  }
+
+  /**
+   * Send position to iframe valve control
+   */
+  _sendValvePosition(iframe, position) {
+    if (!iframe || !iframe.contentWindow) return;
+    
+    try {
+      // Try direct API call
+      if (iframe.contentWindow.ValveTop && 
+          typeof iframe.contentWindow.ValveTop.set === 'function') {
+        iframe.contentWindow.ValveTop.set(position);
+        return;
+      }
+    } catch(e) {
+      // Cross-origin or not loaded yet
+    }
+    
+    // Fallback: postMessage
+    try {
+      iframe.contentWindow.postMessage({
+        type: 'valve:set',
+        value: position
+      }, '*');
+    } catch(e) {
+      console.warn('Failed to send valve position:', e);
+    }
+  }
+
+  /**
+   * Called when iframe valve position changes
+   */
+  _onIframePositionChange(key, position) {
+    const valve = this.valves[key];
+    if (!valve) return;
+    
+    valve.setPosition(position);
+    console.log(`Valve ${key} set to ${(position * 100).toFixed(0)}%`);
+  }
+
+  /**
+   * Setup event listeners for all valves
+   */
+  _setupEventListeners() {
+    for (const [key, valve] of Object.entries(this.valves)) {
+      const svgElement = document.querySelector(valve.svgElement);
+      const modal = this.modals[key];
+      
+      if (!svgElement) {
+        console.warn(`SVG element ${valve.svgElement} not found for valve ${key}`);
+        continue;
+      }
+      
+      // Click valve to open modal
+      svgElement.addEventListener('click', () => this.openModal(key));
+      svgElement.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          this.openModal(key);
+        }
+      });
+      
+      // Close button
+      const closeBtn = modal.querySelector('.valve-close-btn');
+      closeBtn?.addEventListener('click', () => this.closeModal(key));
+      
+      // Click outside to close
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.closeModal(key);
+      });
+    }
+    
+    // Global escape key handler
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        for (const key of Object.keys(this.modals)) {
+          if (this.modals[key].classList.contains('open')) {
+            this.closeModal(key);
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Open valve modal
+   */
+  openModal(key) {
+    const modal = this.modals[key];
+    const valve = this.valves[key];
+    
+    if (!modal || !valve) return;
+    
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    
+    // Send current position to iframe
+    setTimeout(() => {
+      this._sendValvePosition(this.iframes[key], valve.position);
+    }, 100);
+    
+    console.log(`Opened ${valve.name} modal at ${valve.getPositionPercent()}%`);
+  }
+
+  /**
+   * Close valve modal
+   */
+  closeModal(key) {
+    const modal = this.modals[key];
+    if (!modal) return;
+    
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  /**
+   * Called when valve changes
+   * REALISTIC FIELD OPERATION: No visual hints - user must click to check position
+   */
+  _onValveChange(key, valve) {
+    // Update ARIA state for accessibility
+    const svgElement = document.querySelector(valve.svgElement);
+    if (svgElement) {
+      svgElement.setAttribute('aria-pressed', valve.isOpen());
+      
+      // REMOVED: No opacity changes
+      // Valves always look the same regardless of position
+      // User must click to check - just like in the field!
+    }
+    
+    console.log(`Valve ${key} changed:`, valve.getInfo());
+  }
+
+  /**
+   * Get valve by key
+   */
+  getValve(key) {
+    return this.valves[key];
+  }
+
+  /**
+   * Get all valves
+   */
+  getAllValves() {
+    return this.valves;
+  }
+
+  /**
+   * Set valve position
+   */
+  setValvePosition(key, position) {
+    const valve = this.valves[key];
+    if (!valve) return;
+    
+    valve.setPosition(position);
+    
+    // Update iframe if modal is open
+    if (this.modals[key]?.classList.contains('open')) {
+      this._sendValvePosition(this.iframes[key], position);
+    }
+  }
+
+  /**
+   * Reset all valves
+   */
+  reset() {
+    for (const valve of Object.values(this.valves)) {
+      valve.reset();
+    }
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    for (const valve of Object.values(this.valves)) {
+      valve.destroy();
+    }
+    
+    for (const modal of Object.values(this.modals)) {
+      modal.remove();
+    }
+    
+    this.valves = {};
+    this.modals = {};
+    this.iframes = {};
+  }
+}
+
+// Export
+window.ValveManager = ValveManager;
+
+
+
+/* ============================================================================
+ * js/managers/PipeManager.js
+ * Source: https://sco314.github.io/tank-sim/js/managers/PipeManager.js
+ * ============================================================================ */
+
+/**
+ * PipeManager.js - Manages all pipes and flow animations
+ * 
+ * Controls flow visualization throughout the system
+ */
+
+class PipeManager {
+  constructor(config, flowNetwork) {
+    this.config = config;
+    this.flowNetwork = flowNetwork;
+    this.pipes = {};
+    
+    this._initializePipes();
+    this._setupFlowMonitoring();
+    
+    console.log(`PipeManager initialized with ${Object.keys(this.pipes).length} pipes`);
+  }
+
+  /**
+   * Initialize all pipes from config
+   */
+  _initializePipes() {
+    for (const [key, cfg] of Object.entries(this.config)) {
+      const pipe = new Pipe({
+        ...cfg,
+        flowNetwork: this.flowNetwork
+      });
+      
+      this.pipes[key] = pipe;
+      this.flowNetwork.addComponent(pipe);
+      
+      // Setup change callback
+      pipe.onChange = (p) => this._onPipeChange(key, p);
+    }
+  }
+
+  /**
+   * Setup flow monitoring for debug
+   */
+  _setupFlowMonitoring() {
+    // Optional: log significant flow changes
+    this.lastLogTime = performance.now();
+    this.logInterval = 5000; // Log every 5 seconds
+  }
+
+  /**
+   * Called when pipe state changes
+   */
+  _onPipeChange(key, pipe) {
+    // Optional: log flow changes
+    const now = performance.now();
+    if (now - this.lastLogTime > this.logInterval) {
+      if (pipe.flowRate > 0.001) {
+        console.log(`Pipe ${key}: ${pipe.flowRate.toFixed(2)} m³/s (${pipe.getFlowRegime()})`);
+      }
+      this.lastLogTime = now;
+    }
+  }
+
+  /**
+   * Get pipe by key
+   */
+  getPipe(key) {
+    return this.pipes[key];
+  }
+
+  /**
+   * Get all pipes
+   */
+  getAllPipes() {
+    return this.pipes;
+  }
+
+  /**
+   * Get all active flows (pipes with flow > 0)
+   */
+  getActiveFlows() {
+    const active = [];
+    for (const [key, pipe] of Object.entries(this.pipes)) {
+      if (pipe.flowRate > 0.001) {
+        active.push({
+          pipe: key,
+          name: pipe.name,
+          flowRate: pipe.flowRate,
+          velocity: pipe.velocity
+        });
+      }
+    }
+    return active;
+  }
+
+  /**
+   * Get total system flow rate
+   */
+  getTotalFlow() {
+    let total = 0;
+    for (const pipe of Object.values(this.pipes)) {
+      total += pipe.flowRate;
+    }
+    return total;
+  }
+
+  /**
+   * Get highest flow rate
+   */
+  getMaxFlow() {
+    let max = 0;
+    for (const pipe of Object.values(this.pipes)) {
+      if (pipe.flowRate > max) max = pipe.flowRate;
+    }
+    return max;
+  }
+
+  /**
+   * Check if any pipe is flowing
+   */
+  hasActiveFlow() {
+    for (const pipe of Object.values(this.pipes)) {
+      if (pipe.flowRate > 0.001) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get flow path from component A to component B
+   */
+  getFlowPath(fromId, toId) {
+    const path = [];
+    for (const [key, pipe] of Object.entries(this.pipes)) {
+      if (pipe.inputs.includes(fromId) && pipe.outputs.includes(toId)) {
+        path.push(key);
+      }
+    }
+    return path;
+  }
+
+  /**
+   * Enable/disable all flow animations
+   */
+  setAnimationsEnabled(enabled) {
+    for (const pipe of Object.values(this.pipes)) {
+      if (enabled) {
+        pipe.render();
+      } else {
+        if (pipe.flowPath) {
+          pipe.flowPath.classList.remove('on');
+        }
+      }
+    }
+  }
+
+  /**
+   * Set global animation speed multiplier
+   */
+  setGlobalAnimationSpeed(speed) {
+    for (const pipe of Object.values(this.pipes)) {
+      pipe.animationSpeed = speed;
+    }
+  }
+
+  /**
+   * Reset all pipes
+   */
+  reset() {
+    for (const pipe of Object.values(this.pipes)) {
+      pipe.reset();
+    }
+    console.log('All pipes reset');
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    for (const pipe of Object.values(this.pipes)) {
+      pipe.destroy();
+    }
+    
+    this.pipes = {};
+  }
+}
+
+// Export
+window.PipeManager = PipeManager;
+
+
+
+/* ============================================================================
+ * js/managers/PressureManager.js
+ * Source: https://sco314.github.io/tank-sim/js/managers/PressureManager.js
+ * ============================================================================ */
+
+/**
+ * PressureManager.js - Manages all pressure sensors
+ * 
+ * Creates, updates, and displays pressure readings
+ */
+
+class PressureManager {
+  constructor(config, flowNetwork) {
+    this.config = config;
+    this.flowNetwork = flowNetwork;
+    this.sensors = {};
+    
+    this._initializeSensors();
+    this._setupStatusDisplay();
+    
+    console.log(`PressureManager initialized with ${Object.keys(this.sensors).length} sensors`);
+  }
+
+  /**
+   * Initialize all sensors from config
+   */
+  _initializeSensors() {
+    for (const [key, cfg] of Object.entries(this.config)) {
+      const sensor = new PressureSensor({
+        ...cfg,
+        flowNetwork: this.flowNetwork
+      });
+      
+      this.sensors[key] = sensor;
+      this.flowNetwork.addComponent(sensor);
+      
+      // Setup change callback
+      sensor.onChange = (s) => this._onSensorChange(key, s);
+    }
+  }
+
+  /**
+   * Setup status display updates
+   */
+  _setupStatusDisplay() {
+    // Update sensor displays every 100ms (10Hz)
+    this.statusInterval = setInterval(() => {
+      this._updateStatusDisplays();
+    }, 100);
+  }
+
+  /**
+   * Update all status displays
+   */
+  _updateStatusDisplays() {
+    for (const [key, sensor] of Object.entries(this.sensors)) {
+      // Update any status elements that exist
+      const pressureEl = document.getElementById(`${sensor.id}Pressure`);
+      const statusEl = document.getElementById(`${sensor.id}Status`);
+      const trendEl = document.getElementById(`${sensor.id}Trend`);
+      
+      if (pressureEl) {
+        pressureEl.textContent = sensor.getPressureString();
+      }
+      
+      if (statusEl) {
+        const status = sensor.getStatus();
+        statusEl.textContent = status === 'NORMAL' ? '✅ OK' : 
+                               status === 'LOW' ? '⚠️ LOW' : 
+                               '⚠️ HIGH';
+        
+        // Color coding
+        if (status === 'NORMAL') {
+          statusEl.style.color = '#3ddc97';
+        } else {
+          statusEl.style.color = '#ff6b6b';
+        }
+      }
+      
+      if (trendEl) {
+        const trend = sensor.trend;
+        const arrow = trend > 0.01 ? '↑' : trend < -0.01 ? '↓' : '→';
+        trendEl.textContent = arrow;
+        trendEl.style.color = trend > 0 ? '#3ddc97' : trend < 0 ? '#ff6b6b' : '#9bb0ff';
+      }
+    }
+  }
+
+  /**
+   * Called when sensor reading changes
+   */
+  _onSensorChange(key, sensor) {
+    // Optional: log significant changes
+    if (Math.abs(sensor.trend) > 0.1) {
+      console.log(`Pressure ${key}: ${sensor.getPressureString()} (${sensor.trend > 0 ? '↑' : '↓'})`);
+    }
+  }
+
+  /**
+   * Get sensor by key
+   */
+  getSensor(key) {
+    return this.sensors[key];
+  }
+
+  /**
+   * Get all sensors
+   */
+  getAllSensors() {
+    return this.sensors;
+  }
+
+  /**
+   * Get all pressure readings
+   */
+  getAllReadings() {
+    const readings = {};
+    for (const [key, sensor] of Object.entries(this.sensors)) {
+      readings[key] = {
+        pressure: sensor.pressure,
+        units: sensor.units,
+        status: sensor.getStatus(),
+        alarm: sensor.alarmActive
+      };
+    }
+    return readings;
+  }
+
+  /**
+   * Check if any sensor has active alarm
+   */
+  hasActiveAlarms() {
+    for (const sensor of Object.values(this.sensors)) {
+      if (sensor.alarmActive) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get list of active alarms
+   */
+  getActiveAlarms() {
+    const alarms = [];
+    for (const [key, sensor] of Object.entries(this.sensors)) {
+      if (sensor.alarmActive) {
+        alarms.push({
+          sensor: key,
+          name: sensor.name,
+          pressure: sensor.getPressureString(),
+          status: sensor.getStatus()
+        });
+      }
+    }
+    return alarms;
+  }
+
+  /**
+   * Get highest pressure reading
+   */
+  getMaxPressure() {
+    let max = 0;
+    for (const sensor of Object.values(this.sensors)) {
+      if (sensor.pressure > max) max = sensor.pressure;
+    }
+    return max;
+  }
+
+  /**
+   * Get lowest pressure reading
+   */
+  getMinPressure() {
+    let min = Infinity;
+    for (const sensor of Object.values(this.sensors)) {
+      if (sensor.pressure < min) min = sensor.pressure;
+    }
+    return min === Infinity ? 0 : min;
+  }
+
+  /**
+   * Reset all sensors
+   */
+  reset() {
+    for (const sensor of Object.values(this.sensors)) {
+      sensor.reset();
+    }
+    console.log('All pressure sensors reset');
+  }
+
+  /**
+   * Destroy and cleanup
+   */
+  destroy() {
+    // Clear status interval
+    if (this.statusInterval) {
+      clearInterval(this.statusInterval);
+    }
+    
+    for (const sensor of Object.values(this.sensors)) {
+      sensor.destroy();
+    }
+    
+    this.sensors = {};
+  }
+}
+
+// Export
+window.PressureManager = PressureManager;
+
+
+
+/* ============================================================================
+ * Boot
+ * ============================================================================ */
+(function(){
+  const dataEl = document.getElementById('design-data');
+  const design = JSON.parse(dataEl.textContent);
+  console.log('🎯 Loaded design:', design.metadata);
+
+  // Valve iframe
+  const valveFrame = document.getElementById('valveFrame');
+  valveFrame.srcdoc = "<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><title>Valve Control</title><style>\n  :root{\n    --bg:#0b1330;\n    --cyan:#1fd4d6;\n    --metal:#8a9199;\n    --dark:#4a5058;\n    --open: 0;            /* 0..1 */\n    --turns: 8;           /* travel turns */\n    --cw-to-close: 1;     /* 1=CW closes (CCW opens) */\n  }\n  html,body{height:100%}\n  body{\n    margin:0; background:var(--bg); color:#c9d1d9;\n    font:14px/1.4 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;\n    display:grid; place-items:center;\n  }\n  .wrap{ position:relative; width:min(520px, 96vw); height:min(520px, 96vh); display:grid; place-items:center; }\n\n  .valve{ position:relative; width:400px; aspect-ratio:1; }\n  svg{ width:100%; height:100%; display:block; }\n\n  /* wheel rotation - 25% larger (r=90 -> r=112.5) */\n  .handwheel{ transform-origin: 250px 250px;\n    transform: rotate(calc(var(--cw-to-close) * var(--open) * var(--turns) * -1turn)); }\n\n  /* progress ring – hidden by default, fades in while interacting */\n  .progress{ transform-origin: 250px 250px; opacity:0; transition:opacity .2s ease; }\n  .progress.on{ opacity:.95; }\n\n  /* HUD (percent chip) – hidden until interacting */\n  .hud{ \n    position:absolute; left:50%; top:-22px;\n    transform:translateX(-50%) translateY(8px);\n    opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease;\n  }\n  .hud.on{ opacity:1; transform:translateX(-50%) translateY(0); }\n\n  /* Centered, larger bubble */\n  .percent{ \n    background:#1a2840; border:1px solid #2d3f5f; border-radius:999px; \n    padding:.9rem 1.8rem;\n    font-size:32px; font-weight:600; color:#e6f8ff; line-height:1;\n    box-shadow:0 2px 10px rgba(0,0,0,.25);\n    display:inline-flex; align-items:center; justify-content:center;\n    min-width: 220px;\n  }\n  .percent b{ font-weight:700; }\n\n  /* drag overlay to spin by hand or click to show indicators */\n  .drag-overlay{ position:absolute; inset:0; cursor:grab; }\n  .drag-overlay.dragging{ cursor:grabbing; }\n</style></head>\n<body>\n\n<div class=\"wrap\">\n  <div class=\"valve\" id=\"valve\">\n\n    <!-- Top-view valve -->\n    <svg viewBox=\"0 0 500 500\" aria-labelledby=\"title\" id=\"svg\">\n      <title id=\"title\">Top view OS&amp;Y gate valve</title>\n      <defs>\n        <linearGradient id=\"metalGrad\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n          <stop offset=\"0%\" stop-color=\"#a8adb5\"/>\n          <stop offset=\"50%\" stop-color=\"#7a8088\"/>\n          <stop offset=\"100%\" stop-color=\"#5a6169\"/>\n        </linearGradient>\n        <radialGradient id=\"bonnetGrad\" cx=\"0.5\" cy=\"0.5\">\n          <stop offset=\"0%\" stop-color=\"#9fa5ad\"/>\n          <stop offset=\"70%\" stop-color=\"#7a8088\"/>\n          <stop offset=\"100%\" stop-color=\"#5a6169\"/>\n        </radialGradient>\n      </defs>\n\n      <!-- Body with details -->\n      <g id=\"body\">\n        <!-- Left pipe connection -->\n        <rect x=\"30\" y=\"220\" width=\"150\" height=\"60\" rx=\"8\" fill=\"url(#metalGrad)\" stroke=\"#4a5058\" stroke-width=\"2\"/>\n        <circle cx=\"60\" cy=\"250\" r=\"18\" fill=\"none\" stroke=\"#3a4048\" stroke-width=\"2\"/>\n        \n        <!-- Right pipe connection -->\n        <rect x=\"320\" y=\"220\" width=\"150\" height=\"60\" rx=\"8\" fill=\"url(#metalGrad)\" stroke=\"#4a5058\" stroke-width=\"2\"/>\n        <circle cx=\"440\" cy=\"250\" r=\"18\" fill=\"none\" stroke=\"#3a4048\" stroke-width=\"2\"/>\n        \n        <!-- Center body -->\n        <rect x=\"180\" y=\"180\" width=\"140\" height=\"140\" rx=\"12\" fill=\"url(#metalGrad)\" stroke=\"#4a5058\" stroke-width=\"3\"/>\n        \n        <!-- Bonnet flange -->\n        <circle cx=\"250\" cy=\"250\" r=\"85\" fill=\"url(#bonnetGrad)\" stroke=\"#4a5058\" stroke-width=\"2\"/>\n        <circle cx=\"250\" cy=\"250\" r=\"75\" fill=\"none\" stroke=\"#3a4048\" stroke-width=\"1\"/>\n        \n        <!-- Bolt holes (8 positions) -->\n        <circle cx=\"250\" cy=\"170\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"250\" cy=\"330\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"170\" cy=\"250\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"330\" cy=\"250\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"200\" cy=\"200\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"300\" cy=\"200\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"200\" cy=\"300\" r=\"6\" fill=\"#2a3038\"/>\n        <circle cx=\"300\" cy=\"300\" r=\"6\" fill=\"#2a3038\"/>\n      </g>\n\n      <!-- Progress ring (25% larger: r=104 -> r=130) -->\n      <g class=\"progress\" id=\"progressGroup\" aria-hidden=\"true\">\n        <circle id=\"progressTrack\" cx=\"250\" cy=\"250\" r=\"130\" fill=\"none\" stroke=\"rgba(31,212,214,.12)\" stroke-width=\"6\"/>\n        <circle id=\"progressArc\"   cx=\"250\" cy=\"250\" r=\"130\" fill=\"none\" stroke=\"var(--cyan)\" stroke-width=\"6\"\n                stroke-linecap=\"round\" stroke-dasharray=\"0 1\"/>\n      </g>\n\n      <!-- Wheel (25% larger: r=90 -> r=112.5, spokes scaled proportionally) -->\n      <g class=\"handwheel\">\n        <!-- Outer rim -->\n        <circle cx=\"250\" cy=\"250\" r=\"112.5\" fill=\"none\" stroke=\"var(--cyan)\" stroke-width=\"12\"/>\n        \n        <!-- 3 spokes (scaled 25% larger) -->\n        <line x1=\"250\" y1=\"250\" x2=\"250\" y2=\"142.5\" stroke=\"var(--cyan)\" stroke-width=\"10\" stroke-linecap=\"round\"/>\n        <line x1=\"250\" y1=\"250\" x2=\"343.75\" y2=\"302.5\" stroke=\"var(--cyan)\" stroke-width=\"10\" stroke-linecap=\"round\"/>\n        <line x1=\"250\" y1=\"250\" x2=\"156.25\" y2=\"302.5\" stroke=\"var(--cyan)\" stroke-width=\"10\" stroke-linecap=\"round\"/>\n        \n        <!-- Center hub (scaled 25% larger) -->\n        <circle cx=\"250\" cy=\"250\" r=\"31.25\" fill=\"url(#bonnetGrad)\"/>\n        <circle cx=\"250\" cy=\"250\" r=\"22.5\" fill=\"#6b7179\"/>\n        <circle cx=\"250\" cy=\"250\" r=\"15\" fill=\"#4a5058\"/>\n      </g>\n    </svg>\n\n    <!-- Percent HUD -->\n    <div class=\"hud\" id=\"hud\">\n      <div class=\"percent\">Open: <b id=\"pct\">0%</b></div>\n    </div>\n\n    <!-- Drag/Click overlay -->\n    <div class=\"drag-overlay\" id=\"drag\"></div>\n  </div>\n</div>\n\n<script>\n(() => {\n  const root   = document.documentElement;\n  const pctEl  = document.getElementById('pct');\n  const overlay= document.getElementById('drag');\n  const hud    = document.getElementById('hud');\n  const progressArc   = document.getElementById('progressArc');\n  const progressGroup = document.getElementById('progressGroup');\n\n  const TOTAL_TURNS = parseFloat(getComputedStyle(root).getPropertyValue('--turns')) || 8;\n  const R = 130; // Updated to match new radius\n  const C = 2 * Math.PI * R;\n  progressArc.setAttribute('stroke-dasharray', `${C} ${C}`);\n\n  let hideTimer = null;\n  function showIndicators() {\n    hud.classList.add('on');\n    progressGroup.classList.add('on');\n    clearTimeout(hideTimer);\n    hideTimer = setTimeout(hideIndicators, 5000);\n  }\n  function hideIndicators(){ hud.classList.remove('on'); progressGroup.classList.remove('on'); }\n\n  function setProgress(f){ progressArc.setAttribute('stroke-dashoffset', C * (1 - f)); }\n  function getOpen(){ return parseFloat(getComputedStyle(root).getPropertyValue('--open')) || 0; }\n  function setOpenFraction(f){\n    f = Math.max(0, Math.min(1, f));\n    root.style.setProperty('--open', f);\n    pctEl.textContent = Math.round(f*100) + '%';\n    setProgress(f);\n    showIndicators();\n    ValveTop._onChange?.(f);\n  }\n\n  // CLICK (no drag) -> show indicators for 10s\n  overlay.addEventListener('click', () => { showIndicators(); });\n\n  // DRAG to rotate\n  overlay.addEventListener('pointerdown', onDragStart);\n  function onDragStart(e){\n    overlay.setPointerCapture(e.pointerId);\n    overlay.classList.add('dragging');\n    showIndicators();\n    const box = overlay.getBoundingClientRect();\n    const cx = box.left + box.width/2, cy = box.top + box.height/2;\n    let prevA = Math.atan2(e.clientY - cy, e.clientX - cx);\n    let f = getOpen();\n    function move(ev){\n      const a = Math.atan2(ev.clientY - cy, ev.clientX - cx);\n      let d = a - prevA;\n      if(d >  Math.PI) d -= 2*Math.PI;\n      if(d < -Math.PI) d += 2*Math.PI;\n      prevA = a;\n      const dir = parseFloat(getComputedStyle(root).getPropertyValue('--cw-to-close')) || 1;\n      f -= dir * d / (2*Math.PI) / TOTAL_TURNS;\n      setOpenFraction(f);\n    }\n    function end(){\n      overlay.releasePointerCapture(e.pointerId);\n      overlay.classList.remove('dragging');\n      overlay.removeEventListener('pointermove', move);\n      overlay.removeEventListener('pointerup', end);\n      overlay.removeEventListener('pointercancel', end);\n      showIndicators();\n    }\n    overlay.addEventListener('pointermove', move);\n    overlay.addEventListener('pointerup', end);\n    overlay.addEventListener('pointercancel', end);\n  }\n\n  // API\n  window.ValveTop = {\n    set:(f)=> setOpenFraction(f),\n    open:()=> setOpenFraction(1),\n    close:()=> setOpenFraction(0),\n    onChange:(fn)=> (ValveTop._onChange = fn)\n  };\n\n  // init\n  setProgress(0);\n})();\n</script>\n\n</body>\n</html>";
+
+  // TODO: Initialize your engine/managers here with 'design'
+  console.log('✅ Engine code embedded. Components:', design.components.length, 'Connections:', design.connections.length);
+})();
+  </script>
+</body>
+</html>
