@@ -789,10 +789,8 @@ class ProcessDesigner {
   }
 }
 
-// expose
-window.ProcessDesigner = ProcessDesigner;
-
-// bootstrap
+// Bootstrap
 window.addEventListener('DOMContentLoaded', () => {
+  window.designer = new ProcessDesigner();  // ✅ Create global instance
   console.log(`✅ Designer v${DESIGNER_VERSION} ready!`);
 });
