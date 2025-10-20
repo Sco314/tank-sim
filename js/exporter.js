@@ -1,711 +1,556 @@
-/**
- * exporter.js v3.2.3 — Fixed to match actual GitHub repo structure
- * - Split into REQUIRED and OPTIONAL files
- * - Only fails export if REQUIRED files are missing
- * - Warns about optional files but continues export
+/*
+ * Tank Sim — Exporter v3.2.4-hybrid
+ * ----------------------------------
+ * Goals:
+ *  - Keep v3.2.3 resiliency and port-aware connections.
+ *  - Add SVG sprite pipeline that fetches component SVGs from GitHub (or provided base) and embeds as <symbol>s in <defs>.
+ *  - Prefer <use> based instances; fall back to library symbol/image/diagnostic.
+ *  - Inject a minimal boot that initializes managers so valve/pump modals function in the exported sim.
+ *
+ * Usage:
+ *   const exporter = new SimulatorExporter(designer, {
+ *     baseUrl: 'https://sco314.github.io/tank-sim/',
+ *     assetsBase: 'assets/svg/components/',   // relative to baseUrl unless absolute
+ *   });
+ *   const html = await exporter.exportSimulator(progress);
+ *
+ * NOTE: This file does not depend on bundlers. It assumes `fetch` is available.
  */
 
-const EXPORTER_VERSION = '3.2.3';
-const ENGINE_VERSION   = '1.0.0';
+(function(global){
+  'use strict';
 
-// Root GitHub Pages base (no subfolder)
-const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
+  const DEFAULT_BASE_URL = (global?.SYSTEM_CONFIG?.BASE_URL) || 'https://sco314.github.io/tank-sim/';
 
-// Files to fetch
-const CSS_FILE        = 'css/designer-style.css';
-const VALVE_HTML_FILE = 'valve.html';
-
-// ✅ REQUIRED FILES - These MUST exist or export fails
-const ENGINE_FILES_REQUIRED = [
-  // Core (verified working)
-  'js/core/Component.js',
-  'js/core/FlowNetwork.js',
-  'js/core/ComponentManager.js',
-
-  // Boundary components (verified working)
-  'js/components/sources/Feed.js',
-  'js/components/sinks/Drain.js',
-
-  // Pumps (verified working - consolidated into Pump.js)
-  'js/components/pumps/Pump.js',
-
-  // Valves (verified working)
-  'js/components/valves/Valve.js',
-
-  // Pipes (verified working)
-  'js/components/pipes/Pipe.js'
-];
-
-// ⚠️ OPTIONAL FILES - Nice to have but won't block export
-const ENGINE_FILES_OPTIONAL = [
-  // Config (doesn't exist yet)
-  'js/config/systemConfig.js',
-
-  // Tanks (if you add it later)
-  'js/components/tanks/Tank.js',
-
-  // Specialized pumps (if you split them out from Pump.js)
-  'js/components/pumps/FixedSpeedPump.js',
-  'js/components/pumps/VariableSpeedPump.js',
-  'js/components/pumps/ThreeSpeedPump.js',
-
-  // Sensors (if you add them)
-  'js/components/sensors/PressureSensor.js',
-
-  // Managers (if you add them)
-  'js/managers/TankManager.js',
-  'js/managers/PumpManager.js',
-  'js/managers/ValveManager.js',
-  'js/managers/PipeManager.js',
-  'js/managers/PressureManager.js'
-];
-
-class SimulatorExporter {
-  constructor(designer) {
-    this.designer = designer;
-    this.exportTimestamp = Date.now();
-  }
-
-  // ========= Public API =========
-  async exportSimulator(defaultName = 'My Simulator') {
-    const simName = (prompt('Enter simulator name:', defaultName) || defaultName).trim();
-    if (!simName) {
-      alert('Export cancelled — no name provided.');
-      return;
-    }
-
-    // Validate the current design
-    const validation = this._validateDesign();
-    if (!validation.valid) {
-      const proceed = confirm(`⚠️ Issues found:\n\n${validation.errors.join('\n')}\n\nExport anyway?`);
-      if (!proceed) return;
-    }
-
-    const progress = this._createProgressUI();
-
-    try {
-      // Fetch CSS
-      progress.update('⏳ Fetching CSS...', 5);
-      const css = await this._fetchCSS();
-
-      // Fetch engine files
-      progress.update('⏳ Fetching engine files...', 10);
-      const engineCode = await this._fetchAllEngineFiles(progress);
-
-      // Fetch valve.html
-      progress.update('⏳ Fetching valve control...', 80);
-      const valveHTML = await this._fetchValveHTML();
-
-      // Generate HTML
-      progress.update('⏳ Generating HTML...', 90);
-      const cleanName = this._sanitizeName(simName);
-      const html = this._generateStandaloneHTML(simName, cleanName, css, engineCode, valveHTML);
-
-      // Download
-      progress.update('📦 Downloading...', 98);
-      this._downloadFile(`${cleanName}.html`, html);
-
-      progress.close();
-      const fileSize = (html.length / 1024).toFixed(1);
-      console.log(`✅ Export complete: ${cleanName}.html (${fileSize} KB)`);
-      alert(`✅ Export complete!\n\nFile: ${cleanName}.html\nSize: ${fileSize} KB\n\n✓ 100% standalone\n✓ Latest engine code from GitHub\n✓ SVG symbols (reused with <use>)`);
-    } catch (err) {
-      progress.close();
-      this._showDetailedError(err);
-    }
-  }
-
-  // ========= UI helpers =========
-  _createProgressUI() {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#172144;color:#e9f0ff;padding:30px 50px;border-radius:12px;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,.5);min-width:400px;';
-    overlay.innerHTML = `
-      <div id="progressText" style="font-size:20px;font-weight:600;margin-bottom:12px;">⏳ Starting export...</div>
-      <div style="background:#0e1734;height:8px;border-radius:4px;overflow:hidden;">
-        <div id="progressBar" style="background:#7cc8ff;height:100%;width:0%;transition:width .25s;"></div>
-      </div>
-      <div id="progressDetail" style="font-size:13px;margin-top:8px;color:#9bb0ff;">Initializing...</div>
-    `;
-    document.body.appendChild(overlay);
-
+  /**
+   * Optional progress helper interface used by the Designer UI.
+   * If not supplied, calls are no-ops.
+   */
+  function mkProgress(progress){
+    const noop = ()=>{};
     return {
-      update: (text, percent) => {
-        overlay.querySelector('#progressText').textContent = text;
-        overlay.querySelector('#progressBar').style.width = `${percent}%`;
-      },
-      setDetail: (detail) => overlay.querySelector('#progressDetail').textContent = detail,
-      close: () => document.body.removeChild(overlay)
+      update: progress?.update || noop,
+      setDetail: progress?.setDetail || noop,
     };
   }
 
-  // ========= Network fetchers =========
-  async _fetchCSS() {
-    const url = GITHUB_BASE_URL + CSS_FILE;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`CSS HTTP ${res.status}: ${res.statusText}`);
-      const css = await res.text();
-      console.log(`✓ CSS: ${CSS_FILE} (${(css.length / 1024).toFixed(1)} KB)`);
-      return css;
-    } catch (e) {
-      console.warn('⚠ CSS fetch failed, using minimal fallback', e);
-      return `
-        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; }
-        #canvas { width: 100%; height: 100%; background: #0e1734; }
-      `;
+  /**
+   * Simple HTML escaper
+   */
+  const esc = (s)=>String(s).replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+
+  /** Orientation helpers **/
+  const ORIENT = { R:0, U:90, L:180, D:270 };
+
+  /**
+   * Simulator Exporter (hybrid)
+   */
+  class SimulatorExporter {
+    constructor(designer, opts={}){
+      this.designer = designer;
+      this.options = Object.assign({
+        baseUrl: DEFAULT_BASE_URL,
+        assetsBase: 'assets/svg/components/',
+        title: 'Process Simulator',
+      }, opts);
+
+      // Sprite registry built during export
+      this._symbolRegistry = new Map(); // type -> symbolId
+      this._spriteString = '';
     }
-  }
 
-  async _fetchAllEngineFiles(progressUI) {
-    const codeBlocks = [];
-    const failed = [];
-    let done = 0;
+    /** MAIN ENTRY **/
+    async exportSimulator(progress){
+      const p = mkProgress(progress);
 
-    // Combine required and optional files
-    const allFiles = ENGINE_FILES_REQUIRED.concat(ENGINE_FILES_OPTIONAL);
-    const totalFiles = allFiles.length;
+      // 1) Collect design data from designer
+      p.update('📦 Packaging design…', 20);
+      const design = this._collectDesign();
 
-    for (const path of allFiles) {
-      const url = GITHUB_BASE_URL + path;
-      const isOptional = ENGINE_FILES_OPTIONAL.includes(path);
-      
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        const code = await res.text();
-        codeBlocks.push(`\n/* ============================================================================\n * ${path}\n * Source: ${url}\n * ============================================================================ */\n\n${code}\n`);
-        done++;
-        const pct = 10 + Math.floor((done / totalFiles) * 65); // 10 → 75
-        progressUI.update('⏳ Fetching engine files...', pct);
-        progressUI.setDetail(`✓ ${path} (${done}/${totalFiles})`);
-        console.log(`✓ ${path}`);
-      } catch (e) {
-        failed.push({ path, url, error: e.message, optional: isOptional });
-        
-        if (isOptional) {
-          console.warn(`⚠ ${path} (optional - skipped)`, e.message);
-        } else {
-          console.error(`✗ ${path} (REQUIRED)`, e);
+      // 2) Build SVG sprite by fetching used assets
+      p.update('⏳ Building SVG sprite…', 40);
+      await this._buildSpriteFromAssets(p, design);
+
+      // 3) Fetch engine files (REQUIRED & OPTIONAL)
+      p.update('⏳ Fetching engine files…', 55);
+      const engineFiles = await this._fetchEngineFiles(p);
+
+      // 4) Generate standalone HTML
+      p.update('🧱 Generating HTML…', 90);
+      const html = this._generateStandaloneHTML({ design, engineFiles });
+
+      p.update('✅ Export complete', 100);
+      return html;
+    }
+
+    /* ----------------------------------------------
+     * DESIGN CAPTURE
+     * ------------------------------------------- */
+    _collectDesign(){
+      // Best effort: prefer designer-provided JSON; otherwise read from in-memory structures
+      const meta = {
+        exportedAt: new Date().toISOString(),
+        exporter: 'v3.2.4-hybrid',
+        baseUrl: this.options.baseUrl,
+      };
+
+      // If the live designer has a method for this, use it.
+      if (this.designer?.toJSON) {
+        const d = this.designer.toJSON();
+        d.metadata = Object.assign({}, d.metadata||{}, meta);
+        return d;
+      }
+
+      // Fallback: reconstruct a minimal design from visible components
+      const components = [];
+      const pipes = [];
+
+      if (this.designer?.components) {
+        for (const [id, comp] of this.designer.components) {
+          components.push({
+            id: comp.id || id,
+            name: comp.name || comp.label || comp.type || 'Component',
+            type: comp.type || comp.key || 'Component',
+            x: comp.x|0, y: comp.y|0,
+            orientation: comp.orientation || 'R',
+            variant: comp.variant || 'std',
+            ports: comp.ports || null, // normalized { P_IN:{x:10,y:50}, ... } in 0..100 space if available
+          });
         }
+      }
+
+      if (this.designer?.pipes) {
+        for (const [pid, pipe] of this.designer.pipes) {
+          pipes.push({ id: pipe.id || pid, from: pipe.from, to: pipe.to });
+        }
+      }
+
+      return { metadata: meta, components, pipes };
+    }
+
+    /* ----------------------------------------------
+     * ENGINE FILES
+     * ------------------------------------------- */
+    async _fetchEngineFiles(progress){
+      const p = mkProgress(progress);
+      const base = this._ensureTrailingSlash(this.options.baseUrl);
+
+      const REQUIRED = [
+        'js/core/Component.js',
+        'js/core/ComponentManager.js',
+        'js/core/FlowNetwork.js',
+        'js/managers/PipeManager.js',
+        'js/managers/PressureManager.js',
+        'js/managers/PumpManager.js',
+        'js/managers/TankManager.js',
+        'js/managers/ValveManager.js',
+        // Config optional but nice to have
+      ];
+
+      const OPTIONAL = [
+        'js/config/systemConfig.js',
+        'css/designer.css',
+        'css/designer-style.css',
+      ];
+
+      const results = { required: [], optional: [] };
+      let i = 0;
+
+      for (const rel of REQUIRED){
+        const url = base + rel;
+        p.setDetail(`REQUIRED ${++i}/${REQUIRED.length}: ${rel}`);
+        const ok = await this._ping(url);
+        if (!ok) throw new Error(`Missing required engine file: ${url}`);
+        results.required.push(url);
+      }
+
+      for (const rel of OPTIONAL){
+        const url = base + rel;
+        const ok = await this._ping(url);
+        if (ok) results.optional.push(url);
+      }
+
+      return results;
+    }
+
+    async _ping(url){
+      try {
+        const res = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+        return res.ok;
+      } catch(_e){
+        return false;
       }
     }
 
-    // Only throw if REQUIRED files failed
-    const hardFails = failed.filter(f => !f.optional);
-    
-    if (hardFails.length) {
-      throw new Error(JSON.stringify({
-        failedFiles: hardFails,
-        totalFiles: ENGINE_FILES_REQUIRED.length,
-        successCount: ENGINE_FILES_REQUIRED.length - hardFails.length,
-        failCount: hardFails.length
-      }));
+    _ensureTrailingSlash(u){
+      return /\/$/.test(u) ? u : u + '/';
     }
 
-    // Log optional failures as warnings
-    const optionalFails = failed.filter(f => f.optional);
-    if (optionalFails.length) {
-      console.warn(`⚠ ${optionalFails.length} optional file(s) not found (continuing anyway):`, 
-        optionalFails.map(f => f.path));
+    /* ----------------------------------------------
+     * SPRITE PIPELINE
+     * ------------------------------------------- */
+
+    async _buildSpriteFromAssets(progress, design){
+      const p = mkProgress(progress);
+      this._symbolRegistry = new Map();
+
+      const needed = new Map(); // assetPath -> { symbolId, type }
+      const lib = this._getLibrary();
+
+      for (const comp of (design.components||[])) {
+        const type = comp.type || comp.key || 'component';
+        const template = lib[type] || {};
+        const assetPath = this._resolveSvgAssetPath(type, comp, template);
+        if (!assetPath) continue;
+
+        const symbolId = this._symbolIdFor(type, comp, template);
+        if (!needed.has(assetPath)) needed.set(assetPath, { symbolId, type });
+        // Register mapping for instance rendering
+        if (!this._symbolRegistry.has(type)) this._symbolRegistry.set(type, symbolId);
+      }
+
+      if (needed.size === 0){
+        this._spriteString = '';
+        return;
+      }
+
+      const symbols = [];
+      let fetched = 0;
+
+      for (const [assetPath, meta] of needed.entries()){
+        const url = this._ensureAbsoluteAssetUrl(assetPath);
+        try {
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          let svgText = await res.text();
+
+          const viewBox = (svgText.match(/viewBox="([^"]+)"/)||[])[1] || '0 0 100 100';
+          const inner = this._extractSvgInner(svgText);
+          const prefixed = this._prefixSvgIds(inner, meta.symbolId);
+          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${prefixed}</symbol>`);
+
+          fetched++;
+          progress?.setDetail?.(`${fetched}/${needed.size} • ${assetPath}`);
+        } catch(e){
+          console.warn('⚠️ SVG fetch failed, falling back', { assetPath, url, error: e?.message });
+        }
+      }
+
+      this._spriteString = symbols.join('\n');
     }
 
-    const total = codeBlocks.join('\n');
-    console.log(`✅ Engine fetched (${(total.length / 1024).toFixed(1)} KB)`);
-    console.log(`📊 Stats: ${done} loaded, ${optionalFails.length} optional skipped, ${hardFails.length} required failed`);
-    return total;
-  }
-
-  async _fetchValveHTML() {
-    const url = GITHUB_BASE_URL + VALVE_HTML_FILE;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const html = await res.text();
-      return html;
-    } catch (e) {
-      throw new Error(JSON.stringify({
-        failedFiles: [{ path: VALVE_HTML_FILE, url, error: e.message }],
-        totalFiles: 1, successCount: 0, failCount: 1
-      }));
-    }
-  }
-
-  // ========= Errors =========
-  _showDetailedError(error) {
-    let details;
-    try {
-      details = JSON.parse(error.message);
-    } catch {
-      alert(`❌ Export failed\n\n${error.message}\n\nCheck console for details.`);
-      console.error(error);
-      return;
+    _getLibrary(){
+      return this.designer?.componentLibrary?.components
+          || global.componentLibrary?.components
+          || global.COMPONENT_LIBRARY?.components
+          || {};
     }
 
-    const lines = (details.failedFiles || []).map(f =>
-      `• ${f.path}\n  URL: ${f.url}\n  Error: ${f.error}`
-    ).join('\n\n');
+    _symbolIdFor(type, comp, template){
+      const variant = comp?.variant ? `-${String(comp.variant).replace(/\s+/g,'-')}` : '';
+      return `sym-${String(type).replace(/\s+/g,'_')}${variant}`;
+    }
 
-    alert(
-`❌ Export Failed: Could Not Fetch Required Files from GitHub
+    _resolveSvgAssetPath(type, comp, template){
+      // 1) Explicit from the library
+      if (template?.svgPath) return template.svgPath;
+      if (template?.svg?.path) return template.svg.path;
 
-Failed Files (${details.failCount}/${details.totalFiles}):
+      // 2) Derive by type
+      const t = String(type).toLowerCase();
+      const root = this._ensureTrailingSlash(this.options.assetsBase);
 
-${lines}
+      if (t.includes('pump'))           return root + 'pumps/centrifugal.svg';
+      if (t.includes('valve'))          return root + 'valves/valve.svg';
+      if (t.includes('tank'))           return root + 'tanks/tank_vertical.svg';
+      if (t.includes('pressure'))       return root + 'sensors/pressure_sensor.svg';
+      if (t.includes('feed') || t.includes('source')) return root + 'sources/feed.svg';
+      if (t.includes('drain') || t.includes('sink'))  return root + 'sinks/drain.svg';
 
-Possible Causes:
-• No internet connection
-• GitHub Pages is down
-• Files moved/deleted
-• CORS/network firewall blocking requests
+      return null;
+    }
 
-What To Do:
-1) Check connection
-2) Verify Pages: ${GITHUB_BASE_URL}
-3) Try again
-4) See console for details`
-    );
+    _ensureAbsoluteAssetUrl(path){
+      if (/^https?:\/\//i.test(path)) return path;
+      const base = this._ensureTrailingSlash(this.options.baseUrl);
+      return base + path.replace(/^\//,'');
+    }
 
-    console.error('📋 Detailed error report', details);
-  }
+    _extractSvgInner(svgText){
+      // Keep content inside the outermost <svg>…</svg>
+      const open = svgText.indexOf('>');
+      const close = svgText.lastIndexOf('</svg>');
+      if (open === -1 || close === -1 || close <= open) return svgText;
+      return svgText.slice(open + 1, close).trim();
+    }
 
-  // ========= HTML generation =========
-  _generateStandaloneHTML(simName, cleanName, css, engineCode, valveHTML) {
-    const svg = document.getElementById('canvas');
-    const viewBox = svg ? (svg.getAttribute('viewBox') || '0 0 1000 600') : '0 0 1000 600';
+    _prefixSvgIds(content, prefix){
+      // id="foo" -> id="prefix-foo"
+      content = content.replace(/\bid="([^"]+)"/g, (m, id) => {
+        if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+        return `id="${prefix}-${id}"`;
+      });
+      // url(#foo) -> url(#prefix-foo)
+      content = content.replace(/url\(#([^)]+)\)/g, (m, id) => {
+        if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+        return `url(#${prefix}-${id})`;
+      });
+      // href="#foo" -> href="#prefix-foo"
+      content = content.replace(/href="#([^"]+)"/g, (m, id) => {
+        if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+        return `href="#${prefix}-${id}"`;
+      });
+      return content;
+    }
 
-    // Collect <symbol>s once
-    const svgSymbols = this._extractSVGSymbols();
+    /* ----------------------------------------------
+     * HTML GENERATION
+     * ------------------------------------------- */
 
-    // Instances and connections
-    const componentsSVG  = this._generateAllComponentsSVG();
-    const connectionsSVG = this._generateAllConnectionsSVG();
+    _generateStandaloneHTML({ design, engineFiles }){
+      const title = this.options.title || 'Process Simulator';
 
-    // Design JSON
-    const designJSON = this._generateDesignJSON(simName);
+      // Compose <defs> with sprite and a default gradient for tanks
+      const defs = `
+<svg width="0" height="0" style="position:absolute">
+  <defs id="component-sprite">
+    ${this._spriteString || ''}
+    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#41d1ff"/>
+      <stop offset="100%" stop-color="#0077ff"/>
+    </linearGradient>
+  </defs>
+</svg>`;
 
-    // Valve iframe srcdoc
-    const valveSrcdoc = this._prepareValveForIframe(valveHTML);
+      const { components=[], pipes=[] } = design;
 
-    return `<!DOCTYPE html>
+      const svgContent = `
+  <svg id="canvas" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background grid (optional) -->
+    <defs>
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M20 0 H0 V20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" />
+
+    <!-- Pipes -->
+    <g id="pipes">${this._generateAllConnectionsSVG(components, pipes)}</g>
+
+    <!-- Components -->
+    <g id="components">${components.map(c=>this._generateComponentSVG(c)).join('\n')}</g>
+  </svg>`;
+
+      const dataScript = `<script id="design-data" type="application/json">${esc(JSON.stringify(design))}</script>`;
+
+      const boot = this._generateBootScript();
+
+      // Script and CSS tags
+      const engineScriptTags = [
+        ...engineFiles.required, ...engineFiles.optional,
+      ].filter(Boolean).map(src=>`<script src="${src}"></script>`).join('\n');
+
+      const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${simName}</title>
-  <meta name="generator" content="Tank Simulator Exporter v${EXPORTER_VERSION}">
-  <meta name="export-date" content="${new Date().toISOString()}">
-  <meta name="engine-version" content="${ENGINE_VERSION}">
-  <meta name="source" content="${GITHUB_BASE_URL}">
+  <title>${esc(title)}</title>
   <style>
-${css}
-
-/* Minimal extras */
-.flow       { stroke-dasharray: 20 10; }
-.flow.on    { animation: flow 2s linear infinite; }
-@keyframes flow { to { stroke-dashoffset: -30; } }
-
-#valveFrame {
-  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:400px; height:300px; border:2px solid #7cc8ff; border-radius:8px; background:#fff; z-index:1000;
-  box-shadow:0 10px 40px rgba(0,0,0,.3);
-}
+    body{margin:0;background:#0b1020;color:#dbe4ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
+    header{padding:10px 14px;background:#111827;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center}
+    h1{font-size:16px;margin:0;color:#c7d2fe}
+    #container{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+    #stage{position:relative}
+    #canvas{display:block;width:100%;height:calc(100vh - 56px)}
+    .component .comp-skin{color:var(--comp-color,#4f46e5)}
+    .component.Valve .comp-skin{--comp-color:#0ea5e9}
+    .component.Pump  .comp-skin{--comp-color:#4f46e5}
+    .component.Tank  .comp-skin{--comp-color:#16a34a}
+    .component text.label{fill:#9bb0ff}
+    .component.Missing rect{fill:#fee;stroke:#c00}
   </style>
+  ${defs}
 </head>
 <body>
-  <div id="simulator-container">
-    <svg id="canvas" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">
-      <!-- ========== Component Symbols (one-time) ========== -->
-      <defs>
-        <!-- Liquid gradient for tanks (patch) -->
-        <linearGradient id="liquid" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%"  style="stop-color:#4fc3f7;stop-opacity:0.9"/>
-          <stop offset="100%" style="stop-color:#0288d1;stop-opacity:1"/>
-        </linearGradient>
-
-${svgSymbols}
-      </defs>
-
-      <!-- Optional grid -->
-      <defs>
-        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M20 0 L0 0 0 20" fill="none" stroke="#22305f" stroke-width="1"/>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#grid)" opacity="0.35"/>
-
-      <!-- ========== Connections ========== -->
-      <g id="connectionsLayer">
-${connectionsSVG}
-      </g>
-
-      <!-- ========== Components ========== -->
-      <g id="componentsLayer">
-${componentsSVG}
-      </g>
-    </svg>
-
-    <iframe id="valveFrame" title="Valve Control"></iframe>
+  <div id="container">
+    <header>
+      <h1>${esc(title)}</h1>
+      <div id="status">Exported with Exporter v3.2.4-hybrid</div>
+    </header>
+    <main id="stage">
+      ${svgContent}
+    </main>
   </div>
 
-  <!-- ========== Embedded Design JSON ========== -->
-  <script id="design-data" type="application/json">
-${designJSON}
-  </script>
-
-  <!-- ========== Embedded Engine Code ========== -->
-  <script>
-/* ============================================================================
- * Tank Simulator Engine v${ENGINE_VERSION}
- * Exported: ${new Date().toISOString()}
- * Source: ${GITHUB_BASE_URL}
- * ============================================================================ */
-${engineCode}
-
-/* ============================================================================
- * Boot
- * ============================================================================ */
-(function(){
-  const dataEl = document.getElementById('design-data');
-  const design = JSON.parse(dataEl.textContent);
-  console.log('🎯 Loaded design:', design.metadata);
-
-  // Valve iframe
-  const valveFrame = document.getElementById('valveFrame');
-  valveFrame.srcdoc = ${JSON.stringify(valveSrcdoc)};
-
-  // TODO: Initialize your engine/managers here with 'design'
-  console.log('✅ Engine code embedded. Components:', design.components.length, 'Connections:', design.connections.length);
-})();
-  </script>
+  ${dataScript}
+  ${engineScriptTags}
+  ${boot}
 </body>
 </html>`;
+
+      return html;
+    }
+
+    _generateBootScript(){
+      return `<script>(function(){
+  try{
+    const dataEl = document.getElementById('design-data');
+    const design = JSON.parse(dataEl.textContent);
+    console.log('🎯 Loaded design:', design.metadata);
+
+    // Managers
+    const flowNetwork  = new (window.FlowNetwork||function(){})();
+    const compManager  = new (window.ComponentManager||function(){}) (flowNetwork);
+    const pipeManager  = new (window.PipeManager||function(){}) (flowNetwork);
+    const valveManager = new (window.ValveManager||function(){}) (flowNetwork, compManager);
+    const pumpManager  = new (window.PumpManager||function(){})  (flowNetwork, compManager);
+    const tankManager  = new (window.TankManager||function(){})  (flowNetwork, compManager);
+    const pressureMgr  = new (window.PressureManager||function(){}) (flowNetwork, compManager);
+
+    // Rehydrate
+    compManager.loadFromDesign?.(design);
+    pipeManager.loadFromDesign?.(design);
+
+    // Initial solve + UI wires
+    flowNetwork.solve?.();
+    valveManager.initUI?.();
+    pumpManager.initUI?.();
+    tankManager.initUI?.();
+
+    // Simple tick loop (level dynamics + solve + pressure UI)
+    let last = performance.now();
+    function tick(now){
+      const dt = (now - last)/1000; last = now;
+      tankManager.step?.(dt);
+      flowNetwork.solve?.();
+      pressureMgr.updateUI?.();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // Integrity check
+    (function check(){
+      const defs = document.getElementById('component-sprite');
+      const missing = [...document.querySelectorAll('.component.Missing')].length;
+      if (!defs || missing) console.warn('⚠️ Export integrity', { hasDefs: !!defs, missing });
+      else console.log('✅ Export integrity ok');
+    })();
+  }catch(e){
+    console.error('💥 Boot failed', e);
   }
+})();</script>`;
+    }
 
-  /**
-   * Extract <symbol> defs exactly once.
-   */
-  _extractSVGSymbols() {
-    const out = [];
-    const seen = new Set();
-    this._exportedSymbolTypes = new Set();
+    /* ----------------------------------------------
+     * SVG DOM: Components & Pipes
+     * ------------------------------------------- */
 
-    const lib =
-      this.designer?.componentLibrary?.components ||
-      window.componentLibrary?.components ||
-      window.COMPONENT_LIBRARY?.components ||
-      {};
+    _generateComponentSVG(comp){
+      const cleanId = this._sanitizeId(comp.id || comp.name || 'component');
+      const type = comp.type || comp.key || 'Component';
+      const symbolIdFromSprite = this._symbolRegistry?.get(type);
 
-    const canvas = document.getElementById('canvas');
-    const domDefs = canvas ? Array.from(canvas.querySelectorAll('symbol')) : [];
+      const orient = String(comp.orientation||'R').toUpperCase();
+      const rot = ORIENT[orient] ?? 0;
 
-    for (const [, comp] of this.designer.components) {
-      const type = comp.type || comp.key || 'component';
-      const symbolIdOut = `symbol-${type}`;
-      if (seen.has(symbolIdOut)) continue;
+      const label = esc(comp.name || cleanId);
 
-      const libDef = lib[type];
-      if (libDef && typeof libDef.symbol === 'string' && libDef.symbol.trim()) {
-        const vb = (libDef.symbolViewBox || '0 0 60 60');
-        out.push(`        <symbol id="${symbolIdOut}" viewBox="${vb}">
-${libDef.symbol}
-        </symbol>`);
-        seen.add(symbolIdOut);
-        this._exportedSymbolTypes.add(type);
-        continue;
+      // Symbol via sprite
+      if (symbolIdFromSprite){
+        return `<g id="${cleanId}" class="component ${esc(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
+  <use href="#${symbolIdFromSprite}" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">${label}</text>
+</g>`;
       }
 
-      if (libDef && libDef.symbolId) {
-        const live = domDefs.find(s => s.id === libDef.symbolId);
-        if (live) {
-          out.push(`        <symbol id="${symbolIdOut}" viewBox="${live.getAttribute('viewBox') || '0 0 60 60'}">${live.innerHTML}</symbol>`);
-          seen.add(symbolIdOut);
-          this._exportedSymbolTypes.add(type);
+      // Library-defined symbol fallback
+      const lib = this._getLibrary();
+      const template = lib[type] || {};
+      const symbol = template.symbol || template.symbolId;
+      if (symbol){
+        const symId = this._sanitizeId(typeof symbol === 'string' ? symbol : `symbol-${type}`);
+        return `<g id="${cleanId}" class="component ${esc(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
+  <use href="#${symId}" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">${label}</text>
+</g>`;
+      }
+
+      // Image fallback
+      if (template.image){
+        const sz = template.imageSize || { w: 76, h: 76, x: -38, y: -38 };
+        return `<g id="${cleanId}" class="component ${esc(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
+  <image href="${esc(template.image)}" x="${sz.x}" y="${sz.y}" width="${sz.w}" height="${sz.h}" preserveAspectRatio="xMidYMid meet"></image>
+  <text class="label" x="0" y="-50" text-anchor="middle" font-size="12">${label}</text>
+</g>`;
+      }
+
+      // Diagnostic fallback
+      return `<g id="${cleanId}" class="component Missing" transform="translate(${comp.x|0}, ${comp.y|0})">
+  <rect x="-20" y="-20" width="40" height="40"></rect>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">${label}</text>
+</g>`;
+    }
+
+    _generateAllConnectionsSVG(components, pipes){
+      if (!pipes || pipes.length === 0) return '';
+      const byId = new Map((components||[]).map(c=>[c.id, c]));
+      const segs = [];
+
+      for (const pipe of pipes){
+        const [fromId, fromPort] = this._splitRef(pipe.from);
+        const [toId, toPort]     = this._splitRef(pipe.to);
+        const A = byId.get(fromId);
+        const B = byId.get(toId);
+        if (!A || !B){
+          // Skip broken references
           continue;
         }
+        const a = this._portWorld(A, fromPort);
+        const b = this._portWorld(B, toPort);
+        segs.push(`<path d="M${a.x},${a.y} L${b.x},${b.y}" stroke="#93c5fd" stroke-width="3" fill="none"/>`);
       }
+      return segs.join('\n');
     }
 
-    return out.join('\n');
-  }
-
-  // ========= Components & connections =========
-
-  _generateAllComponentsSVG() {
-    let svg = '';
-    for (const [, comp] of this.designer.components) {
-      svg += '        ' + this._generateComponentSVG(comp) + '\n';
-    }
-    return svg;
-  }
-
-  _generateComponentSVG(comp) {
-    const cleanId = this._sanitizeId(comp.id);
-    const type = comp.type || comp.key || 'component';
-
-    const hasSymbol = this._exportedSymbolTypes?.has(type);
-
-    if (type === 'tank') {
-      return `<g id="${cleanId}" class="tank" transform="translate(${comp.x}, ${comp.y})">
-  <rect x="-80" y="-90" width="160" height="180" rx="12" fill="#0e1734" stroke="#2a3d78" stroke-width="3"></rect>
-  <rect id="${cleanId}LevelRect" x="-74" y="88" width="148" height="0" fill="url(#liquid)"></rect>
-  <text x="0" y="-100" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
-</g>`;
+    _splitRef(ref){
+      // ref can be "compId.portId" or just "compId"
+      if (!ref) return [null, null];
+      const i = String(ref).indexOf('.');
+      if (i === -1) return [String(ref), null];
+      return [ref.slice(0,i), ref.slice(i+1)];
     }
 
-    if (hasSymbol) {
-      return `<g id="${cleanId}" class="${type}" transform="translate(${comp.x}, ${comp.y})" tabindex="0" role="button">
-  <use href="#symbol-${type}" width="60" height="60"></use>
-  <text x="0" y="-50" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
-</g>`;
-    }
+    _portWorld(comp, portName){
+      // If component has normalized ports (0..100), rotate by orientation and translate by (x,y)
+      const cx = (comp.x|0), cy = (comp.y|0);
+      const rot = ORIENT[String(comp.orientation||'R').toUpperCase()] ?? 0;
 
-    const lib =
-      this.designer?.componentLibrary?.components ||
-      window.componentLibrary?.components ||
-      window.COMPONENT_LIBRARY?.components ||
-      {};
-    const template = lib[type] || {};
-    const image = template.image;
-    const imageSize = template.imageSize || { w: 76, h: 76, x: -38, y: -38 };
-
-    if (image) {
-      return `<g id="${cleanId}" class="${type}" transform="translate(${comp.x}, ${comp.y})" tabindex="0" role="button">
-  <image href="${image}" x="${imageSize.x}" y="${imageSize.y}" width="${imageSize.w}" height="${imageSize.h}" preserveAspectRatio="xMidYMid meet"></image>
-  <text x="0" y="-50" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
-</g>`;
-    }
-
-    return `<g id="${cleanId}" class="${type}" transform="translate(${comp.x}, ${comp.y})">
-  <circle r="20" fill="#4f46e520" stroke="#4f46e5" stroke-width="2"></circle>
-  <text x="0" y="-30" text-anchor="middle" fill="#9bb0ff" font-size="12">${comp.name}</text>
-</g>`;
-  }
-
-  _buildSymbolPortIndex() {
-    const index = {};
-    const lib =
-      this.designer?.componentLibrary?.components ||
-      window.componentLibrary?.components ||
-      window.COMPONENT_LIBRARY?.components ||
-      {};
-    const parser = new DOMParser();
-
-    for (const [type, def] of Object.entries(lib)) {
-      const sym = def?.symbol;
-      if (!sym || typeof sym !== 'string') continue;
-
-      const doc = parser.parseFromString(
-        `<svg xmlns="http://www.w3.org/2000/svg">${sym}</svg>`,
-        'image/svg+xml'
-      );
-
-      const cps = Array.from(doc.querySelectorAll('.cp'));
-      if (!cps.length) continue;
-
-      index[type] = cps.map(el => ({
-        name: el.getAttribute('data-port') || el.getAttribute('id') || '',
-        role: el.getAttribute('data-type') || '',
-        cx: parseFloat(el.getAttribute('cx') || '0'),
-        cy: parseFloat(el.getAttribute('cy') || '0'),
-        r:  parseFloat(el.getAttribute('r')  || '0'),
-      }));
-    }
-
-    return index;
-  }
-
-  _applyTransform(comp, lx, ly) {
-    const rotDeg = (comp.rotation ?? comp.r ?? 0);
-    const rot = rotDeg * Math.PI / 180;
-
-    const sx = (comp.scaleX ?? comp.scale ?? 1);
-    const sy = (comp.scaleY ?? comp.scale ?? 1);
-
-    let x = lx * sx;
-    let y = ly * sy;
-
-    const xr = x * Math.cos(rot) - y * Math.sin(rot);
-    const yr = x * Math.sin(rot) + y * Math.cos(rot);
-
-    return { x: (comp.x ?? 0) + xr, y: (comp.y ?? 0) + yr };
-  }
-
-  _getPortWorldPos(comp, portName) {
-    const type = comp.type || comp.key || 'component';
-
-    const ports = (this._portIndex?.[type] || []);
-    let p = null;
-    if (ports.length) {
-      p = ports.find(pt => pt.name === portName);
-      if (!p && portName) {
-        const wantOut = /out|discharge|right/i.test(portName);
-        const wantIn  = /in|suction|left/i.test(portName);
-        if (wantOut) p = ports.find(pt => /out/i.test(pt.role) || /out/i.test(pt.name));
-        if (!p && wantIn) p = ports.find(pt => /in/i.test(pt.role)  || /in/i.test(pt.name));
+      let px = 0, py = 0;
+      const pm = comp.ports || {};
+      const p = (portName && pm[portName]) || null;
+      if (p){
+        // Convert 0..100 space centered around 50,50 to -50..+50 local
+        const lx = (p.x ?? 50) - 50;
+        const ly = (p.y ?? 50) - 50;
+        const rad = rot * Math.PI/180;
+        const rx = lx * Math.cos(rad) - ly * Math.sin(rad);
+        const ry = lx * Math.sin(rad) + ly * Math.cos(rad);
+        px = cx + rx;
+        py = cy + ry;
+      } else {
+        // Fallback: center of component
+        px = cx; py = cy;
       }
-      if (!p) p = ports[0];
-      if (p) return this._applyTransform(comp, p.cx, p.cy);
+      return { x:px, y:py };
     }
 
-    const lib =
-      this.designer?.componentLibrary?.components ||
-      window.componentLibrary?.components ||
-      window.COMPONENT_LIBRARY?.components ||
-      {};
-    const offPts = lib[type]?.connectionPoints || [];
-    if (offPts.length) {
-      const ofp = offPts.find(o => o.name === portName || o.id === portName) || offPts[0];
-      if (ofp) return { x: (comp.x ?? 0) + (ofp.x || 0), y: (comp.y ?? 0) + (ofp.y || 0) };
+    _sanitizeId(id){
+      return String(id).replace(/[^a-zA-Z0-9_\-:.]/g, '_');
     }
-
-    return { x: comp.x ?? 0, y: comp.y ?? 0 };
   }
 
-  _pickDefaultPortName(type, wantRole) {
-    const ports = (this._portIndex?.[type] || []);
-    if (!ports.length) return null;
-    const byRole = ports.find(p => (wantRole === 'output' ? /out/i : /in/i).test(p.role || p.name || ''));
-    return byRole?.name || ports[0].name || null;
-  }
+  // Attach to global
+  global.SimulatorExporter = SimulatorExporter;
 
-  _generateAllConnectionsSVG() {
-    if (!this._portIndex) this._portIndex = this._buildSymbolPortIndex();
-
-    let svg = '';
-
-    this.designer.connections.forEach((conn, idx) => {
-      const fromComp = this.designer.components.get(conn.from);
-      const toComp   = this.designer.components.get(conn.to);
-      if (!fromComp || !toComp) return;
-
-      const fromType = fromComp.type || fromComp.key || 'component';
-      const toType   = toComp.type   || toComp.key   || 'component';
-
-      const fromName = conn.fromPoint || this._pickDefaultPortName(fromType, 'output') || 'outlet';
-      const toName   = conn.toPoint   || this._pickDefaultPortName(toType,   'input')  || 'inlet';
-
-      const P1 = this._getPortWorldPos(fromComp, fromName);
-      const P2 = this._getPortWorldPos(toComp,   toName);
-
-      const d = `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
-      const pipeId = `pipe${idx + 1}`;
-
-      svg += `        <g id="${this._sanitizeId(pipeId)}" data-from="${this._sanitizeId(fromComp.id)}" data-to="${this._sanitizeId(toComp.id)}" data-fp="${fromName}" data-tp="${toName}">
-  <path d="${d}" fill="none" stroke="#9bb0ff" stroke-width="20" stroke-linecap="round"></path>
-  <path id="${this._sanitizeId(pipeId)}Flow" d="${d}" fill="none" stroke="#7cc8ff" stroke-width="8" stroke-linecap="round" class="flow"></path>
-</g>\n`;
-    });
-
-    return svg;
-  }
-
-  _generateDesignJSON(simName) {
-    const config = {
-      metadata: {
-        version: EXPORTER_VERSION,
-        created: new Date(this.designer?.metadata?.created || this.exportTimestamp).toISOString(),
-        modified: new Date().toISOString(),
-        name: simName,
-        exported: new Date().toISOString(),
-        source: GITHUB_BASE_URL
-      },
-      components: [],
-      connections: [],
-      nextId: this.designer.nextId,
-      nextConnectionId: this.designer.nextConnectionId,
-      gridSize: this.designer.gridSize,
-      viewBox: { width: 1000, height: 600 }
-    };
-
-    for (const [, comp] of this.designer.components) {
-      config.components.push({
-        id: comp.id,
-        key: comp.key,
-        type: comp.type,
-        name: comp.name,
-        x: comp.x,
-        y: comp.y,
-        config: comp.config || {}
-      });
-    }
-
-    for (const conn of this.designer.connections) {
-      config.connections.push({
-        id: conn.id,
-        from: conn.from,
-        to: conn.to,
-        fromPoint: conn.fromPoint || 'outlet',
-        toPoint: conn.toPoint || 'inlet'
-      });
-    }
-
-    return JSON.stringify(config, null, 2);
-  }
-
-  _prepareValveForIframe(valveHTML) {
-    const styleMatch = valveHTML.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-    const bodyMatch  = valveHTML.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-
-    const styles = styleMatch ? styleMatch[1] : '';
-    const body   = bodyMatch  ? bodyMatch[1]  : valveHTML;
-
-    return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Valve Control</title><style>${styles}</style></head>
-<body>
-${body}
-</body>
-</html>`;
-  }
-
-  _validateDesign() {
-    const errors = [];
-
-    if (!this.designer || !this.designer.components || this.designer.components.size === 0) {
-      errors.push('No components in design');
-    }
-
-    if (this.designer?.connections?.length) {
-      const connected = new Set();
-      for (const c of this.designer.connections) {
-        connected.add(c.from); connected.add(c.to);
-      }
-      const disconnected = [];
-      for (const [id, comp] of this.designer.components) {
-        if (!connected.has(id)) disconnected.push(comp.name || id);
-      }
-      if (disconnected.length) {
-        errors.push(`Disconnected components: ${disconnected.join(', ')}`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors };
-  }
-
-  _sanitizeName(name) {
-    return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  }
-
-  _sanitizeId(id) {
-    return String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
-  }
-
-  _downloadFile(filename, content) {
-    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-}
-
-// Export class
-window.SimulatorExporter = SimulatorExporter;
-console.log('✅ Exporter v3.2.3 loaded');
-console.log('🌐 Base URL:', GITHUB_BASE_URL);
-console.log('📦 Required files:', ENGINE_FILES_REQUIRED.length);
-console.log('⚠️  Optional files:', ENGINE_FILES_OPTIONAL.length);
+})(typeof window !== 'undefined' ? window : globalThis);
