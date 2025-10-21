@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Process Simulator</title>
+  <style>
+    body{margin:0;background:#0b1020;color:#dbe4ff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;}
+    header{padding:10px 14px;background:#111827;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center}
+    h1{font-size:16px;margin:0;color:#c7d2fe}
+    #container{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+    #stage{position:relative}
+    #canvas{display:block;width:100%;height:calc(100vh - 56px)}
+    .component .comp-skin{color:var(--comp-color,#4f46e5)}
+    .component.Valve .comp-skin{--comp-color:#0ea5e9}
+    .component.Pump  .comp-skin{--comp-color:#4f46e5}
+    .component.Tank  .comp-skin{--comp-color:#16a34a}
+    .component text.label{fill:#9bb0ff}
+    .component.Missing rect{fill:#fee;stroke:#c00}
+  </style>
+  
+<svg width="0" height="0" style="position:absolute">
+  <defs id="component-sprite">
+    <symbol id="sym-Tank-std" viewBox="0 0 359.25 654.75"><svg id="sym-Tank-std-Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 359.25 654.75">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #949299;
+      }
+
+      .cls-2 {
+        fill: #15bac7;
+      }
+
+      .cls-3 {
+        fill: #384551;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" x="10.14" y="88.127" width="342.685" height="396.825"/>
+  <path class="cls-1" d="M8.571,191.429c0-30.004,1.284-90.485,1.689-108.809.076-3.429.121-5.382.121-5.382l2.381-5.81,6.19-9.143,8.762-6.286,14.476-7.714,37.143-14.571,24.667-7.429,39.619-6.286,12.762-1.524h47.429l25.714,2.095,64.19,16.762,38.159,16.381,8,5.333,8.254,8.127,3.556,9.016,1.143,11.937v89.016c-2.207.143-5.466.379-9.397.762-37.613,3.667-47.026,12.062-66.286,13.524-31.318,2.377-33.111-17.795-63.619-14.667-24.588,2.521-24.952,15.781-48,17.524-31.257,2.364-37.144-21.526-66.286-18.286-22.112,2.459-27.281,17.164-54.857,19.175-13.013.949-23.861-1.451-30.857-3.556l-4.952-.19Z"/>
+  <rect class="cls-1" x="292.762" y="149.714" width="60.064" height="335.619"/>
+  <rect class="cls-1" x="8.571" y="149.714" width="60.064" height="335.619"/>
+  <rect class="cls-1" x="8.571" y="458.286" width="344.381" height="27.048"/>
+  <rect class="cls-3" x="10.26" y="82.62" width="342.565" height="5.507"/>
+  <rect class="cls-3" x="8.342" y="482.199" width="344.483" height="5.507"/></symbol>
+<symbol id="sym-Pump3Speed-std" viewBox="0 0 171.75 120.75"><svg id="sym-Pump3Speed-std-Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 171.75 120.75">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #13bac7;
+      }
+
+      .cls-2 {
+        fill: #007c90;
+      }
+
+      .cls-3 {
+        fill: #c3c3c3;
+      }
+
+      .cls-4 {
+        fill: #e5e7ea;
+      }
+
+      .cls-5 {
+        fill: none;
+      }
+
+      .cls-6 {
+        fill: #384550;
+      }
+
+      .cls-7 {
+        fill: #f89f3f;
+      }
+
+      .cls-8 {
+        fill: #7a8795;
+      }
+
+      .cls-9 {
+        fill: #fefefe;
+      }
+    </style>
+  </defs>
+  <path class="cls-9" d="M171.75,58.139V0H0v120.75h14.188l-.004-12.675c3.694-.146,7.349.495,10.998-.575,3.201-.939,10.668-4.914,9.168-9.111H7.841c-1.281,0-5.411-2.99-7.139-3.446l.002-44.576c5.763-2.36,9.759-4.44,16.471-3.409v-14.907h65.34c1.831,0,5.087,4.494,6.156,5.237,2.193,1.522,8.668,3.852,9.159,6.321.177.89-.2,3.156-.011,3.354.386.405,8.243.183,11.072,1.245,4.548,1.708,2.998,3.945,10.223,3.219,5.117-.514,2.562-1.776,3.676-5.261.432-1.352,4.155-5.169,4.155-5.543V14.162c-.698-.129-2.774.213-2.993.004-.324-.309-.321-8.642.002-8.953,1.024-.986,4.995,2.665,3.738-4.468h21.655c-1.13,6.704,2.165,3.687,2.994,4.468.31.292.181,7.597.009,8.518-.177.946-3.002.213-3.002.431v27.951c0,.215,1.976,2.253,2.403,3.564,1.415,4.346,1.519,11.546,7.3,12.461.145-.717-.214-2.762,0-2.988.308-.326,8.662-.325,8.97,0,.734.776-2.034,4.046,3.729,2.988h0Z"/>
+  <path class="cls-4" d="M105.29,52.176v41.741c-3.723-.559-6.729-.56-10.454,0v-41.741M98.543,65.245c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31ZM98.543,75.68c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31ZM98.543,86.115c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31Z"/>
+  <path class="cls-4" d="M124.332,64.847h-14.935c-1.625,0-1.625,7.454,0,7.454h14.935c1.625,0,1.625-7.454,0-7.454Z"/>
+  <rect id="sym-Pump3Speed-std-suction" class="cls-7" x="163.536" y="63.356" width="3.734" height="11.926"/>
+  <path class="cls-7" d="M159.802,63.356v11.926c0,.149,2.987.149,2.987,0v-11.926c0-.149-2.452.099-2.987,0Z"/>
+  <rect class="cls-3" x="88.283" y="52.176" width="17.007" height="41.741"/>
+  <rect class="cls-3" x="6.804" y="52.176" width="17.007" height="41.741"/>
+  <path class="cls-6" d="M101.101,61.935c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <path class="cls-6" d="M101.101,72.37c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <path class="cls-6" d="M101.101,82.805c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <path class="cls-1" d="M147.911,89.864c.905-7.002.929-33.397-.101-40.25-1.149-7.647-10.876-10.15-16.869-6.1-2.113,1.428-2.994,3.584-3.238,6.06-1.262,12.845.768,27.752.165,40.812.491,7.583,14.444,8.426,17.82,3.97"/>
+  <path class="cls-1" d="M130.679,15.653v21.988c0,.456,1.104,1.039,1.793,1.083,2.276.145,5.652-1.206,9.003-.677.702.111,4.886,2.888,4.886.339V15.653h-15.682Z"/>
+  <rect class="cls-7" x="130.679" y="5.963" width="15.682" height="3.727"/>
+  <path id="sym-Pump3Speed-std-discharge" class="cls-7" d="M130.679,10.435c-.104.107-.149,2.981,0,2.981h15.682c.149,0,.149-2.981,0-2.981-2.211,0-15.137-.563-15.682,0Z"/>
+  <path class="cls-6" d="M171.75,80.5c-5.763-1.058-2.996,2.212-3.729,2.988-.308.326-8.663.327-8.97,0-.214-.228.147-2.271,0-2.989-9.871,3.607-1.98,12.718-11.247,18.958-7.515,5.06-17.845,3.07-23.867-3.115-2.077-2.317-.436-8.729-4.055-9.183-7.353-.923-4.824.193-5.671,4.106-.603,2.786-4.042,7.123-7.054,7.123h-19.789c.204,1.197-.419,3.474.122,4.356.312.509,10.108,5.334,10.706,5.334h10.828v12.671H14.188l-.004-12.675c3.694-.146,7.349.495,10.998-.575,3.201-.939,10.668-4.914,9.168-9.111H7.841c-1.281,0-5.411-2.99-7.139-3.446l.002-44.576c5.763-2.36,9.759-4.44,16.471-3.409v-14.907h65.34c1.831,0,5.087,4.494,6.156,5.237,2.193,1.522,8.668,3.852,9.159,6.321.177.89-.2,3.156-.011,3.354.386.405,8.243.183,11.072,1.245,4.548,1.708,2.998,3.945,10.223,3.219,5.117-.514,2.562-1.776,3.676-5.261.432-1.352,4.155-5.169,4.155-5.543V14.162c-.698-.129-2.774.213-2.993.004-.324-.309-.321-8.642.002-8.953,1.024-.986,4.995,2.665,3.738-4.468h21.655c-1.13,6.704,2.165,3.687,2.994,4.468.31.292.181,7.597.009,8.518-.177.946-3.002.213-3.002.431v27.951c0,.215,1.976,2.253,2.403,3.564,1.415,4.346,1.519,11.546,7.3,12.461.145-.717-.214-2.762,0-2.988.308-.326,8.662-.325,8.97,0,.734.776-2.034,4.046,3.729,2.988v22.361h0ZM130.679,9.69h15.682v-3.727h-15.682v3.727ZM130.679,13.417h15.682c.149,0,.149-2.981,0-2.981-2.211,0-15.137-.563-15.682,0-.104.107-.149,2.981,0,2.981ZM130.679,37.641c0,.456,1.104,1.039,1.793,1.083,2.276.145,5.652-1.206,9.003-.677.702.111,4.886,2.888,4.886.339V15.653h-15.682v21.988ZM24.642,52.176c-.014,2.479.007,4.975,0,7.454,0,.497.003.994,0,1.491-.012,2.231-.009,4.477,0,6.708,0,.248,0,.497,0,.745.011,2.479-.02,4.975,0,7.454.006.745-.008,1.491,0,2.236.026,2.478-.034,4.976,0,7.454.003.248-.004.497,0,.745.043,2.477-.03,4.977,0,7.454h66.46c.03-2.477-.043-4.977,0-7.454.004-.248-.003-.497,0-.745.034-2.478-.026-4.975,0-7.454.008-.745-.006-1.491,0-2.236.02-2.478.002-4.975,0-7.454,0-.248.002-.497,0-.745-.015-2.231.021-4.477,0-6.708-.005-.497.006-.994,0-1.491-.029-2.477.063-4.978,0-7.454-.025-.991.049-1.992,0-2.981-.073-1.458.273-2.839-.229-4.282-.286-.823-10.636-7.644-11.346-7.644H24.642c-.026,3.965.035,7.961,0,11.926-.009.994.006,1.988,0,2.981ZM147.911,89.864c.905-7.002.929-33.397-.101-40.25-1.149-7.647-10.876-10.15-16.869-6.1-2.113,1.428-2.994,3.584-3.238,6.06-1.262,12.845.768,27.752.165,40.812.491,7.583,14.444,8.426,17.82,3.97M100.045,52.176h-5.21v41.741h10.454v-41.741h-5.245,0ZM20.162,93.917v-41.741h-9.708v41.741M163.536,75.282h3.734v-11.926h-3.734v11.926ZM159.802,75.282c0,.149,2.987.149,2.987,0v-11.926c0-.149-2.452.099-2.987,0v11.926Z"/>
+  <path class="cls-2" d="M91.102,49.194c-.073-1.458.273-2.839-.229-4.282-.286-.823-10.636-7.644-11.346-7.644H24.642c-.026,3.965.035,7.961,0,11.926,0,0,66.46,0,66.46,0Z"/>
+  <path class="cls-2" d="M24.642,52.176c-.014,2.479.007,4.975,0,7.454h66.46c-.029-2.477.063-4.978,0-7.454H24.642Z"/>
+  <path class="cls-2" d="M24.642,68.574c.011,2.479-.02,4.975,0,7.454h66.46c.02-2.478.002-4.975,0-7.454H24.642Z"/>
+  <path class="cls-2" d="M24.642,78.264c.026,2.478-.034,4.976,0,7.454h66.46c.034-2.478-.026-4.975,0-7.454H24.642Z"/>
+  <path class="cls-2" d="M24.642,86.463c.043,2.477-.03,4.977,0,7.454h66.46c.03-2.477-.043-4.977,0-7.454H24.642Z"/>
+  <path class="cls-2" d="M24.642,61.12c-.012,2.231-.009,4.477,0,6.708h66.46c-.015-2.231.021-4.477,0-6.708,0,0-66.46,0-66.46,0Z"/>
+  <path class="cls-4" d="M10.454,93.917v-41.741c3.359.36,6.369.802,9.708,0v41.741M14.161,63.008c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31ZM14.161,73.444c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31ZM14.161,83.879c2.922,2.041,5.455-2.418,2.558-3.31-2.771-.852-4.509,1.946-2.558,3.31Z"/>
+  <path class="cls-8" d="M24.642,49.194c-.009.994.006,1.988,0,2.981h66.46c-.025-.991.049-1.992,0-2.981H24.642Z"/>
+  <path class="cls-8" d="M24.642,76.028c.006.745-.008,1.491,0,2.236h66.46c.008-.745-.006-1.491,0-2.236H24.642Z"/>
+  <path class="cls-8" d="M24.642,59.63c0,.497.003.994,0,1.491h66.46c-.005-.497.006-.994,0-1.491H24.642Z"/>
+  <path class="cls-8" d="M24.642,67.829c0,.248,0,.497,0,.745h66.46c0-.248.002-.497,0-.745H24.642Z"/>
+  <path class="cls-8" d="M24.642,85.718c.003.248-.004.497,0,.745h66.46c.004-.248-.003-.497,0-.745H24.642Z"/>
+  <path class="cls-6" d="M16.719,59.699c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <path class="cls-6" d="M16.719,70.134c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <path class="cls-6" d="M16.719,80.569c-2.771-.852-4.509,1.946-2.558,3.31,2.922,2.041,5.455-2.418,2.558-3.31Z"/>
+  <polyline class="cls-6" points="150.158 75.314 154.469 81.061 158.61 75.191"/>
+  <path class="cls-1" d="M149.988,63.698c.057,3.872.114,7.744.17,11.616.115.173,1.536,2.234,4.141,2.257,2.754.025,4.231-2.252,4.311-2.381-.057-3.872-.114-7.744-.17-11.616-.698-1.662-2.289-2.771-4.055-2.827-1.913-.061-3.687,1.124-4.396,2.951h-.001Z"/>
+  <rect class="cls-3" x="108.544" y="64.847" width="17.007" height="8.534"/>
+  <circle id="sym-Pump3Speed-std-cp2" class="cls-5" cx="138.52" cy="7.826" r="1.503"/>
+  <circle id="sym-Pump3Speed-std-cp1" class="cls-5" cx="165.381" cy="69.381" r="1.503"/></symbol>
+    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#41d1ff"/>
+      <stop offset="100%" stop-color="#0077ff"/>
+    </linearGradient>
+  </defs>
+</svg>
+</head>
+<body>
+  <div id="container">
+    <header>
+      <h1>Process Simulator</h1>
+      <div id="status">Exported with Exporter v3.2.4-hybrid</div>
+    </header>
+    <main id="stage">
+      
+  <svg id="canvas" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M20 0 H0 V20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" />
+
+    <g id="pipes"></g>
+    <g id="components"><g id="1" class="component Tank" transform="translate(394, 183) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-Tank-std" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">Tank</text>
+</g>
+<g id="2" class="component Missing" transform="translate(652, 189)">
+  <rect x="-20" y="-20" width="40" height="40"></rect>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Drain (Discharge)</text>
+</g>
+<g id="3" class="component Missing" transform="translate(169, 53)">
+  <rect x="-20" y="-20" width="40" height="40"></rect>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
+</g>
+<g id="4" class="component Pump3Speed" transform="translate(532, 184) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-Pump3Speed-std" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">3-Speed Pump</text>
+</g>
+<g id="5" class="component Missing" transform="translate(172, 190)">
+  <rect x="-20" y="-20" width="40" height="40"></rect>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
+</g>
+<g id="6" class="component Missing" transform="translate(390, 67)">
+  <rect x="-20" y="-20" width="40" height="40"></rect>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
+</g>
+<g id="7" class="component Tank" transform="translate(277, 111) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-Tank-std" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">Tank</text>
+</g>
+<g id="8" class="component PumpVariable" transform="translate(240, 260) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-PumpVariable-std" class="comp-skin" />
+  <text class="label" x="50" y="96" text-anchor="middle" font-size="12">Variable Speed Pump</text>
+</g></g>
+  </svg>
+    </main>
+  </div>
+
+  <script id="design-data" type="application/json">{"metadata":{"exportedAt":"2025-10-21T17:00:50.725Z","exporter":"v3.2.4-hybrid","baseUrl":"https://sco314.github.io/tank-sim/"},"components":[{"id":"1","name":"Tank","type":"Tank","x":394,"y":183,"orientation":"U","variant":"std","ports":{"IN":{"x":50,"y":10},"OUT":{"x":50,"y":90}}},{"id":"2","name":"Drain (Discharge)","type":"Drain","x":652,"y":189,"orientation":"L","variant":"std","ports":{"IN":{"x":5,"y":50}}},{"id":"3","name":"Feed (Water Supply)","type":"Feed","x":169,"y":53,"orientation":"R","variant":"std","ports":{"OUT":{"x":95,"y":50}}},{"id":"4","name":"3-Speed Pump","type":"Pump3Speed","x":532,"y":184,"orientation":"R","variant":"std","ports":{"LEFT":{"x":5,"y":50},"RIGHT":{"x":95,"y":50},"TOP":{"x":50,"y":5},"BOTTOM":{"x":50,"y":95}}},{"id":"5","name":"Feed (Water Supply)","type":"Feed","x":172,"y":190,"orientation":"R","variant":"std","ports":{"OUT":{"x":95,"y":50}}},{"id":"6","name":"Feed (Water Supply)","type":"Feed","x":390,"y":67,"orientation":"R","variant":"std","ports":{"OUT":{"x":95,"y":50}}},{"id":"7","name":"Tank","type":"Tank","x":277,"y":111,"orientation":"U","variant":"std","ports":{"IN":{"x":50,"y":10},"OUT":{"x":50,"y":90}}},{"id":"8","name":"Variable Speed Pump","type":"PumpVariable","x":240,"y":260,"orientation":"R","variant":"std","ports":{"LEFT":{"x":5,"y":50},"RIGHT":{"x":95,"y":50},"TOP":{"x":50,"y":5},"BOTTOM":{"x":50,"y":95}}}],"pipes":[]}</script>
+  <script src="https://sco314.github.io/tank-sim/js/core/Component.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/core/ComponentManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/core/FlowNetwork.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/managers/PipeManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/managers/PressureManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/managers/PumpManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/managers/TankManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/managers/ValveManager.js"></script>
+<script src="https://sco314.github.io/tank-sim/js/config/systemConfig.js"></script>
+<script src="https://sco314.github.io/tank-sim/css/designer.css"></script>
+<script src="https://sco314.github.io/tank-sim/css/designer-style.css"></script>
+  <script>(function(){
+  try{
+    const dataEl = document.getElementById('design-data');
+    const design = JSON.parse(dataEl.textContent);
+    console.log('🎯 Loaded design:', design.metadata);
+
+    const flowNetwork  = new (window.FlowNetwork||function(){})();
+    const compManager  = new (window.ComponentManager||function(){}) (flowNetwork);
+    const pipeManager  = new (window.PipeManager||function(){}) (flowNetwork);
+    const valveManager = new (window.ValveManager||function(){}) (flowNetwork, compManager);
+    const pumpManager  = new (window.PumpManager||function(){})  (flowNetwork, compManager);
+    const tankManager  = new (window.TankManager||function(){})  (flowNetwork, compManager);
+    const pressureMgr  = new (window.PressureManager||function(){}) (flowNetwork, compManager);
+
+    compManager.loadFromDesign?.(design);
+    pipeManager.loadFromDesign?.(design);
+
+    flowNetwork.solve?.();
+    valveManager.initUI?.();
+    pumpManager.initUI?.();
+    tankManager.initUI?.();
+
+    let last = performance.now();
+    function tick(now){
+      const dt = (now - last)/1000; last = now;
+      tankManager.step?.(dt);
+      flowNetwork.solve?.();
+      pressureMgr.updateUI?.();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    (function check(){
+      const defs = document.getElementById('component-sprite');
+      const missing = [...document.querySelectorAll('.component.Missing')].length;
+      if (!defs || missing) console.warn('⚠️ Export integrity', { hasDefs: !!defs, missing });
+      else console.log('✅ Export integrity ok');
+    })();
+  }catch(e){ console.error('💥 Boot failed', e); }
+})();</script>
+</body>
+</html>
