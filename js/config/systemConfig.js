@@ -3,12 +3,18 @@
  * 
  * Flow path: feed1 → inletValve → tank1 → pump1 → outletValve → drain
  * Pipes are visual only and read flows from the network
+ * 
+ * UPDATED: Added BASE_URL for exporter support
  */
+
+// Base URL for GitHub Pages deployment (used by exporter)
+window.SYSTEM_CONFIG = window.SYSTEM_CONFIG || {};
+window.SYSTEM_CONFIG.BASE_URL = 'https://sco314.github.io/tank-sim/';
 
 const SYSTEM_CONFIG = {
   
   // ============================================================================
-  // BOUNDARY CONDITIONS (New!)
+  // BOUNDARY CONDITIONS
   // ============================================================================
   feeds: {
     mainFeed: {
@@ -24,7 +30,10 @@ const SYSTEM_CONFIG = {
       
       // Connections (no inputs, outputs to first valve)
       inputs: [],
-      outputs: ['inletValve']
+      outputs: ['inletValve'],
+      
+      // Orientation for SVG rendering (R = right-facing outlet)
+      orientation: 'R'
     }
   },
   
@@ -42,7 +51,10 @@ const SYSTEM_CONFIG = {
       
       // Connections (inputs from last valve, no outputs)
       inputs: ['outletValve'],
-      outputs: []
+      outputs: [],
+      
+      // Orientation for SVG rendering (L = left-facing inlet)
+      orientation: 'L'
     }
   },
   
@@ -68,7 +80,16 @@ const SYSTEM_CONFIG = {
       
       // Connections (component to component)
       inputs: ['feed1'],      // ← From feed
-      outputs: ['tank1'],     // ← To tank
+      outputs: ['tank1'],     // → To tank
+      
+      // Orientation (R = right-facing, handle on right)
+      orientation: 'R',
+      
+      // Connection ports (normalized 0-100 local coordinates)
+      ports: {
+        IN:  { x: 5,  y: 50 },
+        OUT: { x: 95, y: 50 }
+      },
       
       // UI
       modalTitle: 'Inlet Valve Control',
@@ -89,7 +110,16 @@ const SYSTEM_CONFIG = {
       
       // Connections (component to component)
       inputs: ['pump1'],      // ← From pump
-      outputs: ['drain'],     // ← To drain
+      outputs: ['drain'],     // → To drain
+      
+      // Orientation (D = down-facing, handle pointing down)
+      orientation: 'D',
+      
+      // Connection ports
+      ports: {
+        IN:  { x: 50, y: 5  },
+        OUT: { x: 50, y: 95 }
+      },
       
       modalTitle: 'Outlet Valve Control',
       iframeUrl: 'valve.html'
@@ -125,7 +155,16 @@ const SYSTEM_CONFIG = {
       
       // Connections (component to component)
       inputs: ['inletValve'], // ← From inlet valve
-      outputs: ['pump1']      // ← To pump
+      outputs: ['pump1'],     // → To pump
+      
+      // Orientation (U = upright tank)
+      orientation: 'U',
+      
+      // Connection ports
+      ports: {
+        IN:  { x: 50, y: 10 },  // Top inlet
+        OUT: { x: 50, y: 90 }   // Bottom outlet
+      }
     }
   },
   
@@ -162,7 +201,16 @@ const SYSTEM_CONFIG = {
       
       // Connections (component to component)
       inputs: ['tank1'],      // ← From tank
-      outputs: ['outletValve'], // ← To outlet valve
+      outputs: ['outletValve'], // → To outlet valve
+      
+      // Orientation (L = inlet on left)
+      orientation: 'L',
+      
+      // Connection ports
+      ports: {
+        IN:  { x: 5,  y: 50 },
+        OUT: { x: 95, y: 50 }
+      },
       
       // UI
       modalTitle: 'Main Pump Control'
@@ -184,6 +232,10 @@ const SYSTEM_CONFIG = {
       svgElement: '#pipe1Flow',
       
       // Visual connections (reads flow from feed1→inletValve)
+      // Format: componentId.portName
+      from: 'feed1.OUT',
+      to: 'inletValve.IN',
+      
       inputs: ['feed1'],
       outputs: ['inletValve']
     },
@@ -199,6 +251,9 @@ const SYSTEM_CONFIG = {
       svgElement: '#pipe2Flow',
       
       // Visual connections (reads flow from inletValve→tank1)
+      from: 'inletValve.OUT',
+      to: 'tank1.IN',
+      
       inputs: ['inletValve'],
       outputs: ['tank1']
     },
@@ -214,6 +269,9 @@ const SYSTEM_CONFIG = {
       svgElement: '#pipe3Flow',
       
       // Visual connections (reads flow from tank1→pump1)
+      from: 'tank1.OUT',
+      to: 'pump1.IN',
+      
       inputs: ['tank1'],
       outputs: ['pump1']
     },
@@ -229,6 +287,9 @@ const SYSTEM_CONFIG = {
       svgElement: '#pipe4Flow',
       
       // Visual connections (reads flow from pump1→outletValve)
+      from: 'pump1.OUT',
+      to: 'outletValve.IN',
+      
       inputs: ['pump1'],
       outputs: ['outletValve']
     },
@@ -244,6 +305,9 @@ const SYSTEM_CONFIG = {
       svgElement: '#pipe5Flow',
       
       // Visual connections (reads flow from outletValve→drain)
+      from: 'outletValve.OUT',
+      to: 'drain.IN',
+      
       inputs: ['outletValve'],
       outputs: ['drain']
     }
@@ -326,68 +390,82 @@ const SYSTEM_CONFIG = {
       fixed: { 
         pumpType: 'fixed', 
         capacity: 1.0, 
-        efficiency: 0.95 
+        efficiency: 0.95,
+        orientation: 'L'
       },
       variable: { 
         pumpType: 'variable', 
         capacity: 1.0, 
-        minSpeed: 0.1 
+        minSpeed: 0.1,
+        orientation: 'L'
       },
       threeSpeed: { 
         pumpType: '3-speed', 
-        speeds: [0.3, 0.6, 1.0] 
+        speeds: [0.3, 0.6, 1.0],
+        orientation: 'L'
       }
     },
     valve: {
       standard: { 
         maxFlow: 0.5, 
-        responseTime: 0.1 
+        responseTime: 0.1,
+        orientation: 'R'
       },
       slowActing: { 
         maxFlow: 0.5, 
-        responseTime: 0.5 
+        responseTime: 0.5,
+        orientation: 'R'
       },
       quickActing: { 
         maxFlow: 0.5, 
-        responseTime: 0.05 
+        responseTime: 0.05,
+        orientation: 'R'
       }
     },
     tank: {
       small: { 
         area: 1.0, 
-        maxHeight: 1.0 
+        maxHeight: 1.0,
+        orientation: 'U'
       },
       medium: { 
         area: 2.0, 
-        maxHeight: 1.5 
+        maxHeight: 1.5,
+        orientation: 'U'
       },
       large: { 
         area: 3.0, 
-        maxHeight: 2.0 
+        maxHeight: 2.0,
+        orientation: 'U'
       }
     },
     feed: {
       lowPressure: { 
         supplyPressure: 2.0, 
-        maxFlow: Infinity 
+        maxFlow: Infinity,
+        orientation: 'R'
       },
       highPressure: { 
         supplyPressure: 5.0, 
-        maxFlow: Infinity 
+        maxFlow: Infinity,
+        orientation: 'R'
       },
       limited: { 
         supplyPressure: 3.0, 
-        maxFlow: 1.0 
+        maxFlow: 1.0,
+        orientation: 'R'
       }
     },
     drain: {
       atmospheric: { 
         ambientPressure: 1.0, 
-        maxCapacity: Infinity 
+        maxCapacity: Infinity,
+        orientation: 'L'
       },
       pressurized: { 
         ambientPressure: 2.0, 
-        backpressure: 0.5 
+        backpressure: 0.5,
+        orientation: 'L'
       }
     }
   },
@@ -437,6 +515,16 @@ function validateConfig(config) {
         errors.push(`Duplicate ID found: ${item.id}`);
       }
       allComponentIds.add(item.id);
+      
+      // Check for orientation on components that need it
+      if (['pump', 'valve', 'feed', 'drain'].includes(item.type) && !item.orientation) {
+        warnings.push(`${item.id} missing orientation (should be R/L/U/D)`);
+      }
+      
+      // Check for ports on connectable components
+      if (['pump', 'valve', 'tank'].includes(item.type) && !item.ports) {
+        warnings.push(`${item.id} missing connection ports`);
+      }
     }
   }
   
@@ -469,6 +557,16 @@ function validateConfig(config) {
       }
       if (item.type === 'drain' && item.outputs && item.outputs.length > 0) {
         warnings.push(`${item.id} is a drain but has outputs (should be empty)`);
+      }
+      
+      // Validate pipe connections format
+      if (item.type === 'pipe') {
+        if (item.from && !item.from.includes('.')) {
+          warnings.push(`${item.id}.from should use format "componentId.portName"`);
+        }
+        if (item.to && !item.to.includes('.')) {
+          warnings.push(`${item.id}.to should use format "componentId.portName"`);
+        }
       }
     }
   }
@@ -504,4 +602,5 @@ if (validateConfig(SYSTEM_CONFIG)) {
     drains: Object.keys(SYSTEM_CONFIG.drains || {}).length,
     pressureSensors: Object.keys(SYSTEM_CONFIG.pressureSensors || {}).length
   });
+  console.log('🌐 Base URL:', window.SYSTEM_CONFIG.BASE_URL);
 }
