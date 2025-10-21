@@ -180,17 +180,126 @@ class ProcessDesigner {
     byId('selectTool')?.addEventListener('click', () => this._setTool('select'));
     byId('connectTool')?.addEventListener('click', () => this._setTool('connect'));
 
-    // Export buttons
-    byId('exportBtn')?.addEventListener('click', (e) => this._onExportClicked(e));
-    byId('exportSingleFile')?.addEventListener('click', () => {
-      const name = this.getSimulatorName();
-      this._ensureExporter(() => {
+    // 🔧 FIXED Export buttons with proper async/await and download
+    byId('exportBtn')?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
+      
+      const name = this.getSimulatorName() || 'simulator';
+      const statusEl = byId('export-status');
+
+      const progress = {
+        update: msg => { 
+          if (statusEl) statusEl.textContent = msg; 
+          console.log('📊', msg); 
+        },
+        setDetail: d => { 
+          if (statusEl) statusEl.textContent = (statusEl.textContent || '') + ' — ' + d; 
+        }
+      };
+
+      this._ensureExporter(async () => {
         try {
-          const exporter = new SimulatorExporter(this);
-          exporter.exportSimulator(name);
+          if (statusEl) { 
+            statusEl.style.color = '#6b7280'; 
+            statusEl.textContent = '⏳ Exporting simulator…'; 
+          }
+
+          const exporter = new SimulatorExporter(this, {
+            baseUrl: 'https://sco314.github.io/tank-sim/'
+          });
+
+          const html = await exporter.exportSimulator(progress);
+
+          const filename = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
+          const blob = new Blob([html], { type: 'text/html' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+
+          if (statusEl) { 
+            statusEl.textContent = '✅ Exported successfully!'; 
+            statusEl.style.color = '#10b981'; 
+          }
+          
+          setTimeout(() => { 
+            if (statusEl) { 
+              statusEl.textContent = ''; 
+              statusEl.style.color = '#6b7280'; 
+            } 
+          }, 2500);
+          
+        } catch (err) {
+          console.error('Export failed:', err);
+          alert('Export failed: ' + err.message);
+          if (statusEl) { 
+            statusEl.textContent = '💥 Export failed: ' + err.message; 
+            statusEl.style.color = '#ef4444'; 
+          }
+        }
+      });
+    });
+
+    // 🔧 FIXED Single-File Export Button
+    byId('exportSingleFile')?.addEventListener('click', () => {
+      const name = this.getSimulatorName() || 'simulator';
+      const statusEl = byId('export-status');
+
+      const progress = {
+        update: msg => { 
+          if (statusEl) statusEl.textContent = msg; 
+          console.log('📊', msg); 
+        },
+        setDetail: d => { 
+          if (statusEl) statusEl.textContent = (statusEl.textContent || '') + ' — ' + d; 
+        }
+      };
+
+      this._ensureExporter(async () => {
+        try {
+          if (statusEl) { 
+            statusEl.style.color = '#6b7280'; 
+            statusEl.textContent = '⏳ Exporting single-file…'; 
+          }
+
+          const exporter = new SimulatorExporter(this, {
+            baseUrl: 'https://sco314.github.io/tank-sim/'
+          });
+
+          const html = await exporter.exportSimulator(progress);
+
+          const filename = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
+          const blob = new Blob([html], { type: 'text/html' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+
+          if (statusEl) { 
+            statusEl.textContent = '✅ Exported successfully!'; 
+            statusEl.style.color = '#10b981'; 
+          }
+          
+          setTimeout(() => { 
+            if (statusEl) { 
+              statusEl.textContent = ''; 
+              statusEl.style.color = '#6b7280'; 
+            } 
+          }, 2500);
+          
         } catch (err) {
           console.error('Single-file export failed:', err);
           alert('Export failed: ' + err.message);
+          if (statusEl) { 
+            statusEl.textContent = '💥 Export failed: ' + err.message; 
+            statusEl.style.color = '#ef4444'; 
+          }
         }
       });
     });
@@ -199,7 +308,9 @@ class ProcessDesigner {
       const name = this.getSimulatorName();
       this._ensureExporter(() => {
         try {
-          const exporter = new SimulatorExporter(this);
+          const exporter = new SimulatorExporter(this, {
+            baseUrl: 'https://sco314.github.io/tank-sim/'
+          });
           if (typeof exporter.exportAsZip === 'function') {
             exporter.exportAsZip(name);
           } else {
@@ -280,29 +391,6 @@ class ProcessDesigner {
     script.onload = () => { console.log('✅ exporter.js loaded'); cb(); };
     script.onerror = () => alert('Failed to load exporter.js');
     document.head.appendChild(script);
-  }
-
-  _onExportClicked(e) {
-    e?.preventDefault?.();
-    const validation = this._validateDesignSoft();
-    
-    if (validation.warnings.length > 0) {
-      const proceed = confirm(`⚠️ Warnings:\n\n${validation.warnings.join('\n')}\n\nProceed with export?`);
-      if (!proceed) return;
-    }
-
-    const name = prompt('Enter simulator name:', this.getSimulatorName());
-    if (!name) return;
-    
-    this._ensureExporter(() => {
-      try {
-        const exporter = new SimulatorExporter(this);
-        exporter.exportSimulator(name);
-      } catch (err) {
-        console.error('Export failed:', err);
-        alert('Export failed: ' + err.message);
-      }
-    });
   }
 
   // ============================================================================
