@@ -72,40 +72,129 @@
     /* ----------------------------------------------
      * DESIGN CAPTURE
      * ------------------------------------------- */
-    _collectDesign(){
-      const meta = { exportedAt: new Date().toISOString(), exporter: 'v3.2.4-hybrid', baseUrl: this.options.baseUrl };
-
-      if (this.designer?.toJSON){
-        const d = this.designer.toJSON();
-        d.metadata = Object.assign({}, d.metadata||{}, meta);
-        return d;
-      }
-
-      const components = [];
-      const pipes = [];
-
-      if (this.designer?.components){
-        for (const [id, comp] of this.designer.components){
-          components.push({
-            id: comp.id || id,
-            name: comp.name || comp.label || comp.type || 'Component',
-            type: comp.type || comp.key || 'Component',
-            x: comp.x|0, y: comp.y|0,
-            orientation: comp.orientation || 'R',
-            variant: comp.variant || 'std',
-            ports: comp.ports || null,
-          });
-        }
-      }
-
-      if (this.designer?.pipes){
-        for (const [pid, pipe] of this.designer.pipes){
-          pipes.push({ id: pipe.id || pid, from: pipe.from, to: pipe.to });
-        }
-      }
-
-      return { metadata: meta, components, pipes };
+    _collectDesign() {
+  const components = [];
+  const pipes = [];
+  
+  // ... existing component collection code ...
+  
+  // Collect components from designer
+  if (this.designer?.components) {
+    for (const [id, comp] of this.designer.components) {
+      components.push({
+        id: comp.id,
+        type: comp.type,
+        name: comp.name,
+        x: comp.x,
+        y: comp.y,
+        orientation: comp.orientation || 'R',
+        ports: comp.ports || {},
+        config: comp.config || {}
+      });
     }
+  }
+  
+  // 🔧 FIX #2: Convert designer connections to pipes format
+  // Check for connections array (designer's format)
+  if (this.designer?.connections && Array.isArray(this.designer.connections)) {
+    for (const conn of this.designer.connections) {
+      // Prefer full "componentId.port" form when present
+      const fromRef = conn.pipeFrom || 
+                     (conn.from && conn.fromPoint ? `${conn.from}.${conn.fromPoint}` : conn.from);
+      const toRef   = conn.pipeTo || 
+                     (conn.to && conn.toPoint ? `${conn.to}.${conn.toPoint}` : conn.to);
+      
+      if (fromRef && toRef) {
+        pipes.push({ 
+          id: conn.id || `${fromRef}->${toRef}`, 
+          from: fromRef, 
+          to: toRef 
+        });
+      }
+    }
+  }
+  
+  // Also check for pipes array (legacy format, if present)
+  if (this.designer?.pipes && Array.isArray(this.designer.pipes)) {
+    for (const pipe of this.designer.pipes) {
+      if (pipe.from && pipe.to) {
+        pipes.push({
+          id: pipe.id || `${pipe.from}->${pipe.to}`,
+          from: pipe.from,
+          to: pipe.to
+        });
+      }
+    }
+  }
+  
+  return { components, pipes };
+}
+
+// ============================================================================
+// ALTERNATIVE: If _collectDesign doesn't exist yet, here's a complete version
+// ============================================================================
+
+_collectDesign() {
+  const components = [];
+  const pipes = [];
+  
+  // Collect components from designer
+  if (this.designer?.components) {
+    // Handle both Map and Object formats
+    const compIterator = this.designer.components instanceof Map 
+      ? this.designer.components 
+      : Object.entries(this.designer.components || {});
+      
+    for (const [id, comp] of compIterator) {
+      components.push({
+        id: comp.id || id,
+        type: comp.type || 'Unknown',
+        name: comp.name || comp.type || 'Component',
+        x: comp.x || 0,
+        y: comp.y || 0,
+        orientation: comp.orientation || 'R',
+        ports: comp.ports || {},
+        config: comp.config || {}
+      });
+    }
+  }
+  
+  // 🔧 Convert designer connections to pipes format
+  if (this.designer?.connections && Array.isArray(this.designer.connections)) {
+    for (const conn of this.designer.connections) {
+      // Build full reference strings
+      const fromRef = conn.pipeFrom || 
+                     (conn.from && conn.fromPoint ? `${conn.from}.${conn.fromPoint}` : conn.from);
+      const toRef   = conn.pipeTo || 
+                     (conn.to && conn.toPoint ? `${conn.to}.${conn.toPoint}` : conn.to);
+      
+      if (fromRef && toRef) {
+        pipes.push({ 
+          id: conn.id || `conn_${pipes.length}`, 
+          from: fromRef, 
+          to: toRef 
+        });
+      }
+    }
+  }
+  
+  // Also check for legacy pipes array
+  if (this.designer?.pipes && Array.isArray(this.designer.pipes)) {
+    for (const pipe of this.designer.pipes) {
+      if (pipe.from && pipe.to) {
+        pipes.push({
+          id: pipe.id || `pipe_${pipes.length}`,
+          from: pipe.from,
+          to: pipe.to
+        });
+      }
+    }
+  }
+  
+  console.log(`✅ Collected ${components.length} components, ${pipes.length} pipes`);
+  
+  return { components, pipes };
+}
 
     /* ----------------------------------------------
      * ENGINE FILES
