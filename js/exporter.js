@@ -1,627 +1,512 @@
 /**
- * exporter.js v5.0 - Complete Implementation
- * 
- * FIXES:
- * 1. ✅ Fetches SVGs from GitHub and builds symbol registry
- * 2. ✅ Extracts port coordinates from SVG markers
- * 3. ✅ Converts designer connections to pipes
- * 4. ✅ Accesses component library properly
- * 5. ✅ Generates working boot script with manager initialization
+ * exporter.js V3.4 - Tank Simulator Exporter with SVG fixes & Port Aliases
+ * - Fixed: SVG style bleed via class scoping
+ * - Fixed: Port extraction from SVG markers
+ * - Fixed: Coordinate normalization for any viewBox
+ * - Fixed: Rotation only for Valve Down case
+ * - NEW: Port-name alias normalization (in/inlet/suction → P_IN, out/outlet/discharge → P_OUT)
  */
 
-(function(global) {
-  'use strict';
+class SimulatorExporter {
+  constructor(designer, options = {}) {
+    this.designer = designer;
+    this.baseUrl = options.baseUrl || 'https://sco314.github.io/tank-sim/';
+    this._symbolRegistry = new Map();
+    this._portIndex = new Map(); // NEW: stores parsed ports per component type
+    this._spriteString = '';
+  }
 
-  const EXPORTER_VERSION = '5.0.0';
-  const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
-
-  // SVG assets mapping
-  const SVG_ASSETS = {
-    Valve: {
-      R: 'assets/Valve-Icon-handle-right-01.svg',
-      L: 'assets/Valve-Icon-handle-left-01.svg',
-      U: 'assets/Valve-Icon-handle-up-01.svg',
-      D: 'assets/Valve-Icon-handle-right-01.svg' // Will rotate 180°
-    },
-    Tank: 'assets/Tankstoragevessel-01.svg',
-    Pump: {
-      L: 'assets/cent-pump-inlet-left-01.svg',
-      R: 'assets/cent-pump-inlet-right-01.svg'
-    },
-    PumpFixed: {
-      L: 'assets/cent-pump-inlet-left-01.svg',
-      R: 'assets/cent-pump-inlet-right-01.svg'
-    }
-  };
-
-  // PNG fallbacks
-  const PNG_FALLBACKS = {
-    Valve: 'assets/Valve-Icon-Transparent-bg.png',
-    Tank: 'assets/Tank-Icon-Transparent-bg.png',
-    Pump: 'assets/cent-pump-9-inlet-left.png',
-    PumpFixed: 'assets/cent-pump-9-inlet-left.png'
-  };
-
-  class SimulatorExporter {
-    constructor(designer, options = {}) {
-      this.designer = designer;
-      this.options = {
-        baseUrl: options.baseUrl || GITHUB_BASE_URL,
-        fetchTimeout: options.fetchTimeout || 10000
-      };
-
-      this.symbolRegistry = new Map();
-      this.portIndex = new Map();
-      this.fetchedSVGs = new Map();
-    }
-
-    /**
-     * Main export method
-     */
-    async exportSimulator(progress = {}) {
-      const update = progress.update || (() => {});
-      const setDetail = progress.setDetail || (() => {});
-
-      try {
-        update('Collecting design data...');
-        const design = this._collectDesign();
-        
-        update('Fetching SVG assets...');
-        await this._fetchAllSVGs(design.components, setDetail);
-        
-        update('Building symbol registry...');
-        this._buildSymbolRegistry();
-        
-        update('Extracting port coordinates...');
-        this._extractPortCoordinates();
-        
-        update('Fetching engine files...');
-        const engineCode = await this._fetchEngineFiles(setDetail);
-        
-        update('Generating HTML...');
-        const html = this._generateHTML(design, engineCode);
-        
-        update('Export complete!');
-        return html;
-        
-      } catch (error) {
-        console.error('Export failed:', error);
-        throw new Error(`Export failed: ${error.message}`);
-      }
-    }
-
-    /**
-     * Collect design data from designer
-     */
-    _collectDesign() {
-      const components = [];
-      const pipes = [];
-
-      // Collect components
-      if (this.designer.components) {
-        const compIterator = this.designer.components instanceof Map 
-          ? this.designer.components 
-          : Object.entries(this.designer.components || {});
-          
-        for (const [id, comp] of compIterator) {
-          components.push({
-            id: comp.id || id,
-            type: comp.type || 'Component',
-            name: comp.name || comp.type || 'Component',
-            x: comp.x || 0,
-            y: comp.y || 0,
-            orientation: comp.orientation || this._getDefaultOrientation(comp.type),
-            ports: comp.ports || {},
-            config: comp.config || {}
-          });
-        }
-      }
-
-      // Convert connections to pipes
-      if (this.designer.connections && Array.isArray(this.designer.connections)) {
-        for (const conn of this.designer.connections) {
-          const fromRef = conn.pipeFrom || 
-                         (conn.from && conn.fromPoint ? `${conn.from}.${conn.fromPoint}` : conn.from);
-          const toRef = conn.pipeTo || 
-                       (conn.to && conn.toPoint ? `${conn.to}.${conn.toPoint}` : conn.to);
-          
-          if (fromRef && toRef) {
-            pipes.push({ 
-              id: conn.id || `pipe_${pipes.length}`, 
-              from: fromRef, 
-              to: toRef 
-            });
-          }
-        }
-      }
-
-      console.log(`✅ Collected ${components.length} components, ${pipes.length} pipes`);
-      return { components, pipes };
-    }
-
-    /**
-     * Fetch all SVG assets needed for this design
-     */
-    async _fetchAllSVGs(components, setDetail) {
-      const neededAssets = new Set();
+  /**
+   * Main export function with progress tracking
+   */
+  async exportSimulator(progress) {
+    const p = this._mkProgress(progress);
+    
+    try {
+      p.update('⏳ Preparing export...');
       
-      for (const comp of components) {
-        const type = comp.type;
-        const orient = comp.orientation || 'R';
-        const asset = SVG_ASSETS[type];
-        
-        if (typeof asset === 'string') {
-          neededAssets.add(asset);
-        } else if (asset && asset[orient]) {
-          neededAssets.add(asset[orient]);
-        }
+      // Get design data
+      const design = this.designer.getDesignData();
+      if (!design.components || design.components.length === 0) {
+        throw new Error('No components to export');
       }
 
-      const fetches = [];
-      for (const assetPath of neededAssets) {
-        fetches.push(this._fetchSVG(assetPath, setDetail));
-      }
+      p.update('⏳ Building SVG sprite...');
+      await this._buildSpriteFromAssets(progress, design);
 
-      await Promise.all(fetches);
-      console.log(`✅ Fetched ${this.fetchedSVGs.size} SVG assets`);
-    }
+      p.update('⏳ Generating HTML...');
+      const html = this._generateHTML(design);
 
-    /**
-     * Fetch a single SVG asset
-     */
-    async _fetchSVG(assetPath, setDetail) {
-      if (this.fetchedSVGs.has(assetPath)) return;
-      
-      const url = this.options.baseUrl + assetPath;
-      setDetail && setDetail(assetPath);
-      
-      try {
-        const response = await fetch(url, { 
-          method: 'GET',
-          cache: 'default'
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const svgText = await response.text();
-        this.fetchedSVGs.set(assetPath, svgText);
-        console.log(`✅ Fetched ${assetPath}`);
-        
-      } catch (error) {
-        console.warn(`⚠️ Failed to fetch ${assetPath}:`, error.message);
-        // Don't fail the whole export, just log warning
-      }
-    }
-
-    /**
-     * Build symbol registry from fetched SVGs
-     */
-    _buildSymbolRegistry() {
-      for (const [assetPath, svgText] of this.fetchedSVGs) {
-        const symbolId = this._assetPathToSymbolId(assetPath);
-        
-        // Extract viewBox from SVG
-        const viewBoxMatch = svgText.match(/viewBox="([^"]+)"/);
-        const viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 100 100';
-        
-        // Extract content (everything between <svg> tags)
-        const contentMatch = svgText.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
-        const content = contentMatch ? contentMatch[1] : svgText;
-        
-        this.symbolRegistry.set(assetPath, { symbolId, viewBox, content });
-        console.log(`✅ Registered symbol ${symbolId}`);
-      }
-    }
-
-    /**
-     * Extract port coordinates from SVG markers
-     */
-    _extractPortCoordinates() {
-      for (const [assetPath, svgText] of this.fetchedSVGs) {
-        const ports = {};
-        
-        // Look for circles with id="cp_*" or data-port="*"
-        const circleMatches = svgText.matchAll(/<circle[^>]*id="cp_([^"]+)"[^>]*cx="([^"]+)"[^>]*cy="([^"]+)"[^>]*\/>/gi);
-        
-        for (const match of circleMatches) {
-          const portName = match[1].toUpperCase();
-          const cx = parseFloat(match[2]);
-          const cy = parseFloat(match[3]);
-          
-          // Get viewBox to normalize coordinates
-          const viewBoxMatch = svgText.match(/viewBox="([^"]+)"/);
-          const viewBox = viewBoxMatch ? viewBoxMatch[1].split(/\s+/).map(Number) : [0, 0, 100, 100];
-          const [vx, vy, vw, vh] = viewBox;
-          
-          // Normalize to 0-100 space
-          ports[portName] = {
-            x: ((cx - vx) / vw) * 100,
-            y: ((cy - vy) / vh) * 100
-          };
-        }
-        
-        if (Object.keys(ports).length > 0) {
-          // Determine type from asset path
-          const type = this._assetPathToType(assetPath);
-          this.portIndex.set(type, ports);
-          console.log(`✅ Extracted ports for ${type}:`, ports);
-        }
-      }
-    }
-
-    /**
-     * Fetch engine JavaScript files
-     */
-    async _fetchEngineFiles(setDetail) {
-      const engineFiles = [
-        'js/core/Component.js',
-        'js/core/FlowNetwork.js',
-        'js/core/ComponentManager.js',
-        'js/managers/TankManager.js',
-        'js/managers/PumpManager.js',
-        'js/managers/ValveManager.js',
-        'js/managers/PipeManager.js',
-        'js/managers/PressureManager.js'
-      ];
-
-      const code = [];
-      for (const file of engineFiles) {
-        setDetail && setDetail(file);
-        try {
-          const url = this.options.baseUrl + file;
-          const response = await fetch(url);
-          if (response.ok) {
-            const text = await response.text();
-            code.push(`/* ===== ${file} ===== */\n${text}\n`);
-            console.log(`✅ Fetched ${file}`);
-          }
-        } catch (error) {
-          console.warn(`⚠️ Failed to fetch ${file}:`, error.message);
-        }
-      }
-
-      return code.join('\n');
-    }
-
-    /**
-     * Generate complete HTML
-     */
-    _generateHTML(design, engineCode) {
-      const simName = this.designer.getSimulatorName ? 
-        this.designer.getSimulatorName() : 
-        'Process Simulator';
-
-      return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${this._escapeHtml(simName)}</title>
-  <style>
-    body{margin:0;background:#0b1020;color:#dbe4ff;font-family:ui-sans-serif,system-ui,sans-serif;}
-    header{padding:10px 14px;background:#111827;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center}
-    h1{font-size:16px;margin:0;color:#c7d2fe}
-    #container{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
-    #stage{position:relative}
-    #canvas{display:block;width:100%;height:calc(100vh - 56px)}
-    .component .comp-skin{color:var(--comp-color,#4f46e5)}
-    .component.Valve .comp-skin{--comp-color:#0ea5e9}
-    .component.Pump .comp-skin{--comp-color:#4f46e5}
-    .component.PumpFixed .comp-skin{--comp-color:#4f46e5}
-    .component.Tank .comp-skin{--comp-color:#16a34a}
-    .component text.label{fill:#9bb0ff}
-    .component.Missing rect{fill:#fee;stroke:#c00}
-    .component{cursor:pointer}
-  </style>
-  ${this._generateSymbolDefs()}
-</head>
-<body>
-  <div id="container">
-    <header>
-      <h1>${this._escapeHtml(simName)}</h1>
-      <div id="status">Exported with Exporter v${EXPORTER_VERSION}</div>
-    </header>
-    <main id="stage">
-      ${this._generateSVGCanvas(design)}
-    </main>
-  </div>
-
-  <script id="design-data" type="application/json">${this._generateDesignJSON(design, simName)}</script>
-  <script>${engineCode}</script>
-  ${this._generateBootScript()}
-</body>
-</html>`;
-    }
-
-    /**
-     * Generate SVG symbol definitions
-     */
-    _generateSymbolDefs() {
-      if (this.symbolRegistry.size === 0) return '';
-
-      const symbols = [];
-      for (const [assetPath, data] of this.symbolRegistry) {
-        symbols.push(`<symbol id="${data.symbolId}" viewBox="${data.viewBox}">${data.content}</symbol>`);
-      }
-
-      return `<svg width="0" height="0" style="position:absolute">
-  <defs id="component-sprite">
-    ${symbols.join('\n    ')}
-    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#41d1ff"/>
-      <stop offset="100%" stop-color="#0077ff"/>
-    </linearGradient>
-  </defs>
-</svg>`;
-    }
-
-    /**
-     * Generate SVG canvas with components and connections
-     */
-    _generateSVGCanvas(design) {
-      return `<svg id="canvas" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-        <path d="M20 0 H0 V20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
-      </pattern>
-    </defs>
-    <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" />
-
-    <g id="pipes">${this._generatePipesSVG(design.components, design.pipes)}</g>
-    <g id="components">${this._generateComponentsSVG(design.components)}</g>
-  </svg>`;
-    }
-
-    /**
-     * Generate SVG for all components
-     */
-    _generateComponentsSVG(components) {
-      return components.map(comp => this._generateComponentSVG(comp)).join('');
-    }
-
-    /**
-     * Generate SVG for a single component
-     */
-    _generateComponentSVG(comp) {
-      const cleanId = this._sanitizeId(comp.id);
-      const type = comp.type || 'Component';
-      const orient = comp.orientation || 'R';
-      const label = this._escapeHtml(comp.name || cleanId);
-
-      // Rotation (only for valve facing down)
-      let rot = 0;
-      if (/valve/i.test(type) && orient === 'D') rot = 180;
-
-      // Try symbol first
-      const symbolData = this._getSymbolForComponent(type, orient);
-      if (symbolData) {
-        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
-  <use href="#${symbolData.symbolId}" class="comp-skin" width="100" height="100" x="-50" y="-50" />
-  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">${label}</text>
-</g>`;
-      }
-
-      // Try PNG fallback
-      const pngUrl = this._getPNGForComponent(type);
-      if (pngUrl) {
-        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
-  <image href="${pngUrl}" x="-38" y="-38" width="76" height="76" />
-  <text class="label" x="0" y="-50" text-anchor="middle" font-size="12">${label}</text>
-</g>`;
-      }
-
-      // Fallback to diagnostic box
-      return `<g id="${cleanId}" class="component Missing" transform="translate(${comp.x|0}, ${comp.y|0})">
-  <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
-  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">${label}</text>
-</g>`;
-    }
-
-    /**
-     * Generate SVG for all pipes
-     */
-    _generatePipesSVG(components, pipes) {
-      if (!pipes || pipes.length === 0) return '';
-      
-      const byId = new Map(components.map(c => [c.id, c]));
-      const paths = [];
-
-      for (const pipe of pipes) {
-        const [fromId, fromPort] = this._splitRef(pipe.from);
-        const [toId, toPort] = this._splitRef(pipe.to);
-        const compA = byId.get(fromId);
-        const compB = byId.get(toId);
-
-        if (!compA || !compB) continue;
-
-        const a = this._getPortWorldCoords(compA, fromPort);
-        const b = this._getPortWorldCoords(compB, toPort);
-
-        paths.push(`<path d="M${a.x},${a.y} L${b.x},${b.y}" stroke="#93c5fd" stroke-width="3" fill="none"/>`);
-      }
-
-      return paths.join('\n');
-    }
-
-    /**
-     * Get world coordinates for a component port
-     */
-    _getPortWorldCoords(comp, portName) {
-      const cx = comp.x | 0;
-      const cy = comp.y | 0;
-      const type = comp.type;
-      const orient = comp.orientation || 'R';
-
-      // Rotation (only for valve facing down)
-      const rotDeg = (/valve/i.test(type) && orient === 'D') ? 180 : 0;
-      const rot = (rotDeg * Math.PI) / 180;
-
-      // Get port coordinates (prefer design, fallback to extracted)
-      const ports = comp.ports || this.portIndex.get(type) || {};
-      const port = portName && ports[portName];
-
-      if (port) {
-        // Convert from 0-100 space to -50 to +50 local space
-        const lx = (port.x ?? 50) - 50;
-        const ly = (port.y ?? 50) - 50;
-
-        // Apply rotation
-        const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
-        const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
-
-        return { x: cx + rx, y: cy + ry };
-      }
-
-      // Fallback to component center
-      return { x: cx, y: cy };
-    }
-
-    /**
-     * Generate design JSON
-     */
-    _generateDesignJSON(design, simName) {
-      const config = {
-        metadata: {
-          exportedAt: new Date().toISOString(),
-          exporter: `v${EXPORTER_VERSION}`,
-          baseUrl: this.options.baseUrl,
-          name: simName
-        },
-        components: design.components.map(c => ({
-          id: c.id,
-          name: c.name,
-          type: c.type,
-          x: c.x,
-          y: c.y,
-          orientation: c.orientation,
-          variant: 'std',
-          ports: c.ports
-        })),
-        pipes: design.pipes
-      };
-
-      return JSON.stringify(config, null, 2);
-    }
-
-    /**
-     * Generate boot script that initializes the simulation
-     */
-    _generateBootScript() {
-      return `<script>(function(){
-  try{
-    const dataEl = document.getElementById('design-data');
-    const design = JSON.parse(dataEl.textContent);
-    console.log('🎯 Loaded design:', design.metadata);
-
-    const flowNetwork  = new (window.FlowNetwork||function(){})();
-    const compManager  = new (window.ComponentManager||function(){}) (flowNetwork);
-    const pipeManager  = new (window.PipeManager||function(){}) (flowNetwork);
-    const valveManager = new (window.ValveManager||function(){}) (flowNetwork, compManager);
-    const pumpManager  = new (window.PumpManager||function(){})  (flowNetwork, compManager);
-    const tankManager  = new (window.TankManager||function(){})  (flowNetwork, compManager);
-    const pressureMgr  = new (window.PressureManager||function(){}) (flowNetwork, compManager);
-
-    compManager.loadFromDesign?.(design);
-    pipeManager.loadFromDesign?.(design);
-
-    flowNetwork.solve?.();
-    valveManager.initUI?.();
-    pumpManager.initUI?.();
-    tankManager.initUI?.();
-
-    let last = performance.now();
-    function tick(now){
-      const dt = (now - last)/1000; last = now;
-      tankManager.step?.(dt);
-      flowNetwork.solve?.();
-      pressureMgr.updateUI?.();
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-
-    (function check(){
-      const defs = document.getElementById('component-sprite');
-      const missing = [...document.querySelectorAll('.component.Missing')].length;
-      if (!defs || missing) console.warn('⚠️ Export integrity', { hasDefs: !!defs, missing });
-      else console.log('✅ Export integrity ok');
-    })();
-  }catch(e){ console.error('💥 Boot failed', e); }
-})();</script>`;
-    }
-
-    // =========================================================================
-    // HELPER METHODS
-    // =========================================================================
-
-    _getDefaultOrientation(type) {
-      const t = (type || '').toLowerCase();
-      if (t === 'tank') return 'U';
-      if (t === 'drain') return 'L';
-      if (t === 'pump' || t === 'pumpfixed') return 'L';
-      return 'R';
-    }
-
-    _getSymbolForComponent(type, orient) {
-      const asset = SVG_ASSETS[type];
-      let assetPath = null;
-
-      if (typeof asset === 'string') {
-        assetPath = asset;
-      } else if (asset && asset[orient]) {
-        assetPath = asset[orient];
-      }
-
-      if (assetPath && this.symbolRegistry.has(assetPath)) {
-        return this.symbolRegistry.get(assetPath);
-      }
-
-      return null;
-    }
-
-    _getPNGForComponent(type) {
-      const png = PNG_FALLBACKS[type];
-      return png ? this.options.baseUrl + png : null;
-    }
-
-    _assetPathToSymbolId(assetPath) {
-      return 'sym-' + assetPath
-        .replace(/^assets\//, '')
-        .replace(/\.(svg|png)$/, '')
-        .replace(/[^a-zA-Z0-9]/g, '-');
-    }
-
-    _assetPathToType(assetPath) {
-      if (assetPath.includes('Valve')) return 'Valve';
-      if (assetPath.includes('Tank')) return 'Tank';
-      if (assetPath.includes('pump')) return 'PumpFixed';
-      return 'Component';
-    }
-
-    _splitRef(ref) {
-      if (!ref) return [null, null];
-      const i = String(ref).indexOf('.');
-      if (i === -1) return [String(ref), null];
-      return [ref.slice(0, i), ref.slice(i + 1)];
-    }
-
-    _sanitizeId(id) {
-      return String(id).replace(/[^a-zA-Z0-9_\-:.]/g, '_');
-    }
-
-    _escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      p.update('✅ Export complete');
+      return html;
+    } catch (error) {
+      console.error('❌ Export failed:', error);
+      throw error;
     }
   }
 
-  // Export to global
-  global.SimulatorExporter = SimulatorExporter;
-  console.log(`✅ Exporter v${EXPORTER_VERSION} loaded`);
+  /**
+   * NEW: Namespace per-file classnames to prevent style bleed
+   * Example: .cls-1 -> .sym-<symbolId>-cls-1 (in class="" and in <style> rules)
+   */
+  _scopeSvgClasses(content, ns) {
+    // 1) class="a b cls-1" -> class="a b ns-cls-1"
+    content = content.replace(/class="([^"]+)"/g, (_, classes) => {
+      const mapped = classes.split(/\s+/).map(c =>
+        /^cls-\d+$/i.test(c) ? `${ns}-${c}` : c
+      ).join(' ');
+      return `class="${mapped}"`;
+    });
 
-})(typeof window !== 'undefined' ? window : globalThis);
+    // 2) In <style> blocks, ".cls-1, .cls-2" -> ".ns-cls-1, .ns-cls-2"
+    content = content.replace(
+      /<style[^>]*>([\s\S]*?)<\/style>/g,
+      (_, css) => `<style>${css.replace(/\.cls-(\d+)/g, `.${ns}-cls-$1`)}</style>`
+    );
+
+    return content;
+  }
+
+  /**
+   * NEW: Extract ports from SVG markup by looking for data-port="NAME"
+   * or id="cp_NAME"/"P_NAME"/"PORT_NAME" or id="cp1"/"cp2" (numeric).
+   * Returns { NAME: {x,y} } normalized to 0..100 local space using the viewBox.
+   */
+  _extractPortsFromSvg(svgText, viewBox) {
+    try {
+      const vb = (viewBox || '0 0 100 100').split(/\s+/).map(Number);
+      const [vx, vy, vw, vh] = vb.length === 4 ? vb : [0, 0, 100, 100];
+      const ports = {};
+      const items = [];
+      const numericPorts = []; // for cp1, cp2 auto-mapping
+
+      // Collect candidate elements
+      const re1 = /(<[^>]+data-port="([^"]+)"[^>]*>)/g; // data-port
+      let m;
+      while ((m = re1.exec(svgText))) { items.push(m[1]); }
+
+      const re2 = /(<[^>]+id="((?:cp_|P_|PORT_)[^"]+)"[^>]*>)/g; // cp_*, P_*, PORT_*
+      while ((m = re2.exec(svgText))) { items.push(m[1]); }
+
+      const re3 = /(<[^>]+id="cp(\d+)"[^>]*>)/g; // cp1, cp2, ... (numeric)
+      while ((m = re3.exec(svgText))) { items.push(m[1]); }
+
+      for (const tag of items) {
+        let name = (tag.match(/data-port="([^"]+)"/)||[])[1]
+                 || (tag.match(/id="cp_([^"]+)"/)||[])[1]
+                 || (tag.match(/id="P_([^"]+)"/)||[])[1]
+                 || (tag.match(/id="PORT_([^"]+)"/)||[])[1]
+                 || (tag.match(/id="cp(\d+)"/)||[])[1]; // numeric
+
+        if (!name) continue;
+
+        // Parse coordinates (cx/cy for circles, x/y for rects)
+        let cx = tag.match(/\bcx="([^"]+)"/);
+        let cy = tag.match(/\bcy="([^"]+)"/);
+        let x = tag.match(/\bx="([^"]+)"/);
+        let y = tag.match(/\by="([^"]+)"/);
+        let px = null, py = null;
+
+        if (cx && cy) { px = parseFloat(cx[1]); py = parseFloat(cy[1]); }
+        else if (x && y) { px = parseFloat(x[1]); py = parseFloat(y[1]); }
+
+        if (px == null || py == null) continue;
+
+        // Normalize to 0..100
+        const nx = ((px - vx) / vw) * 100;
+        const ny = ((py - vy) / vh) * 100;
+
+        // Check if numeric (cp1, cp2)
+        if (/^\d+$/.test(name)) {
+          numericPorts.push({ num: name, x: nx, y: ny, rawX: px });
+        } else {
+          ports[name.trim().toUpperCase()] = { x: nx, y: ny };
+        }
+      }
+
+      // Auto-map numeric ports: left -> P_IN, right -> P_OUT
+      if (numericPorts.length === 2) {
+        numericPorts.sort((a, b) => a.rawX - b.rawX);
+        ports.P_IN = { x: numericPorts[0].x, y: numericPorts[0].y };
+        ports.P_OUT = { x: numericPorts[1].x, y: numericPorts[1].y };
+      } else if (numericPorts.length > 0) {
+        // Keep as CP1, CP2, etc.
+        numericPorts.forEach(n => {
+          ports[`CP${n.num}`] = { x: n.x, y: n.y };
+        });
+      }
+
+      return ports;
+    } catch (e) {
+      console.warn('Port extraction failed:', e);
+      return {};
+    }
+  }
+
+  /**
+   * Build SVG sprite from assets with class scoping and port extraction
+   */
+  async _buildSpriteFromAssets(progress, design) {
+    const p = this._mkProgress(progress);
+    this._symbolRegistry = new Map();
+    this._portIndex = new Map(); // NEW: cache ports per type
+
+    const needed = new Map();
+    const lib = this._getLibrary();
+
+    for (const comp of (design.components || [])) {
+      const type = comp.type || comp.key || 'component';
+      const template = lib[type] || {};
+      const assetPath = this._resolveSvgAssetPath(type, comp, template);
+      if (!assetPath) continue;
+
+      const symbolId = this._symbolIdFor(type, comp, template);
+      if (!needed.has(assetPath)) needed.set(assetPath, { symbolId, type });
+      if (!this._symbolRegistry.has(type)) this._symbolRegistry.set(type, symbolId);
+    }
+
+    if (needed.size === 0) {
+      this._spriteString = '';
+      return;
+    }
+
+    const symbols = [];
+    let fetched = 0;
+
+    for (const [assetPath, meta] of needed.entries()) {
+      const url = this._ensureAbsoluteAssetUrl(assetPath);
+      try {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const svgText = await res.text();
+        const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
+        const inner = this._extractSvgInner(svgText);
+        const prefixed = this._prefixSvgIds(inner, meta.symbolId);
+        
+        // NEW: stop style bleed by namespacing classes per symbol
+        const scoped = this._scopeSvgClasses(prefixed, meta.symbolId);
+
+        // Build <symbol>
+        symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
+
+        // NEW: read ports from ORIGINAL svg and cache for this type
+        const ports = this._extractPortsFromSvg(svgText, viewBox);
+        if (ports && Object.keys(ports).length) {
+          this._portIndex.set(meta.type, ports);
+        }
+
+        fetched++;
+        progress?.setDetail?.(`${fetched}/${needed.size} • ${assetPath}`);
+      } catch (e) {
+        console.warn('⚠️ SVG fetch failed, falling back', { assetPath, url, error: e?.message });
+      }
+    }
+
+    this._spriteString = symbols.join('\n');
+
+    // Optional QA check
+    if (/\.(?:cls-\d+)/.test(this._spriteString)) {
+      console.warn('🔎 Unscoped classes may remain in sprite; check _scopeSvgClasses.');
+    }
+  }
+
+  /**
+   * Resolve SVG asset path based on type and orientation
+   */
+  _resolveSvgAssetPath(type, comp, template) {
+    // Library override still wins
+    if (template?.svgPath) return template.svgPath;
+    if (template?.svg?.path) return template.svg.path;
+
+    const t = String(type).toLowerCase();
+    const o = String(comp?.orientation || 'R').toUpperCase();
+    const base = 'assets/';
+
+    if (t.includes('tank')) return base + 'Tankstoragevessel-01.svg';
+
+    if (t.includes('valve')) {
+      if (o === 'L') return base + 'Valve-Icon-handle-left-01.svg';
+      if (o === 'R') return base + 'Valve-Icon-handle-right-01.svg';
+      if (o === 'U') return base + 'Valve-Icon-handle-up-01.svg';
+      // "Down" art not provided — reuse UP and rotate instance 180°
+      return base + 'Valve-Icon-handle-up-01.svg';
+    }
+
+    if (t.includes('pump')) {
+      // Choose art by inlet side; assume orientation L = inlet-left, others inlet-right
+      if (o === 'L') return base + 'cent-pump-inlet-left-01.svg';
+      return base + 'cent-pump-inlet-right-01.svg';
+    }
+
+    // Add others when you upload them
+    return null;
+  }
+
+  /**
+   * Generate component SVG with proper centering and minimal rotation
+   */
+  _generateComponentSVG(comp, lib) {
+    const type = comp.type || comp.key || 'Component';
+    const orient = String(comp.orientation || 'R').toUpperCase();
+    
+    // We pick orientation-specific art; only rotate when reusing UP art for Valve Down
+    let rot = 0;
+    if (/valve/i.test(type) && orient === 'D') rot = 180;
+
+    const symbolId = this._symbolRegistry.get(type);
+    if (symbolId) {
+      // Center the symbol: translate(-50,-50) makes (50,50) in symbol space land at (x,y)
+      return `
+        <g id="${comp.id}" class="component ${type}" data-type="${type}">
+          <use href="#${symbolId}" 
+               transform="translate(${comp.x | 0}, ${comp.y | 0}) rotate(${rot}) translate(-50,-50)" 
+               class="comp-skin"/>
+        </g>`;
+    }
+
+    // Fallback to library image
+    const template = lib[type] || {};
+    const img = template.image || template.svg?.path;
+    if (img) {
+      const w = template.imageSize?.w || 60;
+      const h = template.imageSize?.h || 60;
+      return `
+        <g id="${comp.id}" class="component ${type}" data-type="${type}">
+          <image href="${this._ensureAbsoluteAssetUrl(img)}"
+                 x="${(comp.x | 0) - w / 2}" y="${(comp.y | 0) - h / 2}"
+                 width="${w}" height="${h}"
+                 transform="rotate(${rot}, ${comp.x | 0}, ${comp.y | 0})"/>
+        </g>`;
+    }
+
+    // Ultimate fallback
+    return `
+      <g id="${comp.id}" class="component ${type}" data-type="${type}">
+        <rect x="${(comp.x | 0) - 30}" y="${(comp.y | 0) - 30}" 
+              width="60" height="60" 
+              fill="#ddd" stroke="#333" stroke-width="2"/>
+        <text x="${comp.x | 0}" y="${comp.y | 0}" 
+              text-anchor="middle" dominant-baseline="middle" 
+              font-size="10">${type}</text>
+      </g>`;
+  }
+
+  /**
+   * Compute port world coordinates with proper centering and rotation
+   */
+  _portWorld(comp, portName) {
+    const cx = (comp.x | 0), cy = (comp.y | 0);
+    const type = comp.type || comp.key || 'Component';
+    const orient = String(comp.orientation || 'R').toUpperCase();
+
+    // Only rotate if we faked "Down" by reusing the UP valve art
+    const rotDeg = (/valve/i.test(type) && orient === 'D') ? 180 : 0;
+    const rot = rotDeg * Math.PI / 180;
+
+    // Prefer ports from design; else use parsed ports from SVG assets
+    const pm = comp.ports || this._portIndex?.get(type) || {};
+    const key = this._normalizePortName(portName);
+    const p = (key && pm[key]) || null;
+
+    if (p) {
+      const lx = (p.x ?? 50) - 50; // local -50..+50
+      const ly = (p.y ?? 50) - 50;
+      const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
+      const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
+      return { x: cx + rx, y: cy + ry };
+    }
+
+    return { x: cx, y: cy };
+  }
+
+  /**
+   * Extract SVG inner content (between <svg> tags)
+   */
+  _extractSvgInner(svgText) {
+    const open = svgText.indexOf('>');
+    const close = svgText.lastIndexOf('</svg>');
+    if (open === -1 || close === -1 || close <= open) return svgText;
+    return svgText.slice(open + 1, close).trim();
+  }
+
+  /**
+   * Prefix SVG IDs to avoid collisions
+   */
+  _prefixSvgIds(content, prefix) {
+    content = content.replace(/\bid="([^"]+)"/g, (m, id) => {
+      if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+      return `id="${prefix}-${id}"`;
+    });
+    content = content.replace(/url\(#([^)]+)\)/g, (m, id) => {
+      if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+      return `url(#${prefix}-${id})`;
+    });
+    content = content.replace(/href="#([^"]+)"/g, (m, id) => {
+      if (id.startsWith(prefix) || id.startsWith('cp_') || id.startsWith('sym-')) return m;
+      return `href="#${prefix}-${id}"`;
+    });
+    return content;
+  }
+
+  /**
+   * Generate symbol ID for a component
+   */
+  _symbolIdFor(type, comp, template) {
+    const orient = comp?.orientation || 'R';
+    return `sym-${String(type).replace(/\s+/g, '_')}-${orient}`.toLowerCase();
+  }
+
+  /**
+   * Map common port name aliases to canonical names
+   */
+  _normalizePortName(name) {
+    if (!name) return name;
+    const n = String(name).toLowerCase();
+    if (['in', 'inlet', 'suction', 'p_in', 'pin'].includes(n)) return 'P_IN';
+    if (['out', 'outlet', 'discharge', 'p_out', 'pout'].includes(n)) return 'P_OUT';
+    return name.toUpperCase(); // keep other names uppercase
+  }
+
+  /**
+   * Ensure absolute URL for assets
+   */
+  _ensureAbsoluteAssetUrl(path) {
+    if (/^https?:\/\//i.test(path)) return path;
+    return (this.baseUrl.replace(/\/$/, '') + '/' + path.replace(/^\//, ''));
+  }
+
+  /**
+   * Get component library
+   */
+  _getLibrary() {
+    return window.COMPONENT_LIBRARY || {};
+  }
+
+  /**
+   * Progress helper
+   */
+  _mkProgress(progress) {
+    return {
+      update: (msg) => {
+        if (progress?.update) progress.update(msg);
+        console.log('📊', msg);
+      },
+      setDetail: (msg) => {
+        if (progress?.setDetail) progress.setDetail(msg);
+        console.log('  └─', msg);
+      }
+    };
+  }
+
+  /**
+   * Generate complete HTML output
+   */
+  _generateHTML(design) {
+    const lib = this._getLibrary();
+    const simName = design.name || 'Tank Simulator';
+
+    // Generate component SVGs
+    const componentsSvg = (design.components || [])
+      .map(c => this._generateComponentSVG(c, lib))
+      .join('\n');
+
+    // Generate connection lines
+    const connectionsSvg = (design.connections || [])
+      .map(conn => {
+        const fromComp = design.components.find(c => c.id === conn.from.split('.')[0]);
+        const toComp = design.components.find(c => c.id === conn.to.split('.')[0]);
+        if (!fromComp || !toComp) return '';
+
+        const fromPort = conn.from.split('.')[1];
+        const toPort = conn.to.split('.')[1];
+        const p1 = this._portWorld(fromComp, fromPort);
+        const p2 = this._portWorld(toComp, toPort);
+
+        return `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" 
+                      class="pipe" stroke="#2563eb" stroke-width="3"/>`;
+      })
+      .join('\n');
+
+    // Complete HTML template
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${simName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .simulator-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 30px;
+    }
+    .header h1 { font-size: 28px; font-weight: 600; }
+    .canvas-area {
+      background: #f8fafc;
+      padding: 20px;
+    }
+    svg.sim-canvas {
+      width: 100%;
+      height: 600px;
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .comp-skin { transition: opacity 0.2s; }
+    .comp-skin:hover { opacity: 0.8; }
+    .pipe { stroke-linecap: round; }
+  </style>
+</head>
+<body>
+  <div class="simulator-container">
+    <div class="header">
+      <h1>${simName}</h1>
+      <p>Tank Simulation System</p>
+    </div>
+    
+    <div class="canvas-area">
+      <svg class="sim-canvas" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          ${this._spriteString}
+        </defs>
+        
+        <g id="connections-layer">
+          ${connectionsSvg}
+        </g>
+        
+        <g id="components-layer">
+          ${componentsSvg}
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    // Simulator engine would go here
+    console.log('✅ Simulator loaded:', ${JSON.stringify({ name: simName, components: design.components?.length, connections: design.connections?.length })});
+  </script>
+</body>
+</html>`;
+  }
+}
+
+// Export for use
+if (typeof window !== 'undefined') {
+  window.SimulatorExporter = SimulatorExporter;
+}
