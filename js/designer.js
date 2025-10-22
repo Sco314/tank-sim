@@ -363,13 +363,16 @@ class ProcessDesigner {
     this.canvas.addEventListener('mousemove', (e) => this._onCanvasMouseMove(e));
     this.canvas.addEventListener('mouseup', (e) => this._onCanvasMouseUp(e));
 
-    // Canvas click (for selection)
+    // Canvas click (for selection in select mode only)
     this.canvas.addEventListener('click', (e) => {
-      const target = e.target.closest('.component');
-      if (target) {
-        this.selectComponent(target.id);
-      } else {
-        this.selectComponent(null);
+      // Only handle selection in select mode
+      if (this.selectedTool === 'select') {
+        const target = e.target.closest('.component');
+        if (target) {
+          this.selectComponent(target.id);
+        } else {
+          this.selectComponent(null);
+        }
       }
     });
 
@@ -651,8 +654,10 @@ class ProcessDesigner {
    * Set active tool
    */
   setTool(tool) {
+    // Cancel any connection in progress
+    this._cancelConnection();
+
     this.selectedTool = tool;
-    this.connectionState = null;
 
     // Update UI
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
@@ -661,6 +666,8 @@ class ProcessDesigner {
 
     // Update cursor
     this.canvas.style.cursor = tool === 'connect' ? 'crosshair' : 'default';
+
+    console.log(`Tool switched to: ${tool}`);
   }
 
   /**
@@ -689,60 +696,195 @@ class ProcessDesigner {
   }
 
   /**
-   * Canvas mouse handlers for dragging
+   * Canvas mouse handlers for dragging and connecting
    */
   _onCanvasMouseDown(e) {
-    if (this.selectedTool !== 'select') return;
-    
-    const target = e.target.closest('.component');
-    if (!target) return;
+    // Handle select tool - dragging
+    if (this.selectedTool === 'select') {
+      const target = e.target.closest('.component');
+      if (!target) return;
 
-    const id = target.id;
-    const comp = this.components.get(id);
-    if (!comp) return;
+      const id = target.id;
+      const comp = this.components.get(id);
+      if (!comp) return;
 
-    this.dragState = {
-      component: comp,
-      startX: e.clientX,
-      startY: e.clientY,
-      compX: comp.x,
-      compY: comp.y
-    };
+      this.dragState = {
+        component: comp,
+        startX: e.clientX,
+        startY: e.clientY,
+        compX: comp.x,
+        compY: comp.y
+      };
+    }
+
+    // Handle connect tool - start connection
+    if (this.selectedTool === 'connect') {
+      const target = e.target.closest('.component');
+      if (!target) {
+        // Clicked on empty space - cancel connection
+        this._cancelConnection();
+        return;
+      }
+
+      const id = target.id;
+      const comp = this.components.get(id);
+      if (!comp) return;
+
+      if (!this.connectionState) {
+        // Start new connection
+        this.connectionState = {
+          fromComponent: comp,
+          fromPort: this._detectDefaultPort(comp, 'outlet')
+        };
+
+        // Visual feedback - highlight source component
+        target.classList.add('connection-source');
+        console.log(`Connection started from ${comp.name} (${comp.id})`);
+      } else {
+        // Complete connection
+        const toPort = this._detectDefaultPort(comp, 'inlet');
+
+        // Don't allow self-connections
+        if (this.connectionState.fromComponent.id === comp.id) {
+          alert('Cannot connect a component to itself');
+          this._cancelConnection();
+          return;
+        }
+
+        // Create the connection
+        this.addConnection(
+          this.connectionState.fromComponent,
+          comp,
+          {
+            fromPort: this.connectionState.fromPort,
+            toPort: toPort
+          }
+        );
+
+        console.log(`Connection created: ${this.connectionState.fromComponent.name} → ${comp.name}`);
+        this._cancelConnection();
+      }
+    }
   }
 
   _onCanvasMouseMove(e) {
-    if (!this.dragState) {
-      // Update mouse position display
-      const rect = this.canvas.getBoundingClientRect();
-      const viewBox = this.canvas.viewBox.baseVal;
-      const scaleX = viewBox.width / rect.width;
-      const scaleY = viewBox.height / rect.height;
-      
-      const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
-      const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
-
-      const mousePos = document.getElementById('mousePos');
-      if (mousePos) mousePos.textContent = `X: ${x}, Y: ${y}`;
-      
-      return;
-    }
-
+    // Update mouse position display
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
     const scaleX = viewBox.width / rect.width;
     const scaleY = viewBox.height / rect.height;
 
-    const dx = (e.clientX - this.dragState.startX) * scaleX;
-    const dy = (e.clientY - this.dragState.startY) * scaleY;
+    const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
+    const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
 
-    this.dragState.component.x = Math.round(this.dragState.compX + dx);
-    this.dragState.component.y = Math.round(this.dragState.compY + dy);
+    const mousePos = document.getElementById('mousePos');
+    if (mousePos) mousePos.textContent = `X: ${x}, Y: ${y}`;
 
-    this._updateComponentPosition(this.dragState.component);
+    // Handle dragging in select mode
+    if (this.dragState) {
+      const dx = (e.clientX - this.dragState.startX) * scaleX;
+      const dy = (e.clientY - this.dragState.startY) * scaleY;
+
+      this.dragState.component.x = Math.round(this.dragState.compX + dx);
+      this.dragState.component.y = Math.round(this.dragState.compY + dy);
+
+      this._updateComponentPosition(this.dragState.component);
+      return;
+    }
+
+    // Show connection preview in connect mode
+    if (this.selectedTool === 'connect' && this.connectionState) {
+      this._updateConnectionPreview(x, y);
+    }
   }
 
   _onCanvasMouseUp(e) {
     this.dragState = null;
+  }
+
+  /**
+   * Detect default port for a component based on type
+   */
+  _detectDefaultPort(comp, preferredType) {
+    // Check if component has port definitions
+    const lib = window.COMPONENT_LIBRARY || {};
+    const def = lib[comp.key] || {};
+
+    if (def.connectionPoints && def.connectionPoints.length > 0) {
+      // Try to find a port matching the preferred type
+      const port = def.connectionPoints.find(p =>
+        p.name === preferredType || p.type === preferredType
+      );
+      if (port) return port.name;
+
+      // Otherwise return first available port
+      return def.connectionPoints[0].name;
+    }
+
+    // Fallback to standard port names based on type
+    const type = comp.type.toLowerCase();
+    if (preferredType === 'outlet') {
+      if (type.includes('feed')) return 'outlet';
+      if (type.includes('tank')) return 'bottom';
+      if (type.includes('pump')) return 'outlet';
+      if (type.includes('valve')) return 'outlet';
+      return 'outlet';
+    } else {
+      if (type.includes('drain')) return 'inlet';
+      if (type.includes('tank')) return 'top';
+      if (type.includes('pump')) return 'inlet';
+      if (type.includes('valve')) return 'inlet';
+      return 'inlet';
+    }
+  }
+
+  /**
+   * Update connection preview line
+   */
+  _updateConnectionPreview(mouseX, mouseY) {
+    if (!this.connectionState) return;
+
+    // Remove old preview line
+    const oldPreview = document.getElementById('connection-preview');
+    if (oldPreview) oldPreview.remove();
+
+    // Get source port position
+    const fromPos = this._getPortPosition(
+      this.connectionState.fromComponent,
+      this.connectionState.fromPort
+    );
+
+    // Create preview line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.id = 'connection-preview';
+    line.setAttribute('x1', fromPos.x);
+    line.setAttribute('y1', fromPos.y);
+    line.setAttribute('x2', mouseX);
+    line.setAttribute('y2', mouseY);
+    line.setAttribute('stroke', '#fbbf24');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-dasharray', '5,5');
+    line.setAttribute('opacity', '0.8');
+    line.style.pointerEvents = 'none';
+
+    this.connectionsLayer.appendChild(line);
+  }
+
+  /**
+   * Cancel connection in progress
+   */
+  _cancelConnection() {
+    // Remove preview line
+    const preview = document.getElementById('connection-preview');
+    if (preview) preview.remove();
+
+    // Remove source highlight
+    if (this.connectionState?.fromComponent) {
+      const sourceEl = document.getElementById(this.connectionState.fromComponent.id);
+      if (sourceEl) sourceEl.classList.remove('connection-source');
+    }
+
+    this.connectionState = null;
   }
 
   /**
