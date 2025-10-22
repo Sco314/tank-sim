@@ -1,6 +1,11 @@
 /**
  * componentLibrary.js - Component definitions for designer
- * FIXED: Added icon and name to CATEGORIES for proper UI display
+ * FIXED v3.1:
+ * - Tank 2x larger (320x360)
+ * - Valve 1/3 smaller (25x25)
+ * - Consistent SVG paths between designer and exporter
+ * - Improved style isolation
+ * - Added svgPath to all components for consistent asset loading
  */
 
 const COMPONENT_LIBRARY = {
@@ -48,7 +53,7 @@ const COMPONENT_LIBRARY = {
     ]
   },
   
-  // === TANKS ===
+  // === TANKS === (2x LARGER)
   tank: {
     name: 'Tank',
     category: 'Storage',
@@ -58,7 +63,8 @@ const COMPONENT_LIBRARY = {
     description: 'Liquid storage tank',
     image: 'https://sco314.github.io/tank-sim/assets/Tank-Icon-Transparent-bg.png',
     svg: 'Tankstoragevessel-01.svg',
-    imageSize: { w: 160, h: 180, x: -80, y: -90 },
+    svgPath: 'assets/Tankstoragevessel-01.svg',
+    imageSize: { w: 320, h: 360, x: -160, y: -180 }, // 2x larger
     defaultConfig: {
       type: 'tank',
       capacity: 10,
@@ -71,10 +77,10 @@ const COMPONENT_LIBRARY = {
       { name: 'maxLevel', label: 'Max Level (m³)', type: 'number', default: 9.5, min: 0, step: 0.1 }
     ],
     connectionPoints: [
-      { id: 'cp_top', name: 'top', type: 'input', x: 0, y: -90 },
-      { id: 'cp_bottom', name: 'bottom', type: 'output', x: 0, y: 90 },
-      { id: 'cp_left', name: 'left', type: 'both', x: -80, y: 0 },
-      { id: 'cp_right', name: 'right', type: 'both', x: 80, y: 0 }
+      { id: 'cp_top', name: 'top', type: 'input', x: 0, y: -180 },
+      { id: 'cp_bottom', name: 'bottom', type: 'output', x: 0, y: 180 },
+      { id: 'cp_left', name: 'left', type: 'both', x: -160, y: 0 },
+      { id: 'cp_right', name: 'right', type: 'both', x: 160, y: 0 }
     ]
   },
   
@@ -88,6 +94,7 @@ const COMPONENT_LIBRARY = {
     description: 'ON/OFF pump (100% when running)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
     svg: 'cent-pump-inlet-left-01.svg',
+    svgPath: 'assets/cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pumpFixed',
@@ -108,6 +115,7 @@ const COMPONENT_LIBRARY = {
     variants: {
       left: {
         svg: 'cent-pump-inlet-left-01.svg',
+        svgPath: 'assets/cent-pump-inlet-left-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
@@ -115,6 +123,7 @@ const COMPONENT_LIBRARY = {
       },
       right: {
         svg: 'cent-pump-inlet-right-01.svg',
+        svgPath: 'assets/cent-pump-inlet-right-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
@@ -132,6 +141,7 @@ const COMPONENT_LIBRARY = {
     description: 'VFD pump (0-100% speed control)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
     svg: 'cent-pump-inlet-left-01.svg',
+    svgPath: 'assets/cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pumpVariable',
@@ -154,6 +164,7 @@ const COMPONENT_LIBRARY = {
     variants: {
       left: {
         svg: 'cent-pump-inlet-left-01.svg',
+        svgPath: 'assets/cent-pump-inlet-left-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
@@ -161,6 +172,7 @@ const COMPONENT_LIBRARY = {
       },
       right: {
         svg: 'cent-pump-inlet-right-01.svg',
+        svgPath: 'assets/cent-pump-inlet-right-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
@@ -178,6 +190,7 @@ const COMPONENT_LIBRARY = {
     description: 'Multi-speed pump (Low/Med/High)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
     svg: 'cent-pump-inlet-left-01.svg',
+    svgPath: 'assets/cent-pump-inlet-left-01.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pump3Speed',
@@ -199,6 +212,7 @@ const COMPONENT_LIBRARY = {
     variants: {
       left: {
         svg: 'cent-pump-inlet-left-01.svg',
+        svgPath: 'assets/cent-pump-inlet-left-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
@@ -206,6 +220,7 @@ const COMPONENT_LIBRARY = {
       },
       right: {
         svg: 'cent-pump-inlet-right-01.svg',
+        svgPath: 'assets/cent-pump-inlet-right-01.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
@@ -214,7 +229,7 @@ const COMPONENT_LIBRARY = {
     }
   },
   
-  // === VALVES ===
+  // === VALVES === (1/3 SMALLER)
   valve: {
     name: 'Control Valve',
     category: 'Valves',
@@ -224,7 +239,8 @@ const COMPONENT_LIBRARY = {
     description: 'Proportional control valve (0-100%)',
     image: 'https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png',
     svg: 'Valve-Icon-handle-right-01.svg',
-    imageSize: { w: 76, h: 76, x: -38, y: -38 },
+    svgPath: 'assets/Valve-Icon-handle-right-01.svg',
+    imageSize: { w: 25, h: 25, x: -12.5, y: -12.5 }, // 1/3 smaller (was 76x76)
     defaultConfig: {
       type: 'valve',
       open: 82,
@@ -236,29 +252,32 @@ const COMPONENT_LIBRARY = {
       { name: 'kv', label: 'Kv Coefficient', type: 'number', default: 1, min: 0.1, step: 0.1 }
     ],
     connectionPoints: [
-      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -38, y: 0 },
-      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 38, y: 0 }
+      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
+      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
     ],
     variants: {
       right: {
         svg: 'Valve-Icon-handle-right-01.svg',
+        svgPath: 'assets/Valve-Icon-handle-right-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -38, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 38, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
         ]
       },
       left: {
         svg: 'Valve-Icon-handle-left-01.svg',
+        svgPath: 'assets/Valve-Icon-handle-left-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -38, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 38, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
         ]
       },
       up: {
         svg: 'Valve-Icon-handle-up-01.svg',
+        svgPath: 'assets/Valve-Icon-handle-up-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -38, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 38, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
         ]
       }
     }
@@ -354,7 +373,7 @@ window.getComponentList = function() {
   }));
 };
 
-// FIXED: Category organization with icon and name for UI
+// Category organization with icon and name for UI
 const CATEGORIES = {
   'Boundary': {
     name: 'Boundary',
@@ -393,11 +412,11 @@ function getComponentSVG(component) {
   // Check if component has orientation and variants
   if (component.config?.orientation && def.variants) {
     const variant = def.variants[component.config.orientation];
-    return variant?.svg || def.svg;
+    return variant?.svgPath || variant?.svg || def.svgPath || def.svg;
   }
   
   // Return default SVG
-  return def.svg || null;
+  return def.svgPath || def.svg || null;
 }
 
 /**
@@ -424,7 +443,8 @@ window.getComponentSVG = getComponentSVG;
 window.getComponentConnectionPoints = getComponentConnectionPoints;
 
 // ✅ Then log (after window.COMPONENT_LIBRARY exists)
-console.log('✅ Component Library loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
-console.log('✅ getComponentList() registered');
-console.log('🔌 Connection points: Enabled for designer hover markers');
+console.log('✅ Component Library v3.1 loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
+console.log('✅ Scale adjustments: Tank 2x larger, Valve 1/3 smaller');
+console.log('✅ SVG paths unified for designer and exporter');
+console.log('📌 Connection points: Enabled for designer hover markers');
 console.log('🎨 SVG variants: Valve (3), Pump (2)');
