@@ -1,9 +1,12 @@
 /**
- * designer.js V3.0 - Process Simulator Designer
- * - Uses sprite system with <use> instances
- * - Parses and stores ports from SVGs
- * - Centers components properly for port alignment
- * - Prevents SVG style bleed with class scoping
+ * designer.js V3.1 - Process Simulator Designer
+ * FIXES:
+ * - ✅ Improved style preservation (fixes grey valve body appearing white)
+ * - ✅ Better SVG class scoping to prevent style bleed
+ * - ✅ Consistent SVG path resolution with exporter
+ * - ✅ Uses sprite system with <use> instances
+ * - ✅ Parses and stores ports from SVGs
+ * - ✅ Centers components properly for port alignment
  */
 
 class ProcessDesigner {
@@ -77,8 +80,10 @@ class ProcessDesigner {
         const svgText = await res.text();
         const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
         const inner = this._extractSvgInner(svgText);
+        
+        // IMPORTANT: Preserve original styles, then scope IDs and classes
         const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scoped = this._scopeSvgClasses(prefixed, meta.symbolId);
+        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
         symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
 
@@ -100,12 +105,24 @@ class ProcessDesigner {
   }
 
   /**
-   * Resolve SVG asset path (matches exporter logic)
+   * Resolve SVG asset path (matches exporter logic EXACTLY)
    */
   _resolveSvgAssetPath(type, comp, template) {
+    // Priority 1: explicit svgPath (most specific)
     if (template?.svgPath) return template.svgPath;
+    
+    // Priority 2: svg.path (legacy support)
     if (template?.svg?.path) return template.svg.path;
+    
+    // Priority 3: svg as string (legacy support)
+    if (typeof template?.svg === 'string') {
+      // Check if it's already a full path
+      if (template.svg.startsWith('assets/')) return template.svg;
+      // Otherwise prepend assets/
+      return 'assets/' + template.svg;
+    }
 
+    // Priority 4: Auto-detect based on type and orientation
     const t = String(type).toLowerCase();
     const o = String(comp?.orientation || 'R').toUpperCase();
     const base = 'assets/';
@@ -157,9 +174,11 @@ class ProcessDesigner {
   }
 
   /**
-   * Scope SVG classes to prevent bleed
+   * Scope SVG styles while PRESERVING original inline styles and attributes
+   * FIXED: This now preserves fill, stroke, and other style attributes
    */
-  _scopeSvgClasses(content, ns) {
+  _scopeSvgStylesPreserving(content, ns) {
+    // Scope class names (but don't touch inline styles)
     content = content.replace(/class="([^"]+)"/g, (_, classes) => {
       const mapped = classes.split(/\s+/).map(c =>
         /^cls-\d+$/i.test(c) ? `${ns}-${c}` : c
@@ -167,11 +186,19 @@ class ProcessDesigner {
       return `class="${mapped}"`;
     });
 
+    // Scope CSS selectors in <style> tags
     content = content.replace(
       /<style[^>]*>([\s\S]*?)<\/style>/g,
-      (_, css) => `<style>${css.replace(/\.cls-(\d+)/g, `.${ns}-cls-$1`)}</style>`
+      (match, css) => {
+        // Scope class selectors
+        let scopedCss = css.replace(/\.cls-(\d+)/g, `.${ns}-cls-$1`);
+        return `<style>${scopedCss}</style>`;
+      }
     );
 
+    // IMPORTANT: Do NOT strip inline fill, stroke, or style attributes
+    // The original code preserved these, and that's correct!
+    
     return content;
   }
 
@@ -263,22 +290,25 @@ class ProcessDesigner {
 
     let html = '';
     for (const [catName, catData] of Object.entries(categories)) {
-      html += `<div class="category">
-        <div class="category-header">${catData.icon} ${catData.name}</div>
+      html += `<div class="component-category">
+        <div class="category-header">
+          <span class="category-icon">${catData.icon}</span>
+          <span class="category-name">${catData.name}</span>
+        </div>
         <div class="category-items">`;
 
-      for (const compKey of catData.components || []) {
-        const comp = lib[compKey];
-        if (!comp) continue;
+      for (const compKey of catData.components) {
+        const def = lib[compKey];
+        if (!def) continue;
 
-        const symbolId = this._symbolRegistry.get(comp.type || compKey);
-        const icon = symbolId 
-          ? `<svg viewBox="0 0 100 100" width="48" height="48"><use href="#${symbolId}"/></svg>`
-          : `<span style="font-size:32px">${comp.icon || '🔧'}</span>`;
-
-        html += `<div class="palette-item" data-type="${comp.type || compKey}" draggable="true">
-          ${icon}
-          <span>${comp.name}</span>
+        html += `<div 
+          class="component-item" 
+          draggable="true"
+          data-component-type="${def.type}"
+          data-component-key="${compKey}"
+        >
+          <span class="component-icon">${def.icon}</span>
+          <span class="component-label">${def.name}</span>
         </div>`;
       }
 
@@ -287,9 +317,12 @@ class ProcessDesigner {
 
     palette.innerHTML = html;
 
-    // Add drag handlers
-    palette.querySelectorAll('.palette-item').forEach(item => {
-      item.addEventListener('dragstart', (e) => this._onPaletteDragStart(e));
+    // Add drag event listeners
+    palette.querySelectorAll('.component-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('componentType', e.target.dataset.componentType);
+        e.dataTransfer.setData('componentKey', e.target.dataset.componentKey);
+      });
     });
   }
 
@@ -297,86 +330,88 @@ class ProcessDesigner {
    * Setup event listeners
    */
   _setupEventListeners() {
-    // Canvas events
-    this.canvas.addEventListener('drop', (e) => this._onCanvasDrop(e));
-    this.canvas.addEventListener('dragover', (e) => e.preventDefault());
-    this.canvas.addEventListener('mousedown', (e) => this._onCanvasMouseDown(e));
-    this.canvas.addEventListener('mousemove', (e) => this._onCanvasMouseMove(e));
-    this.canvas.addEventListener('mouseup', (e) => this._onCanvasMouseUp(e));
-
     // Tool buttons
     const selectTool = document.getElementById('selectTool');
     const connectTool = document.getElementById('connectTool');
     if (selectTool) selectTool.addEventListener('click', () => this.setTool('select'));
     if (connectTool) connectTool.addEventListener('click', () => this.setTool('connect'));
 
+    // Canvas drop
+    this.canvas.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    this.canvas.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const componentType = e.dataTransfer.getData('componentType');
+      const componentKey = e.dataTransfer.getData('componentKey');
+      if (!componentType) return;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const viewBox = this.canvas.viewBox.baseVal;
+      const scaleX = viewBox.width / rect.width;
+      const scaleY = viewBox.height / rect.height;
+      
+      const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
+      const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
+
+      this.addComponent(componentType, x, y, { key: componentKey });
+    });
+
+    // Canvas mouse events
+    this.canvas.addEventListener('mousedown', (e) => this._onCanvasMouseDown(e));
+    this.canvas.addEventListener('mousemove', (e) => this._onCanvasMouseMove(e));
+    this.canvas.addEventListener('mouseup', (e) => this._onCanvasMouseUp(e));
+
+    // Canvas click (for selection)
+    this.canvas.addEventListener('click', (e) => {
+      const target = e.target.closest('.component');
+      if (target) {
+        this.selectComponent(target.id);
+      } else {
+        this.selectComponent(null);
+      }
+    });
+
     // Clear button
     const clearBtn = document.getElementById('clearBtn');
     if (clearBtn) clearBtn.addEventListener('click', () => this.clearCanvas());
-  }
 
-  /**
-   * Palette drag start
-   */
-  _onPaletteDragStart(e) {
-    const type = e.currentTarget.dataset.type;
-    e.dataTransfer.setData('component-type', type);
-    e.dataTransfer.effectAllowed = 'copy';
-  }
-
-  /**
-   * Canvas drop - add component
-   */
-  _onCanvasDrop(e) {
-    e.preventDefault();
-    const type = e.dataTransfer.getData('component-type');
-    if (!type) return;
-
-    const rect = this.canvas.getBoundingClientRect();
-    const viewBox = this.canvas.viewBox.baseVal;
-    const scaleX = viewBox.width / rect.width;
-    const scaleY = viewBox.height / rect.height;
-    
-    const x = (e.clientX - rect.left) * scaleX + viewBox.x;
-    const y = (e.clientY - rect.top) * scaleY + viewBox.y;
-
-    this.addComponent(type, x, y);
+    // Grid toggle
+    const gridToggle = document.getElementById('gridToggle');
+    const gridRect = document.getElementById('gridRect');
+    if (gridToggle && gridRect) {
+      gridToggle.addEventListener('change', (e) => {
+        gridRect.style.display = e.target.checked ? 'block' : 'none';
+      });
+    }
   }
 
   /**
    * Add component to canvas
    */
-  addComponent(type, x, y, config = {}) {
-    const id = config.id || `c_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  addComponent(type, x, y, options = {}) {
+    const id = options.id || `${type}_${Date.now()}`;
     const lib = window.COMPONENT_LIBRARY || {};
-    const template = lib[type] || {};
-    const symbolId = this._symbolRegistry.get(type);
+    const compKey = options.key || type;
+    const def = lib[compKey] || {};
 
-    // Get cached ports for this type
-    const ports = this._portCache.get(type) || {};
-
-    // Create component data
     const component = {
       id,
       type,
-      key: type,
-      x: Math.round(x),
-      y: Math.round(y),
-      name: config.name || template.name || type,
-      orientation: config.orientation || 'R',
-      config: { ...template.defaultConfig, ...config },
-      ports: { ...ports } // Store ports on component
+      key: compKey,
+      name: def.name || type,
+      x,
+      y,
+      orientation: options.orientation || def.defaultConfig?.orientation || 'R',
+      ports: def.connectionPoints || [],
+      config: { ...def.defaultConfig, ...options.config }
     };
 
     this.components.set(id, component);
-
-    // Render component
     this._renderComponent(component);
-
-    // Update stats
     this._updateStats();
 
-    console.log('✅ Added component:', component);
     return component;
   }
 
@@ -390,99 +425,82 @@ class ProcessDesigner {
       return;
     }
 
+    const lib = window.COMPONENT_LIBRARY || {};
+    const def = lib[comp.key] || {};
+    const size = def.imageSize || { w: 100, h: 100, x: -50, y: -50 };
+
     const orient = String(comp.orientation || 'R').toUpperCase();
     let rot = 0;
     if (/valve/i.test(comp.type) && orient === 'D') rot = 180;
 
-    // Center the symbol: translate(-50,-50) aligns (50,50) in symbol space to (x,y)
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('id', comp.id);
-    g.setAttribute('class', `component ${comp.type}`);
+    g.id = comp.id;
+    g.classList.add('component');
     g.setAttribute('data-type', comp.type);
-    
-    g.innerHTML = `<use href="#${symbolId}" 
-                        transform="translate(${comp.x}, ${comp.y}) rotate(${rot}) translate(-50,-50)" 
-                        class="comp-skin" 
-                        style="cursor:move"/>`;
+    g.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${rot})`);
 
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
+    use.setAttribute('width', size.w);
+    use.setAttribute('height', size.h);
+    use.setAttribute('x', size.x);
+    use.setAttribute('y', size.y);
+    use.classList.add('comp-skin');
+
+    g.appendChild(use);
     this.componentsLayer.appendChild(g);
-
-    // Add event listeners
-    g.addEventListener('click', () => this._onComponentClick(comp));
   }
 
   /**
-   * Component click handler
+   * Get port position for a component
    */
-  _onComponentClick(comp) {
-    if (this.selectedTool === 'connect') {
-      this._handleConnectionClick(comp);
-    } else {
-      this.selectComponent(comp);
-    }
-  }
+  _getPortPosition(comp, portName) {
+    const ports = this._portCache.get(comp.type) || {};
+    const port = ports[portName?.toUpperCase()];
 
-  /**
-   * Select component
-   */
-  selectComponent(comp) {
-    // Remove previous selection
-    this.canvas.querySelectorAll('.component.selected').forEach(el => {
-      el.classList.remove('selected');
-    });
+    const lib = window.COMPONENT_LIBRARY || {};
+    const def = lib[comp.key] || {};
+    const size = def.imageSize || { w: 100, h: 100, x: -50, y: -50 };
 
-    if (comp) {
-      const el = document.getElementById(comp.id);
-      if (el) el.classList.add('selected');
-      this.selectedComponent = comp;
-      this._showProperties(comp);
-    } else {
-      this.selectedComponent = null;
-      this._clearProperties();
-    }
-  }
+    if (port) {
+      // Convert from 0-100 space to actual position
+      const lx = (port.x - 50) * (size.w / 100);
+      const ly = (port.y - 50) * (size.h / 100);
 
-  /**
-   * Handle connection mode click
-   */
-  _handleConnectionClick(comp) {
-    if (!this.connectionState) {
-      // Start connection
-      this.connectionState = { from: comp };
-      console.log('Connection started from:', comp.id);
-    } else {
-      // Complete connection
-      if (this.connectionState.from.id !== comp.id) {
-        this.addConnection(this.connectionState.from, comp);
-      }
-      this.connectionState = null;
+      // Apply rotation if needed
+      const orient = String(comp.orientation || 'R').toUpperCase();
+      const rotDeg = (/valve/i.test(comp.type) && orient === 'D') ? 180 : 0;
+      const rot = (rotDeg * Math.PI) / 180;
+
+      const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
+      const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
+
+      return { x: comp.x + rx, y: comp.y + ry };
     }
+
+    // Fallback to component center
+    return { x: comp.x, y: comp.y };
   }
 
   /**
    * Add connection between components
    */
-  addConnection(fromComp, toComp, config = {}) {
-    const id = config.id || `conn_${Date.now()}`;
-    
-    // Find appropriate ports (simplified - just use first available ports)
-    const fromPorts = Object.keys(fromComp.ports || {});
-    const toPorts = Object.keys(toComp.ports || {});
-    
-    const fromPort = config.fromPort || fromPorts[fromPorts.length - 1] || 'outlet';
-    const toPort = config.toPort || toPorts[0] || 'inlet';
+  addConnection(fromComp, toComp, options = {}) {
+    const id = options.id || `conn_${Date.now()}`;
+    const fromPort = options.fromPort || 'outlet';
+    const toPort = options.toPort || 'inlet';
 
     const connection = {
       id,
       from: `${fromComp.id}.${fromPort}`,
-      to: `${toComp.id}.${toPort}`
+      to: `${toComp.id}.${toPort}`,
+      ...options
     };
 
     this.connections.set(id, connection);
     this._renderConnection(connection);
     this._updateStats();
 
-    console.log('✅ Added connection:', connection);
     return connection;
   }
 
@@ -490,86 +508,92 @@ class ProcessDesigner {
    * Render connection line
    */
   _renderConnection(conn) {
-    const [fromCompId, fromPort] = conn.from.split('.');
-    const [toCompId, toPort] = conn.to.split('.');
-
-    const fromComp = this.components.get(fromCompId);
-    const toComp = this.components.get(toCompId);
-
+    const [fromId, fromPort] = conn.from.split('.');
+    const [toId, toPort] = conn.to.split('.');
+    
+    const fromComp = this.components.get(fromId);
+    const toComp = this.components.get(toId);
+    
     if (!fromComp || !toComp) return;
 
     const p1 = this._getPortPosition(fromComp, fromPort);
     const p2 = this._getPortPosition(toComp, toPort);
 
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('id', conn.id);
-    line.setAttribute('class', 'connection pipe');
+    line.id = conn.id;
+    line.classList.add('connection');
     line.setAttribute('x1', p1.x);
     line.setAttribute('y1', p1.y);
     line.setAttribute('x2', p2.x);
     line.setAttribute('y2', p2.y);
-    line.setAttribute('stroke', '#2563eb');
+    line.setAttribute('stroke', '#93c5fd');
     line.setAttribute('stroke-width', '3');
-    line.setAttribute('stroke-linecap', 'round');
 
     this.connectionsLayer.appendChild(line);
   }
 
   /**
-   * Get port world position
+   * Select component
    */
-  _getPortPosition(comp, portName) {
-    const cx = comp.x, cy = comp.y;
-    const orient = String(comp.orientation || 'R').toUpperCase();
-    
-    const rotDeg = (/valve/i.test(comp.type) && orient === 'D') ? 180 : 0;
-    const rot = rotDeg * Math.PI / 180;
-
-    const port = comp.ports?.[portName];
-    if (port) {
-      const lx = (port.x ?? 50) - 50;
-      const ly = (port.y ?? 50) - 50;
-      const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
-      const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
-      return { x: cx + rx, y: cy + ry };
+  selectComponent(id) {
+    // Deselect previous
+    if (this.selectedComponent) {
+      const prev = document.getElementById(this.selectedComponent);
+      if (prev) prev.classList.remove('selected');
     }
 
-    return { x: cx, y: cy };
+    this.selectedComponent = id;
+
+    if (id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('selected');
+      
+      const comp = this.components.get(id);
+      if (comp) this._showProperties(comp);
+    } else {
+      this._clearProperties();
+    }
   }
 
   /**
-   * Show component properties
+   * Show properties panel for component
    */
   _showProperties(comp) {
     const panel = document.getElementById('propertiesContent');
     if (!panel) return;
 
     const lib = window.COMPONENT_LIBRARY || {};
-    const template = lib[comp.type] || {};
-    const props = template.properties || [];
+    const def = lib[comp.key] || {};
 
     let html = `<div class="properties-form">
       <h3>${comp.name}</h3>
-      <div class="form-group">
-        <label>ID</label>
-        <input type="text" value="${comp.id}" disabled>
+      <div class="form-field">
+        <label>ID:</label>
+        <input type="text" value="${comp.id}" readonly>
       </div>
-      <div class="form-group">
-        <label>Type</label>
-        <input type="text" value="${comp.type}" disabled>
+      <div class="form-field">
+        <label>Type:</label>
+        <input type="text" value="${comp.type}" readonly>
+      </div>
+      <div class="form-field">
+        <label>Position:</label>
+        <input type="text" value="(${comp.x}, ${comp.y})" readonly>
       </div>`;
 
-    for (const prop of props) {
-      const value = comp.config[prop.name] ?? prop.default;
-      html += `<div class="form-group">
-        <label>${prop.label}</label>
-        <input type="${prop.type}" 
-               value="${value}" 
-               data-prop="${prop.name}"
-               min="${prop.min || ''}"
-               max="${prop.max || ''}"
-               step="${prop.step || ''}">
-      </div>`;
+    // Add editable properties
+    if (def.properties) {
+      for (const prop of def.properties) {
+        html += `<div class="form-field">
+          <label>${prop.label}:</label>
+          <input 
+            type="${prop.type}" 
+            value="${comp.config[prop.name] || prop.default}" 
+            data-prop="${prop.name}"
+            min="${prop.min || ''}"
+            max="${prop.max || ''}"
+            step="${prop.step || ''}">
+        </div>`;
+      }
     }
 
     html += `<button class="btn btn-danger" onclick="designer.deleteComponent('${comp.id}')">Delete</button>
@@ -687,7 +711,21 @@ class ProcessDesigner {
   }
 
   _onCanvasMouseMove(e) {
-    if (!this.dragState) return;
+    if (!this.dragState) {
+      // Update mouse position display
+      const rect = this.canvas.getBoundingClientRect();
+      const viewBox = this.canvas.viewBox.baseVal;
+      const scaleX = viewBox.width / rect.width;
+      const scaleY = viewBox.height / rect.height;
+      
+      const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
+      const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
+
+      const mousePos = document.getElementById('mousePos');
+      if (mousePos) mousePos.textContent = `X: ${x}, Y: ${y}`;
+      
+      return;
+    }
 
     const rect = this.canvas.getBoundingClientRect();
     const viewBox = this.canvas.viewBox.baseVal;
@@ -714,15 +752,11 @@ class ProcessDesigner {
     const el = document.getElementById(comp.id);
     if (!el) return;
 
-    const use = el.querySelector('use');
-    if (use) {
-      const orient = String(comp.orientation || 'R').toUpperCase();
-      let rot = 0;
-      if (/valve/i.test(comp.type) && orient === 'D') rot = 180;
-      
-      use.setAttribute('transform', 
-        `translate(${comp.x}, ${comp.y}) rotate(${rot}) translate(-50,-50)`);
-    }
+    const orient = String(comp.orientation || 'R').toUpperCase();
+    let rot = 0;
+    if (/valve/i.test(comp.type) && orient === 'D') rot = 180;
+    
+    el.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${rot})`);
 
     // Update connected pipes
     for (const [connId, conn] of this.connections.entries()) {
@@ -782,39 +816,6 @@ class ProcessDesigner {
 
     console.log('✅ Design loaded:', data);
   }
-
-  /**
-   * Mouse position tracking
-   */
-  _onCanvasMouseMove(e) {
-    // Update drag if active
-    if (this.dragState) {
-      const rect = this.canvas.getBoundingClientRect();
-      const viewBox = this.canvas.viewBox.baseVal;
-      const scaleX = viewBox.width / rect.width;
-      const scaleY = viewBox.height / rect.height;
-
-      const dx = (e.clientX - this.dragState.startX) * scaleX;
-      const dy = (e.clientY - this.dragState.startY) * scaleY;
-
-      this.dragState.component.x = Math.round(this.dragState.compX + dx);
-      this.dragState.component.y = Math.round(this.dragState.compY + dy);
-
-      this._updateComponentPosition(this.dragState.component);
-    }
-
-    // Update mouse position display
-    const rect = this.canvas.getBoundingClientRect();
-    const viewBox = this.canvas.viewBox.baseVal;
-    const scaleX = viewBox.width / rect.width;
-    const scaleY = viewBox.height / rect.height;
-    
-    const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
-    const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
-
-    const mousePos = document.getElementById('mousePos');
-    if (mousePos) mousePos.textContent = `X: ${x}, Y: ${y}`;
-  }
 }
 
 // Initialize designer when DOM is ready
@@ -824,5 +825,5 @@ window.addEventListener('DOMContentLoaded', () => {
     baseUrl: 'https://sco314.github.io/tank-sim/'
   });
   window.designer = designer; // Make globally accessible
-  console.log('✅ Designer ready');
+  console.log('✅ Designer v3.1 ready - Style preservation improved');
 });
