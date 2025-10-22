@@ -1,7 +1,13 @@
 /**
- * exporter.js v5.1 - Fixed Designer API Integration
+ * exporter.js v5.2 - Path Fix + Designer API Integration
  * 
- * FIXES:
+ * CHANGELOG v5.2:
+ * - ✅ FIXED: Removed hardcoded /101125/ legacy path
+ * - ✅ FIXED: Now fetches from /js/ directly (current structure)
+ * - ✅ Added fallback support for legacy paths
+ * - ✅ Better error reporting and logging
+ * 
+ * PREVIOUS (v5.1):
  * 1. ✅ Properly accesses designer.getConfiguration() API
  * 2. ✅ Falls back to direct component/connection access
  * 3. ✅ Fetches SVGs from GitHub and builds symbol registry
@@ -13,7 +19,7 @@
 (function(global) {
   'use strict';
 
-  const EXPORTER_VERSION = '5.1.0';
+  const EXPORTER_VERSION = '5.2.0';
   const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
 
   // SVG assets mapping
@@ -288,7 +294,7 @@
     }
 
     /**
-     * Fetch engine files from GitHub
+     * Fetch engine files from GitHub with fallback support
      */
     async _fetchEngineFiles(setDetail) {
       const ENGINE_FILES = [
@@ -309,20 +315,43 @@
         'js/managers/PressureManager.js'
       ];
 
+      // Try multiple root paths (current path first, then legacy)
+      const roots = [
+        this.options.baseUrl,              // https://sco314.github.io/tank-sim/js/...
+        this.options.baseUrl + '101125/'   // Legacy fallback
+      ];
+
       const code = [];
       for (const file of ENGINE_FILES) {
         setDetail && setDetail(file);
-        try {
-          const url = this.options.baseUrl + '101125/' + file;
-          const response = await fetch(url);
-          if (response.ok) {
-            code.push(await response.text());
+        let fetched = false;
+
+        // Try each root path until one works
+        for (const root of roots) {
+          try {
+            const url = root + file;
+            const response = await fetch(url, { cache: 'default' });
+            if (response.ok) {
+              code.push(await response.text());
+              console.log(`✅ Fetched ${file} from ${root}`);
+              fetched = true;
+              break;
+            }
+          } catch (e) {
+            // Try next root
           }
-        } catch (e) {
-          console.warn(`⚠️ Failed to fetch ${file}`);
+        }
+
+        if (!fetched) {
+          console.warn(`⚠️ Failed to fetch ${file} from any location`);
         }
       }
 
+      if (code.length === 0) {
+        throw new Error('Failed to fetch any engine files. Check network and GitHub URLs.');
+      }
+
+      console.log(`✅ Fetched ${code.length}/${ENGINE_FILES.length} engine files`);
       return code.join('\n\n');
     }
 
