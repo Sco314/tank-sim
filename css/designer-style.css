@@ -829,6 +829,47 @@ html, body {
 }
 
 /* ============================================================================
+   CONNECTION TOOL VISUAL FEEDBACK
+   ============================================================================ */
+
+/* Highlight source component when starting a connection */
+.component.connection-source {
+  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+  opacity: 1 !important;
+}
+
+.component.connection-source .comp-skin {
+  stroke: #fbbf24;
+  stroke-width: 2;
+}
+
+/* Connection lines on canvas */
+.connection {
+  cursor: pointer;
+  transition: stroke-width 0.2s, opacity 0.2s;
+}
+
+.connection:hover {
+  stroke: #60a5fa !important;
+  stroke-width: 5 !important;
+  opacity: 1;
+}
+
+/* Selected component highlight */
+.component.selected {
+  filter: drop-shadow(0 0 6px rgba(127, 200, 255, 0.6));
+}
+
+.component {
+  cursor: pointer;
+  transition: filter 0.2s, opacity 0.2s;
+}
+
+.component:hover {
+  filter: drop-shadow(0 0 4px rgba(127, 200, 255, 0.4));
+}
+
+/* ============================================================================
    UTILITIES
    ============================================================================ */
 
