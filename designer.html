@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Process Simulator Designer v2.0</title>
+  <title>Process Simulator Designer v3.0</title>
   <link rel="stylesheet" href="css/designer-style.css">
 </head>
 <body>
+
+<!-- Hidden SVG sprite container -->
+<svg style="display:none" aria-hidden="true">
+  <defs id="component-sprite">
+    <!-- Symbols will be populated by designer.js -->
+  </defs>
+</svg>
 
 <div class="designer-container">
   
@@ -242,7 +249,7 @@
           
           // Download the file
           progress.update('⏳ Downloading...');
-          const simName = designer.getSimulatorName() || 'simulator';
+          const simName = 'simulator'; // You can make this configurable
           const filename = simName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
           download(filename, html, 'text/html');
           
@@ -271,6 +278,45 @@
       });
       
       console.log('✅ New export button handler initialized');
+    }
+
+    // Save Design button
+    const saveDesignBtn = document.getElementById('saveDesignBtn');
+    if (saveDesignBtn) {
+      saveDesignBtn.addEventListener('click', () => {
+        const designer = window.designer;
+        if (!designer) return;
+        
+        const design = designer.getDesignData();
+        const json = JSON.stringify(design, null, 2);
+        download('design.json', json, 'application/json');
+      });
+    }
+
+    // Import button
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn) {
+      importBtn.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const design = JSON.parse(e.target.result);
+              window.designer.loadDesign(design);
+            } catch (err) {
+              alert('Failed to load design: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+        };
+        input.click();
+      });
     }
   });
 
