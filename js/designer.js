@@ -1,14 +1,15 @@
 /**
- * designer.js - Process Designer v2.0.3 (FIXED)
+ * designer.js - Process Designer v2.1.0 (PORT NORMALIZED)
  *
  * - Connection points: nearest CP snap, hover markers, ports stored in connections
  * - Delegates all exporting to exporter.js (SimulatorExporter)
  * - Renders components via SVG <symbol> (preferred) or image fallback
  * - Drag to move components (updates connected pipes live)
  * - FIXED: All methods inside class, proper syntax, exporter compatibility
+ * - NEW v2.1.0: Port name normalization matching exporter (P_IN/P_OUT aliases)
  */
 
-const DESIGNER_VERSION = '2.0.3';
+const DESIGNER_VERSION = '2.1.0';
 
 function byId(id) { return document.getElementById(id); }
 function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
@@ -93,6 +94,11 @@ class ProcessDesigner {
         symbol.innerHTML = def.symbol;
         defs.appendChild(symbol);
       }
+    }
+
+    // ✅ QA: Check for unscoped .cls-* classes
+    if (defs.innerHTML && /\bclass="[^"]*\bcls-\d+/.test(defs.innerHTML)) {
+      console.warn('🔎 Unscoped .cls-* may remain in the sprite; check _scopeSvgClasses().');
     }
   }
 
@@ -702,13 +708,42 @@ class ProcessDesigner {
   }
 
   /**
-   * ✅ FIXED: Complete connection with proper port references
+   * ✅ FIXED: Complete connection with proper port references and smart defaults
    */
   _completeConnection(targetComponentId) {
     const fromId = this.connectionStart;
     const toId = targetComponentId;
     const fromComp = this.components.get(fromId);
     const toComp = this.components.get(toId);
+
+    // ✅ Helper: prefer canonical port names with fallbacks
+    const preferPort = (wanted, comp, fallbackList = []) => {
+      const ports = comp.ports || {};
+      
+      // Try wanted name first (normalized)
+      const wantedKey = this._normalizePortName(wanted);
+      if (ports[wantedKey]) return wantedKey;
+      
+      // Try fallbacks
+      for (const fallback of fallbackList) {
+        const fbKey = this._normalizePortName(fallback);
+        if (ports[fbKey]) return fbKey;
+      }
+      
+      // Final: first available key (stable order)
+      const keys = Object.keys(ports);
+      return keys.length > 0 ? keys[0] : null;
+    };
+
+    // Choose best output port from source
+    const fromPortName = preferPort('P_OUT', fromComp, ['outlet', 'out', 'discharge', 'OUT']);
+    
+    // Choose best input port for target
+    const toPortName = preferPort('P_IN', toComp, ['inlet', 'in', 'suction', 'IN']);
+
+    if (!fromPortName || !toPortName) {
+      console.warn('⚠️ No valid ports found; connection may anchor to centers.', { fromComp, toComp });
+    }
 
     // Choose nearest CP on the "from" component
     const fromCenter = this._getComponentCenter(fromComp);
@@ -719,16 +754,16 @@ class ProcessDesigner {
 
     const id = `conn${this.nextConnectionId++}`;
     
-    // ✅ FIXED: Store full "componentId.portName" format
+    // ✅ Store normalized port names
     const connection = {
       id,
       from: fromId,
       to: toId,
-      fromPoint: fromCP.id || fromCP.name || 'OUT',
-      toPoint: toCP.id || toCP.name || 'IN',
-      // ✅ NEW: Full pipe reference for exporter
-      pipeFrom: `${fromId}.${fromCP.id || fromCP.name || 'OUT'}`,
-      pipeTo: `${toId}.${toCP.id || toCP.name || 'IN'}`
+      fromPoint: fromPortName || fromCP.id || fromCP.name || 'OUT',
+      toPoint: toPortName || toCP.id || toCP.name || 'IN',
+      // ✅ Full pipe reference for exporter
+      pipeFrom: `${fromId}.${fromPortName || fromCP.id || fromCP.name || 'OUT'}`,
+      pipeTo: `${toId}.${toPortName || toCP.id || toCP.name || 'IN'}`
     };
     
     this.connections.push(connection);
@@ -736,7 +771,7 @@ class ProcessDesigner {
     this._updateStats();
 
     this._cancelConnection();
-    console.log(`Connected ${fromComp.name}.${connection.fromPoint} → ${toComp.name}.${connection.toPoint}`);
+    console.log(`✅ Connected ${fromComp.name}.${connection.fromPoint} → ${toComp.name}.${connection.toPoint}`);
   }
 
   _renderConnection(conn) {
@@ -769,12 +804,32 @@ class ProcessDesigner {
     pathEl.setAttribute('d', `M ${fromCP.x} ${fromCP.y} L ${toCP.x} ${toCP.y}`);
   }
 
+  /**
+   * ✅ Map common aliases to canonical names (match exporter)
+   */
+  _normalizePortName(name) {
+    if (!name) return name;
+    const n = String(name).toLowerCase();
+    if (['in', 'inlet', 'suction', 'p_in', 'pin'].includes(n)) return 'P_IN';
+    if (['out', 'outlet', 'discharge', 'p_out', 'pout'].includes(n)) return 'P_OUT';
+    return String(name).toUpperCase(); // keep other custom names uppercase
+  }
+
   _resolveCP(comp, pointName) {
+    // ✅ Normalize port name for consistent lookup
+    const normalizedName = this._normalizePortName(pointName);
+    
     const type = (comp.type || comp.key || '').toLowerCase();
     const lib = (this.componentLibrary?.components || {});
     const def = lib[type] || {};
     const offsets = def.connectionPoints || [];
-    const found = offsets.find(o => (o.name === pointName || o.id === pointName));
+    
+    // Try to find by normalized name first, then original name
+    const found = offsets.find(o => {
+      const oName = this._normalizePortName(o.name || o.id);
+      return oName === normalizedName || (o.name === pointName || o.id === pointName);
+    });
+    
     if (found) return { x: comp.x + (found.x || 0), y: comp.y + (found.y || 0) };
     return null;
   }
