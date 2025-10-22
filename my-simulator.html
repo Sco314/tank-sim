@@ -1,81 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Simulator</title>
   <style>
-    body{margin:0;background:#0b1020;color:#dbe4ff;font-family:ui-sans-serif,system-ui,sans-serif;}
-    header{padding:10px 14px;background:#111827;border-bottom:1px solid #1f2937;display:flex;justify-content:space-between;align-items:center}
-    h1{font-size:16px;margin:0;color:#c7d2fe}
-    #container{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
-    #stage{position:relative}
-    #canvas{display:block;width:100%;height:calc(100vh - 56px)}
-    .component .comp-skin{color:var(--comp-color,#4f46e5)}
-    .component.Valve .comp-skin{--comp-color:#0ea5e9}
-    .component.Pump .comp-skin{--comp-color:#4f46e5}
-    .component.PumpFixed .comp-skin{--comp-color:#4f46e5}
-    .component.Tank .comp-skin{--comp-color:#16a34a}
-    .component text.label{fill:#9bb0ff}
-    .component.Missing rect{fill:#fee;stroke:#c00}
-    .component{cursor:pointer}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background: #0f172a; 
+      color: #e2e8f0; 
+      overflow: hidden;
+    }
+    #canvas { 
+      width: 100vw; 
+      height: 100vh; 
+      background: #1e293b; 
+      cursor: move; 
+    }
+    .component { cursor: pointer; }
+    .component:hover { filter: brightness(1.2); }
+    .component:focus { outline: 2px solid #3b82f6; outline-offset: 4px; }
+    .label { fill: #e2e8f0; font-size: 12px; user-select: none; pointer-events: none; }
+    #design-data { display: none; }
   </style>
-  <svg width="0" height="0" style="position:absolute">
-  <defs id="component-sprite">
-    <symbol id="sym-Valve-Icon-handle-right-01" viewBox="0 0 683.25 693.75">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #949299;
-      }
+</head>
+<body>
+  <svg id="canvas" viewBox="0 0 1200 800">
+    <defs id="component-sprite">
+      <symbol id="sym-cent-pump-inlet-right-01" viewBox="0 0 171.75 120.75">
 
-      .cls-2 {
-        fill: none;
-      }
-
-      .cls-3 {
-        fill: #15bac7;
-      }
-
-      .cls-4 {
-        fill: #384551;
-      }
-    </style>
-  </defs>
-  <path id="valve_body" data-name="valve body" class="cls-4" d="M282.337,610.802c.05,0,.096-.029.117-.075l2.308-5.056c.012.003.024-.005.024-.018l.18-124.649c0-.015.004-.029.012-.042,7.741-11.879,17.812-23.584,28.266-33.172,4.473-4.102,17.262-15.364,22.861-15.364h114.186c.038,0,.07.031.076.068l1.131-.128,1.476-.048c.904-74.156.392-199.418.394-197.386,0,.466-.304-.878-.749-1.017-.453-.142-1.622.197-1.884.593l-1.429.19c-.017.026-1.714.667-1.714.667l-5.077-.216s-72.874,1.59-108.593-.021c-.012,0-.024-.004-.034-.01-19.873-11.086-37.082-29.101-49.058-48.334-.007-.012-.011-.026-.012-.04l-.784-123.293c0-.017-.006-.033-.016-.046l-1.787-2.262c-.014-.018-.036-.029-.059-.029l-204.576.01-.958,128.813c-19.319,24.66-42.149,46.968-55.057,76.044-20.028,45.116-19.005,98.913,4.088,142.902,12.614,24.027,32.533,43.801,48.853,65.39l-1.005,135.145,3.303,1.559c.01.005.021.007.032.007l205.483-.182h.002Z"/>
-  <path id="handle" class="cls-3" d="M676.347,244.544c.149,63.987-.026,128.012,0,192,.008,18.836.518,37.665.749,56.25.003.25-.002.5,0,.75l-1.483.004c.104,3.102-1.148,6.137-2.263,8.996-2.093,1.248-1.163.995-2.565,2.292-1.195,1.106-3.052,1.256-2.679,2.958-3.55,1.673-3.556.957-5.994,1.5-2.769.617-2.976,2.22-7.695,1.322-14.876-2.833-17.809-17.114-16.295-30.181.108-1.644-1.707-1.988-2.231-2.64-7.459-9.281-15.153-18.345-22.476-27.75-.215-.276-.122-1.462-.712-1.88l-11.275-12.37c-3.676-4.78-7.521-9.473-11.238-14.25-2.273-2.921-4.619-6.045-7.095-9.036-1.562-1.887.018-1.56-2.645-2.964-.456-1.272-.093-2.307-2.248-2.25-2.335-3.159-4.969-6.011-7.492-9-.085-1.363-.701-2.321-1.493-3.376-2.864-3.816-6.99-7.59-9.745-10.874-4.183-4.987-11.927-13.533-14.984-18.75-.167-.284.469-1.422-.442-1.54l-39.265.04v-58.5c11.958-.852,25.396,1.122,37.173.054,1.465-.133,1.768-.593,2.534-.804,1.29-.355,1.567.034,3.036-1.068,2.217-1.664,7.961-9.574,10.45-12.432,11.64-13.368,22.184-27.368,32.964-41.25,5.457-7.028,11.049-13.947,16.482-21,.581-1.069,2.033-1.046,2.771-1.73,4.257-3.947,11.866-14.534,15.941-19.663,2.144-2.699,5.448-5.975,6.012-9.357,1.688-1.75,1.738-1.053,2.997-3.75,5.225-1.385,2.536-11.444,3.005-16.116,1.447-14.415,18.027-21.801,29.911-13.461,2.634,1.848,3.858,5.26,6.79,6.327.34,1.038,1.416,3.789,1.498,4.5,2.297,19.896-.049,48.141,0,69h.002ZM637.389,415.544l.753-169.122c-1.413-.713-1.555,1.803-1.502,2.622-1.277.275-1.709.792-2.502,1.699-8.252,9.426-18.595,22.628-25.967,32.801-2.244,1.167-2.801,2.463-3.746,4.5-2.56,1.376-4.749,5.42-6.743,8.25-1.46,2.072-6.606,6.742-4.5,8.612l19.875.377c2.219.403,1.547,1.967,1.857,2.26v55.5h-26.222c-1.006,2.852.503,4.085,2.231,6.339.882,1.151.937-.757,1.515-1.089,11.371,18.164,29.592,34.456,41.571,52.509l2.631,2.634c3.355-1.088,2.418-5.611.749-7.893h0Z"/>
-  <path id="side_1" data-name="side 1" class="cls-1" d="M285.878,606.855c13.228,1.041,27.722-.771,41.086-.013,3.548,3.62,10.284,6.231,13.431,10.722,6.669,9.517,6.802,35.148.894,44.724-3.324,5.387-11.479,12.278-17.885,12.846l-284.544-.209c-20.593-5.335-24.929-25.402-22.319-44.486.771-5.638,5.039-14.065,9.62-17.54,2.926-2.219,6.695-3.426,8.923-6.031"/>
-  <path id="side_2" data-name="side 2" class="cls-1" d="M73.519,62.353c-1.045.196-2.566-.055-3.746,0"/>
-  <path id="side_2-2" data-name="side 2-2" class="cls-1" d="M45.05,62.353c-14.836-.938-25.54-8.931-26.959-24.387C16.408,19.625,19.392.444,39.609-4.968l283.796-.21c7.82.119,18.731,10.132,20.957,17.27,1.554,4.983,2.243,18.988,1.852,24.377-.916,12.619-7.447,21.272-19.137,25.842l-43.785.042"/>
-  <path id="yoke" class="cls-1" d="M509.548,361.603v97.125c0,3.174-5.841,11.707-8.706,13.752-16.621,11.864-45.824,7.869-49.731-14.877,1.242-.779.747-2.845.762-4.114.909-73.373.833-146.94.751-220.413l-1.513-.473c-2.013-14.758-3.473-34.816,11.811-42.551,7.539-3.816,26.959-3.579,34.585.231,3.01,1.504,12.041,11.717,12.041,14.945v96.375"/>
-  <circle id="cp1" class="cls-2" cx="177.706" cy="28.588" r="1.503"/>
-  <circle id="cp2" class="cls-2" cx="180.712" cy="640.893" r="1.503"/>
-</symbol>
-    <symbol id="sym-Tankstoragevessel-01" viewBox="0 0 359.25 654.75">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #949299;
-      }
-
-      .cls-2 {
-        fill: #15bac7;
-      }
-
-      .cls-3 {
-        fill: #384551;
-      }
-    </style>
-  </defs>
-  <rect class="cls-2" x="10.14" y="88.127" width="342.685" height="396.825"/>
-  <path class="cls-1" d="M8.571,191.429c0-30.004,1.284-90.485,1.689-108.809.076-3.429.121-5.382.121-5.382l2.381-5.81,6.19-9.143,8.762-6.286,14.476-7.714,37.143-14.571,24.667-7.429,39.619-6.286,12.762-1.524h47.429l25.714,2.095,64.19,16.762,38.159,16.381,8,5.333,8.254,8.127,3.556,9.016,1.143,11.937v89.016c-2.207.143-5.466.379-9.397.762-37.613,3.667-47.026,12.062-66.286,13.524-31.318,2.377-33.111-17.795-63.619-14.667-24.588,2.521-24.952,15.781-48,17.524-31.257,2.364-37.144-21.526-66.286-18.286-22.112,2.459-27.281,17.164-54.857,19.175-13.013.949-23.861-1.451-30.857-3.556l-4.952-.19Z"/>
-  <rect class="cls-1" x="292.762" y="149.714" width="60.064" height="335.619"/>
-  <rect class="cls-1" x="8.571" y="149.714" width="60.064" height="335.619"/>
-  <rect class="cls-1" x="8.571" y="458.286" width="344.381" height="27.048"/>
-  <rect class="cls-3" x="10.26" y="82.62" width="342.565" height="5.507"/>
-  <rect class="cls-3" x="8.342" y="482.199" width="344.483" height="5.507"/>
-</symbol>
-    <symbol id="sym-cent-pump-inlet-right-01" viewBox="0 0 171.75 120.75">
   <defs>
     <style>
       .cls-1 {
@@ -152,224 +106,116 @@
   <rect class="cls-3" x="108.544" y="64.847" width="17.007" height="8.534"/>
   <circle id="cp2" class="cls-5" cx="138.52" cy="7.826" r="1.503"/>
   <circle id="cp1" class="cls-5" cx="165.381" cy="69.381" r="1.503"/>
-</symbol>
-    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#41d1ff"/>
-      <stop offset="100%" stop-color="#0077ff"/>
-    </linearGradient>
-  </defs>
-</svg>
-</head>
-<body>
-  <div id="container">
-    <header>
-      <h1>My Simulator</h1>
-      <div id="status">Exported with Exporter v5.0.0</div>
-    </header>
-    <main id="stage">
-      <svg id="canvas" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-        <path d="M20 0 H0 V20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
-      </pattern>
-    </defs>
-    <rect x="0" y="0" width="1200" height="800" fill="url(#grid)" />
 
-    <g id="pipes"><path d="M118,154 L199,159" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M199,159 L358,162" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M358,162 L554,211" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M603,74 L607,162" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M517,162 L554,211" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M554,211 L682,169" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M682,169 L803,170" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M121,296 L202,295" stroke="#93c5fd" stroke-width="3" fill="none"/>
-<path d="M202,295 L554,291" stroke="#93c5fd" stroke-width="3" fill="none"/></g>
-    <g id="components"><g id="1" class="component Missing" transform="translate(73, 154)">
-  <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
-  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
-</g><g id="2" class="component Valve" transform="translate(244, 159) rotate(0)" tabindex="0" role="button">
-  <use href="#sym-Valve-Icon-handle-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
-  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Control Valve</text>
-</g><g id="3" class="component Valve" transform="translate(727, 169) rotate(0)" tabindex="0" role="button">
-  <use href="#sym-Valve-Icon-handle-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
-  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Control Valve</text>
-</g><g id="4" class="component PumpFixed" transform="translate(247, 295) rotate(0)" tabindex="0" role="button">
-  <use href="#sym-cent-pump-inlet-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
-  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Fixed Speed Pump</text>
-</g><g id="5" class="component Missing" transform="translate(848, 170)">
-  <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
-  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Drain (Discharge)</text>
-</g><g id="6" class="component PumpFixed" transform="translate(403, 162) rotate(0)" tabindex="0" role="button">
-  <use href="#sym-cent-pump-inlet-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
-  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Fixed Speed Pump</text>
-</g><g id="7" class="component Missing" transform="translate(76, 296)">
-  <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
-  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
-</g><g id="8" class="component Tank" transform="translate(554, 251) rotate(0)" tabindex="0" role="button">
+      </symbol>
+      <symbol id="sym-Tankstoragevessel-01" viewBox="0 0 359.25 654.75">
+
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #949299;
+      }
+
+      .cls-2 {
+        fill: #15bac7;
+      }
+
+      .cls-3 {
+        fill: #384551;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" x="10.14" y="88.127" width="342.685" height="396.825"/>
+  <path class="cls-1" d="M8.571,191.429c0-30.004,1.284-90.485,1.689-108.809.076-3.429.121-5.382.121-5.382l2.381-5.81,6.19-9.143,8.762-6.286,14.476-7.714,37.143-14.571,24.667-7.429,39.619-6.286,12.762-1.524h47.429l25.714,2.095,64.19,16.762,38.159,16.381,8,5.333,8.254,8.127,3.556,9.016,1.143,11.937v89.016c-2.207.143-5.466.379-9.397.762-37.613,3.667-47.026,12.062-66.286,13.524-31.318,2.377-33.111-17.795-63.619-14.667-24.588,2.521-24.952,15.781-48,17.524-31.257,2.364-37.144-21.526-66.286-18.286-22.112,2.459-27.281,17.164-54.857,19.175-13.013.949-23.861-1.451-30.857-3.556l-4.952-.19Z"/>
+  <rect class="cls-1" x="292.762" y="149.714" width="60.064" height="335.619"/>
+  <rect class="cls-1" x="8.571" y="149.714" width="60.064" height="335.619"/>
+  <rect class="cls-1" x="8.571" y="458.286" width="344.381" height="27.048"/>
+  <rect class="cls-3" x="10.26" y="82.62" width="342.565" height="5.507"/>
+  <rect class="cls-3" x="8.342" y="482.199" width="344.483" height="5.507"/>
+
+      </symbol>
+      <symbol id="sym-Valve-Icon-handle-right-01" viewBox="0 0 683.25 693.75">
+
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #949299;
+      }
+
+      .cls-2 {
+        fill: none;
+      }
+
+      .cls-3 {
+        fill: #15bac7;
+      }
+
+      .cls-4 {
+        fill: #384551;
+      }
+    </style>
+  </defs>
+  <path id="valve_body" data-name="valve body" class="cls-4" d="M282.337,610.802c.05,0,.096-.029.117-.075l2.308-5.056c.012.003.024-.005.024-.018l.18-124.649c0-.015.004-.029.012-.042,7.741-11.879,17.812-23.584,28.266-33.172,4.473-4.102,17.262-15.364,22.861-15.364h114.186c.038,0,.07.031.076.068l1.131-.128,1.476-.048c.904-74.156.392-199.418.394-197.386,0,.466-.304-.878-.749-1.017-.453-.142-1.622.197-1.884.593l-1.429.19c-.017.026-1.714.667-1.714.667l-5.077-.216s-72.874,1.59-108.593-.021c-.012,0-.024-.004-.034-.01-19.873-11.086-37.082-29.101-49.058-48.334-.007-.012-.011-.026-.012-.04l-.784-123.293c0-.017-.006-.033-.016-.046l-1.787-2.262c-.014-.018-.036-.029-.059-.029l-204.576.01-.958,128.813c-19.319,24.66-42.149,46.968-55.057,76.044-20.028,45.116-19.005,98.913,4.088,142.902,12.614,24.027,32.533,43.801,48.853,65.39l-1.005,135.145,3.303,1.559c.01.005.021.007.032.007l205.483-.182h.002Z"/>
+  <path id="handle" class="cls-3" d="M676.347,244.544c.149,63.987-.026,128.012,0,192,.008,18.836.518,37.665.749,56.25.003.25-.002.5,0,.75l-1.483.004c.104,3.102-1.148,6.137-2.263,8.996-2.093,1.248-1.163.995-2.565,2.292-1.195,1.106-3.052,1.256-2.679,2.958-3.55,1.673-3.556.957-5.994,1.5-2.769.617-2.976,2.22-7.695,1.322-14.876-2.833-17.809-17.114-16.295-30.181.108-1.644-1.707-1.988-2.231-2.64-7.459-9.281-15.153-18.345-22.476-27.75-.215-.276-.122-1.462-.712-1.88l-11.275-12.37c-3.676-4.78-7.521-9.473-11.238-14.25-2.273-2.921-4.619-6.045-7.095-9.036-1.562-1.887.018-1.56-2.645-2.964-.456-1.272-.093-2.307-2.248-2.25-2.335-3.159-4.969-6.011-7.492-9-.085-1.363-.701-2.321-1.493-3.376-2.864-3.816-6.99-7.59-9.745-10.874-4.183-4.987-11.927-13.533-14.984-18.75-.167-.284.469-1.422-.442-1.54l-39.265.04v-58.5c11.958-.852,25.396,1.122,37.173.054,1.465-.133,1.768-.593,2.534-.804,1.29-.355,1.567.034,3.036-1.068,2.217-1.664,7.961-9.574,10.45-12.432,11.64-13.368,22.184-27.368,32.964-41.25,5.457-7.028,11.049-13.947,16.482-21,.581-1.069,2.033-1.046,2.771-1.73,4.257-3.947,11.866-14.534,15.941-19.663,2.144-2.699,5.448-5.975,6.012-9.357,1.688-1.75,1.738-1.053,2.997-3.75,5.225-1.385,2.536-11.444,3.005-16.116,1.447-14.415,18.027-21.801,29.911-13.461,2.634,1.848,3.858,5.26,6.79,6.327.34,1.038,1.416,3.789,1.498,4.5,2.297,19.896-.049,48.141,0,69h.002ZM637.389,415.544l.753-169.122c-1.413-.713-1.555,1.803-1.502,2.622-1.277.275-1.709.792-2.502,1.699-8.252,9.426-18.595,22.628-25.967,32.801-2.244,1.167-2.801,2.463-3.746,4.5-2.56,1.376-4.749,5.42-6.743,8.25-1.46,2.072-6.606,6.742-4.5,8.612l19.875.377c2.219.403,1.547,1.967,1.857,2.26v55.5h-26.222c-1.006,2.852.503,4.085,2.231,6.339.882,1.151.937-.757,1.515-1.089,11.371,18.164,29.592,34.456,41.571,52.509l2.631,2.634c3.355-1.088,2.418-5.611.749-7.893h0Z"/>
+  <path id="side_1" data-name="side 1" class="cls-1" d="M285.878,606.855c13.228,1.041,27.722-.771,41.086-.013,3.548,3.62,10.284,6.231,13.431,10.722,6.669,9.517,6.802,35.148.894,44.724-3.324,5.387-11.479,12.278-17.885,12.846l-284.544-.209c-20.593-5.335-24.929-25.402-22.319-44.486.771-5.638,5.039-14.065,9.62-17.54,2.926-2.219,6.695-3.426,8.923-6.031"/>
+  <path id="side_2" data-name="side 2" class="cls-1" d="M73.519,62.353c-1.045.196-2.566-.055-3.746,0"/>
+  <path id="side_2-2" data-name="side 2-2" class="cls-1" d="M45.05,62.353c-14.836-.938-25.54-8.931-26.959-24.387C16.408,19.625,19.392.444,39.609-4.968l283.796-.21c7.82.119,18.731,10.132,20.957,17.27,1.554,4.983,2.243,18.988,1.852,24.377-.916,12.619-7.447,21.272-19.137,25.842l-43.785.042"/>
+  <path id="yoke" class="cls-1" d="M509.548,361.603v97.125c0,3.174-5.841,11.707-8.706,13.752-16.621,11.864-45.824,7.869-49.731-14.877,1.242-.779.747-2.845.762-4.114.909-73.373.833-146.94.751-220.413l-1.513-.473c-2.013-14.758-3.473-34.816,11.811-42.551,7.539-3.816,26.959-3.579,34.585.231,3.01,1.504,12.041,11.717,12.041,14.945v96.375"/>
+  <circle id="cp1" class="cls-2" cx="177.706" cy="28.588" r="1.503"/>
+  <circle id="cp2" class="cls-2" cx="180.712" cy="640.893" r="1.503"/>
+
+      </symbol>
+    </defs>
+    <g id="pipes">
+      <path d="M170,-11 L217,-9" stroke="#93c5fd" stroke-width="3" fill="none"/>
+      <path d="M217,-9 L402,-58" stroke="#93c5fd" stroke-width="3" fill="none"/>
+      <path d="M402,-58 L523,-3" stroke="#93c5fd" stroke-width="3" fill="none"/>
+      <path d="M523,-3 L649,-7" stroke="#93c5fd" stroke-width="3" fill="none"/>
+      <path d="M649,-7 L798,-4" stroke="#93c5fd" stroke-width="3" fill="none"/>
+    </g>
+    <g id="components">
+<g id="1" class="component Tank" transform="translate(402, -18) rotate(0)" tabindex="0" role="button">
   <use href="#sym-Tankstoragevessel-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
   <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Tank</text>
-</g><g id="9" class="component Missing" transform="translate(558, 74)">
+</g>
+<g id="3" class="component Missing" transform="translate(125, -11)">
   <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
   <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Feed (Water Supply)</text>
-</g><g id="10" class="component Valve" transform="translate(562, 162) rotate(0)" tabindex="0" role="button">
+</g>
+<g id="4" class="component Valve" transform="translate(262, -9) rotate(0)" tabindex="0" role="button">
   <use href="#sym-Valve-Icon-handle-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
   <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Control Valve</text>
-</g></g>
+</g>
+<g id="5" class="component PumpFixed" transform="translate(568, -3) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-cent-pump-inlet-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
+  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Fixed Speed Pump</text>
+</g>
+<g id="6" class="component Valve" transform="translate(694, -7) rotate(0)" tabindex="0" role="button">
+  <use href="#sym-Valve-Icon-handle-right-01" class="comp-skin" width="100" height="100" x="-50" y="-50" />
+  <text class="label" x="0" y="70" text-anchor="middle" font-size="12">Control Valve</text>
+</g>
+<g id="7" class="component Missing" transform="translate(843, -4)">
+  <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
+  <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">Drain (Discharge)</text>
+</g>
+    </g>
   </svg>
-    </main>
-  </div>
 
-  <script id="design-data" type="application/json">{
+  <script id="design-data" type="application/json">
+{
   "metadata": {
-    "exportedAt": "2025-10-21T20:10:25.989Z",
-    "exporter": "v5.0.0",
+    "exportedAt": "2025-10-22T13:47:51.013Z",
+    "exporter": "v5.2.0",
     "baseUrl": "https://sco314.github.io/tank-sim/",
     "name": "My Simulator"
   },
   "components": [
     {
       "id": "1",
-      "name": "Feed (Water Supply)",
-      "type": "Feed",
-      "x": 73.33332824707031,
-      "y": 154.48275756835938,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "OUT": {
-          "x": 95,
-          "y": 50
-        }
-      }
-    },
-    {
-      "id": "2",
-      "name": "Control Valve",
-      "type": "Valve",
-      "x": 244.5977020263672,
-      "y": 159.3103485107422,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "IN": {
-          "x": 5,
-          "y": 50
-        },
-        "OUT": {
-          "x": 95,
-          "y": 50
-        }
-      }
-    },
-    {
-      "id": "3",
-      "name": "Control Valve",
-      "type": "Valve",
-      "x": 727.3563232421875,
-      "y": 169.42530822753906,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "IN": {
-          "x": 5,
-          "y": 50
-        },
-        "OUT": {
-          "x": 95,
-          "y": 50
-        }
-      }
-    },
-    {
-      "id": "4",
-      "name": "Fixed Speed Pump",
-      "type": "PumpFixed",
-      "x": 247.3563232421875,
-      "y": 295.1723937988281,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "LEFT": {
-          "x": 5,
-          "y": 50
-        },
-        "RIGHT": {
-          "x": 95,
-          "y": 50
-        },
-        "TOP": {
-          "x": 50,
-          "y": 5
-        },
-        "BOTTOM": {
-          "x": 50,
-          "y": 95
-        }
-      }
-    },
-    {
-      "id": "5",
-      "name": "Drain (Discharge)",
-      "type": "Drain",
-      "x": 848.7356567382812,
-      "y": 170.57472229003906,
-      "orientation": "L",
-      "variant": "std",
-      "ports": {
-        "IN": {
-          "x": 5,
-          "y": 50
-        }
-      }
-    },
-    {
-      "id": "6",
-      "name": "Fixed Speed Pump",
-      "type": "PumpFixed",
-      "x": 403.4482727050781,
-      "y": 162.29884338378906,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "LEFT": {
-          "x": 5,
-          "y": 50
-        },
-        "RIGHT": {
-          "x": 95,
-          "y": 50
-        },
-        "TOP": {
-          "x": 50,
-          "y": 5
-        },
-        "BOTTOM": {
-          "x": 50,
-          "y": 95
-        }
-      }
-    },
-    {
-      "id": "7",
-      "name": "Feed (Water Supply)",
-      "type": "Feed",
-      "x": 76.55172729492188,
-      "y": 296.09197998046875,
-      "orientation": "R",
-      "variant": "std",
-      "ports": {
-        "OUT": {
-          "x": 95,
-          "y": 50
-        }
-      }
-    },
-    {
-      "id": "8",
       "name": "Tank",
       "type": "Tank",
-      "x": 554.4828491210938,
-      "y": 251.03448486328125,
+      "x": 402.69232177734375,
+      "y": -18.461532592773438,
       "orientation": "U",
       "variant": "std",
       "ports": {
@@ -384,11 +230,11 @@
       }
     },
     {
-      "id": "9",
+      "id": "3",
       "name": "Feed (Water Supply)",
       "type": "Feed",
-      "x": 558.8505859375,
-      "y": 74.25287246704102,
+      "x": 125.76922607421875,
+      "y": -11.923072814941406,
       "orientation": "R",
       "variant": "std",
       "ports": {
@@ -399,11 +245,11 @@
       }
     },
     {
-      "id": "10",
+      "id": "4",
       "name": "Control Valve",
       "type": "Valve",
-      "x": 562.298828125,
-      "y": 162.75860595703125,
+      "x": 262.69232177734375,
+      "y": -9.230762481689453,
       "orientation": "R",
       "variant": "std",
       "ports": {
@@ -416,57 +262,100 @@
           "y": 50
         }
       }
+    },
+    {
+      "id": "5",
+      "name": "Fixed Speed Pump",
+      "type": "PumpFixed",
+      "x": 568.4615478515625,
+      "y": -3.461531639099121,
+      "orientation": "R",
+      "variant": "std",
+      "ports": {
+        "LEFT": {
+          "x": 5,
+          "y": 50
+        },
+        "RIGHT": {
+          "x": 95,
+          "y": 50
+        },
+        "TOP": {
+          "x": 50,
+          "y": 5
+        },
+        "BOTTOM": {
+          "x": 50,
+          "y": 95
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Control Valve",
+      "type": "Valve",
+      "x": 694.2307739257812,
+      "y": -7.307692527770996,
+      "orientation": "R",
+      "variant": "std",
+      "ports": {
+        "IN": {
+          "x": 5,
+          "y": 50
+        },
+        "OUT": {
+          "x": 95,
+          "y": 50
+        }
+      }
+    },
+    {
+      "id": "7",
+      "name": "Drain (Discharge)",
+      "type": "Drain",
+      "x": 843.0769653320312,
+      "y": -4.230768203735352,
+      "orientation": "L",
+      "variant": "std",
+      "ports": {
+        "IN": {
+          "x": 5,
+          "y": 50
+        }
+      }
     }
   ],
   "pipes": [
     {
       "id": "conn1",
-      "from": "1.OUT",
-      "to": "2.IN"
+      "from": "3.OUT",
+      "to": "4.IN"
     },
     {
       "id": "conn2",
-      "from": "2.IN",
-      "to": "6.LEFT"
+      "from": "4.IN",
+      "to": "1.IN"
     },
     {
       "id": "conn3",
-      "from": "6.LEFT",
-      "to": "8.IN"
+      "from": "1.IN",
+      "to": "5.LEFT"
     },
     {
       "id": "conn4",
-      "from": "9.OUT",
-      "to": "10.OUT"
+      "from": "5.LEFT",
+      "to": "6.IN"
     },
     {
       "id": "conn5",
-      "from": "10.IN",
-      "to": "8.IN"
-    },
-    {
-      "id": "conn6",
-      "from": "8.IN",
-      "to": "3.IN"
-    },
-    {
-      "id": "conn7",
-      "from": "3.IN",
-      "to": "5.IN"
-    },
-    {
-      "id": "conn8",
-      "from": "7.OUT",
-      "to": "4.LEFT"
-    },
-    {
-      "id": "conn9",
-      "from": "4.LEFT",
-      "to": "8.OUT"
+      "from": "6.IN",
+      "to": "7.IN"
     }
   ]
-}</script>
-  <script>/* ===== js/core/Component.js ===== */
+}
+  </script>
+
+  <script>
 /**
  * Component.js - Base class for all system components
  * 
@@ -660,7 +549,6 @@ class Component {
 window.Component = Component;
 
 
-/* ===== js/core/FlowNetwork.js ===== */
 /**
  * FlowNetwork.js - Manages flow calculations between components
  * 
@@ -1096,7 +984,6 @@ class FlowNetwork {
 window.FlowNetwork = FlowNetwork;
 
 
-/* ===== js/core/ComponentManager.js ===== */
 /**
  * ComponentManager.js - Master orchestrator with boundary component support
  */
@@ -1383,7 +1270,1043 @@ class ComponentManager {
 window.ComponentManager = ComponentManager;
 
 
-/* ===== js/managers/TankManager.js ===== */
+/**
+ * Pump.js - Base pump component with proper flow constraints
+ * 
+ * Pump reads available supply from tank and constrains by valve position
+ */
+
+class Pump extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'pump';
+    this.pumpType = config.pumpType || 'fixed';
+    
+    // Physical properties
+    this.capacity = config.capacity || 1.0;
+    this.efficiency = config.efficiency || 0.95;
+    this.power = config.power || 0;
+    
+    // Operating state
+    this.running = false;
+    this.speed = config.initialSpeed || 0;
+    this.requiresMinLevel = config.requiresMinLevel || 0;
+    
+    // Cavitation
+    this.cavitation = {
+      enabled: config.cavitation?.enabled || false,
+      triggerTime: config.cavitation?.triggerTime || 60,
+      duration: config.cavitation?.duration || 5,
+      flowReduction: config.cavitation?.flowReduction || 0.3,
+      active: false,
+      startTime: null,
+      elapsedTime: 0
+    };
+    
+    // Tracking
+    this.runTime = 0;
+    this.startCount = 0;
+  }
+
+  start() {
+    if (this.running) return;
+    
+    this.running = true;
+    this.startCount++;
+    
+    if (this.cavitation.enabled && this.cavitation.triggerTime === null) {
+      this._startCavitation();
+    }
+    
+    this.notifyChange();
+    console.log(`${this.name} started (start count: ${this.startCount})`);
+  }
+
+  stop() {
+    if (!this.running) return;
+    
+    this.running = false;
+    this.cavitation.active = false;
+    this.cavitation.startTime = null;
+    
+    this.notifyChange();
+    console.log(`${this.name} stopped`);
+  }
+
+  setSpeed(speed) {
+    this.speed = Math.max(0, Math.min(1, speed));
+    this.notifyChange();
+  }
+
+  canRun(sourceLevel) {
+    if (sourceLevel === undefined) return true;
+    return sourceLevel >= this.requiresMinLevel;
+  }
+
+  _startCavitation() {
+    if (!this.cavitation.enabled) return;
+    
+    this.cavitation.active = true;
+    this.cavitation.startTime = performance.now();
+    console.warn(`⚠️ ${this.name} CAVITATION STARTED!`);
+  }
+
+  _updateCavitation(dt) {
+    if (!this.cavitation.enabled || !this.running) return;
+    
+    this.cavitation.elapsedTime += dt;
+    
+    if (!this.cavitation.active && 
+        this.cavitation.triggerTime !== null && 
+        this.cavitation.elapsedTime >= this.cavitation.triggerTime) {
+      this._startCavitation();
+    }
+    
+    if (this.cavitation.active) {
+      const cavitationDuration = (performance.now() - this.cavitation.startTime) / 1000;
+      if (cavitationDuration >= this.cavitation.duration) {
+        this.cavitation.active = false;
+        this.cavitation.startTime = null;
+        console.log(`${this.name} cavitation ended`);
+      }
+    }
+  }
+
+  /**
+   * SMART OUTPUT: Pump constrains flow based on:
+   * 1. Available supply from tank (read from network)
+   * 2. Pump capacity
+   * 3. Downstream valve position
+   */
+getOutputFlow() {
+  if (!this.running) return 0;
+  
+  let maxFlow = this.capacity * this.speed * this.efficiency;
+  
+  if (this.cavitation.active) {
+    maxFlow *= this.cavitation.flowReduction;
+  }
+  
+  if (!this.flowNetwork) return maxFlow;
+  
+  // CONSTRAINT 1: Check tank availability
+  let availableFromTank = Infinity;
+  let tankComponent = null;
+  
+  for (const inputId of this.inputs) {
+    const tank = this._findUpstreamComponent(inputId, 'tank');
+    if (tank) {
+      tankComponent = tank;
+      // Tank can supply based on current volume (50% per second max)
+      availableFromTank = Math.min(availableFromTank, tank.volume * 0.5);
+      
+      if (tank.level < this.requiresMinLevel) {
+        console.warn(`${this.name} stopped - tank level below minimum`);
+        return 0;
+      }
+    }
+  }
+  
+  // CONSTRAINT 2: Check valve
+  let valveLimit = Infinity;
+  for (const outputId of this.outputs) {
+    const valve = this._findDownstreamComponent(outputId, 'valve');
+    if (valve) {
+      valveLimit = Math.min(valveLimit, valve.maxFlow * valve.position);
+    }
+  }
+  
+  // Actual flow = minimum of all constraints
+  const actualFlow = Math.min(maxFlow, availableFromTank, valveLimit);
+  
+  // CRITICAL: Create the tank->pump flow so tank drains correctly
+  if (tankComponent && actualFlow > 0) {
+    this.flowNetwork.setFlow(tankComponent.id, this.id, actualFlow);
+  }
+  
+  return actualFlow;
+}
+
+  /**
+   * Helper: Find upstream component by type (looks through pipes)
+   */
+  _findUpstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    if (component.type === targetType) return component;
+    
+    if (component.type === 'pipe' && component.inputs && component.inputs.length > 0) {
+      for (const inputId of component.inputs) {
+        const result = this._findUpstreamComponent(inputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Helper: Find downstream component by type (looks through pipes)
+   */
+  _findDownstreamComponent(startId, targetType) {
+    if (!this.flowNetwork) return null;
+    
+    const component = this.flowNetwork.getComponent(startId);
+    if (!component) return null;
+    
+    if (component.type === targetType) return component;
+    
+    if (component.type === 'pipe' && component.outputs && component.outputs.length > 0) {
+      for (const outputId of component.outputs) {
+        const result = this._findDownstreamComponent(outputId, targetType);
+        if (result) return result;
+      }
+    }
+    
+    return null;
+  }
+
+  update(dt) {
+    if (!this.running) return;
+    
+    this.runTime += dt;
+    this._updateCavitation(dt);
+  }
+
+  reset() {
+    super.reset();
+    this.running = false;
+    this.speed = 0;
+    this.runTime = 0;
+    this.startCount = 0;
+    this.cavitation.active = false;
+    this.cavitation.startTime = null;
+    this.cavitation.elapsedTime = 0;
+  }
+
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      pumpType: this.pumpType,
+      running: this.running,
+      speed: this.speed,
+      capacity: this.capacity,
+      outputFlow: this.getOutputFlow(),
+      cavitation: this.cavitation.active,
+      runTime: this.runTime.toFixed(1),
+      startCount: this.startCount
+    };
+  }
+}
+
+// Export
+window.Pump = Pump;
+
+
+/**
+ * FixedSpeedPump.js - Fixed speed pump (ON/OFF only)
+ * 
+ * Simple pump with just two states: ON or OFF
+ */
+
+class FixedSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: 'fixed'
+    });
+    
+    // Fixed speed pumps always run at 100% when ON
+    this.speed = 1.0;
+  }
+
+  /**
+   * Start pump (always at full speed)
+   */
+  start() {
+    this.speed = 1.0;
+    super.start();
+  }
+
+  /**
+   * Stop pump
+   */
+  stop() {
+    this.speed = 0;
+    super.stop();
+  }
+
+  /**
+   * Toggle pump ON/OFF
+   */
+  toggle() {
+    if (this.running) {
+      this.stop();
+    } else {
+      this.start();
+    }
+  }
+
+  /**
+   * Fixed speed pumps don't allow speed changes
+   */
+  setSpeed(speed) {
+    console.warn(`${this.name} is a fixed speed pump - speed cannot be adjusted`);
+    this.speed = this.running ? 1.0 : 0;
+  }
+}
+
+// Export
+window.FixedSpeedPump = FixedSpeedPump;
+
+
+/**
+ * VariableSpeedPump.js - Variable speed pump (0-100% control)
+ * 
+ * Pump with continuous speed control via slider
+ */
+
+class VariableSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: 'variable'
+    });
+    
+    // Variable speed pumps can run at any speed 0-100%
+    this.minSpeed = config.minSpeed || 0.1; // Minimum operating speed (10%)
+    this.speed = config.initialSpeed || 0;
+  }
+
+  /**
+   * Start pump at current speed
+   */
+  start() {
+    // If speed is too low, start at minimum speed
+    if (this.speed < this.minSpeed) {
+      this.speed = this.minSpeed;
+    }
+    super.start();
+  }
+
+  /**
+   * Stop pump (speed goes to 0)
+   */
+  stop() {
+    this.speed = 0;
+    super.stop();
+  }
+
+  /**
+   * Set pump speed (0-1)
+   */
+  setSpeed(speed) {
+    // Clamp speed to valid range
+    speed = Math.max(0, Math.min(1, speed));
+    
+    // If pump is running, enforce minimum speed
+    if (this.running && speed > 0 && speed < this.minSpeed) {
+      speed = this.minSpeed;
+    }
+    
+    this.speed = speed;
+    
+    // Auto-start if speed > 0 and pump not running
+    if (speed > 0 && !this.running) {
+      super.start();
+    }
+    
+    // Auto-stop if speed = 0 and pump running
+    if (speed === 0 && this.running) {
+      super.stop();
+    }
+    
+    this.notifyChange();
+  }
+
+  /**
+   * Increase speed by amount
+   */
+  increaseSpeed(amount = 0.1) {
+    this.setSpeed(this.speed + amount);
+  }
+
+  /**
+   * Decrease speed by amount
+   */
+  decreaseSpeed(amount = 0.1) {
+    this.setSpeed(this.speed - amount);
+  }
+
+  /**
+   * Get speed percentage (0-100)
+   */
+  getSpeedPercent() {
+    return Math.round(this.speed * 100);
+  }
+}
+
+// Export
+window.VariableSpeedPump = VariableSpeedPump;
+
+
+/**
+ * ThreeSpeedPump.js - Three-speed pump (Low/Med/High)
+ * 
+ * Pump with three discrete speed settings
+ */
+
+class ThreeSpeedPump extends Pump {
+  constructor(config) {
+    super({
+      ...config,
+      pumpType: '3-speed'
+    });
+    
+    // Three discrete speed levels
+    this.speeds = config.speeds || [0.3, 0.6, 1.0]; // Low, Med, High
+    this.speedNames = ['Low', 'Medium', 'High'];
+    this.currentSpeedIndex = 0; // 0 = Low, 1 = Med, 2 = High
+    
+    // Set initial speed
+    if (config.initialSpeed !== undefined) {
+      this.setSpeedIndex(config.initialSpeed);
+    } else {
+      this.speed = 0;
+    }
+  }
+
+  /**
+   * Start pump at current speed setting
+   */
+  start() {
+    // If speed is 0, start at low speed
+    if (this.speed === 0) {
+      this.setSpeedIndex(0);
+    }
+    super.start();
+  }
+
+  /**
+   * Stop pump
+   */
+  stop() {
+    super.stop();
+  }
+
+  /**
+   * Set speed by index (0, 1, or 2)
+   */
+  setSpeedIndex(index) {
+    index = Math.max(0, Math.min(2, index));
+    this.currentSpeedIndex = index;
+    this.speed = this.speeds[index];
+    
+    // Auto-start if not running
+    if (!this.running) {
+      super.start();
+    }
+    
+    this.notifyChange();
+    console.log(`${this.name} set to ${this.speedNames[index]} (${(this.speed * 100).toFixed(0)}%)`);
+  }
+
+  /**
+   * Set to Low speed
+   */
+  setLow() {
+    this.setSpeedIndex(0);
+  }
+
+  /**
+   * Set to Medium speed
+   */
+  setMedium() {
+    this.setSpeedIndex(1);
+  }
+
+  /**
+   * Set to High speed
+   */
+  setHigh() {
+    this.setSpeedIndex(2);
+  }
+
+  /**
+   * Cycle to next speed
+   */
+  nextSpeed() {
+    this.setSpeedIndex((this.currentSpeedIndex + 1) % 3);
+  }
+
+  /**
+   * Cycle to previous speed
+   */
+  previousSpeed() {
+    this.setSpeedIndex((this.currentSpeedIndex - 1 + 3) % 3);
+  }
+
+  /**
+   * Get current speed name
+   */
+  getSpeedName() {
+    return this.speedNames[this.currentSpeedIndex];
+  }
+
+  /**
+   * Get current speed index (0, 1, or 2)
+   */
+  getSpeedIndex() {
+    return this.currentSpeedIndex;
+  }
+
+  /**
+   * Override setSpeed to snap to nearest discrete speed
+   */
+  setSpeed(speed) {
+    // Find nearest speed
+    let nearestIndex = 0;
+    let minDiff = Math.abs(speed - this.speeds[0]);
+    
+    for (let i = 1; i < this.speeds.length; i++) {
+      const diff = Math.abs(speed - this.speeds[i]);
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearestIndex = i;
+      }
+    }
+    
+    this.setSpeedIndex(nearestIndex);
+  }
+
+  /**
+   * Get pump info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      speedSetting: this.getSpeedName(),
+      speedIndex: this.currentSpeedIndex
+    };
+  }
+}
+
+// Export
+window.ThreeSpeedPump = ThreeSpeedPump;
+
+
+/**
+ * Valve.js - Valve component with proportional control
+ * 
+ * Supports 0-100% positioning via interactive wheel control
+ */
+
+class Valve extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'valve';
+    
+    // Physical properties
+    this.maxFlow = config.maxFlow || 1.0; // Max flow rate when fully open (m³/s)
+    
+    // Operating state
+    this.position = config.initialPosition || 0; // 0 = closed, 1 = fully open
+    
+    // Valve characteristics
+    this.responseTime = config.responseTime || 0.1; // Time to change position (seconds)
+    this.targetPosition = this.position; // Target position for smooth transitions
+    
+    console.log(`Valve created: ${this.name} (max flow: ${this.maxFlow})`);
+  }
+
+  /**
+   * Set valve position (0-1)
+   */
+  setPosition(pos) {
+    pos = Math.max(0, Math.min(1, pos));
+    this.targetPosition = pos;
+    this.notifyChange();
+  }
+
+  /**
+   * Get current valve position (0-1)
+   */
+  getPosition() {
+    return this.position;
+  }
+
+  /**
+   * Get position as percentage (0-100)
+   */
+  getPositionPercent() {
+    return Math.round(this.position * 100);
+  }
+
+  /**
+   * Open valve fully
+   */
+  open() {
+    this.setPosition(1.0);
+  }
+
+  /**
+   * Close valve fully
+   */
+  close() {
+    this.setPosition(0);
+  }
+
+  /**
+   * Check if valve is open (>5%)
+   */
+  isOpen() {
+    return this.position > 0.05;
+  }
+
+  /**
+   * Check if valve is closed (<5%)
+   */
+  isClosed() {
+    return this.position < 0.05;
+  }
+
+  /**
+   * Check if valve is fully open (>95%)
+   */
+  isFullyOpen() {
+    return this.position > 0.95;
+  }
+
+  /**
+   * Get current flow rate through valve
+   */
+  getOutputFlow() {
+    // Flow is proportional to valve position
+    return this.maxFlow * this.position;
+  }
+
+  /**
+   * Update valve state (smooth position transitions)
+   */
+  update(dt) {
+    // Smooth transition to target position
+    if (Math.abs(this.position - this.targetPosition) > 0.001) {
+      const delta = this.targetPosition - this.position;
+      const step = (delta / this.responseTime) * dt;
+      
+      this.position += step;
+      this.position = Math.max(0, Math.min(1, this.position));
+      
+      // Snap to target if very close
+      if (Math.abs(this.position - this.targetPosition) < 0.001) {
+        this.position = this.targetPosition;
+      }
+    }
+  }
+
+  /**
+   * Reset valve
+   */
+  reset() {
+    super.reset();
+    this.position = 0;
+    this.targetPosition = 0;
+  }
+
+  /**
+   * Get valve info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      position: this.position,
+      positionPercent: this.getPositionPercent() + '%',
+      targetPosition: this.targetPosition,
+      maxFlow: this.maxFlow,
+      currentFlow: this.getOutputFlow().toFixed(3),
+      status: this.isClosed() ? 'CLOSED' : this.isFullyOpen() ? 'OPEN' : 'PARTIAL'
+    };
+  }
+}
+
+// Export
+window.Valve = Valve;
+
+
+/**
+ * Pipe.js - Visual-only pipe component
+ * 
+ * Pipes READ flows from the network (they don't create flows)
+ * They animate based on actual component-to-component flows
+ */
+
+class Pipe extends Component {
+  constructor(config) {
+    super(config);
+    
+    this.type = 'pipe';
+    
+    // Physical properties
+    this.diameter = config.diameter || 0.05; // meters (50mm default)
+    this.length = config.length || 1.0; // meters
+    this.roughness = config.roughness || 0.000045; // meters (steel pipe)
+    
+    // Flow state (read from network, not calculated here)
+    this.flowRate = 0; // m³/s
+    this.velocity = 0; // m/s
+    this.reynoldsNumber = 0;
+    this.regime = 'Laminar'; // 'Laminar', 'Transitional', 'Turbulent'
+    
+    // Animation state
+    this.animating = false;
+    
+    // Visual element
+    this.flowPath = null;
+    
+    this._initializeVisuals();
+    
+    console.log(`Pipe created: ${this.name} (${this.diameter * 1000}mm × ${this.length}m)`);
+  }
+
+  _initializeVisuals() {
+    const element = this.getElement();
+    if (element) {
+      this.flowPath = element;
+    } else if (this.svgElement) {
+      this.flowPath = document.querySelector(this.svgElement);
+    }
+    
+    if (!this.flowPath) {
+      console.warn(`Flow path not found for pipe ${this.name}`);
+    }
+  }
+
+  /**
+   * CRITICAL: Pipes DON'T create flow - they only visualize it
+   */
+  getOutputFlow() {
+    return 0; // Pipes never processed in calculateFlows
+  }
+
+  /**
+   * Update pipe state - READ flow from network
+   */
+  update(dt) {
+    if (!this.flowNetwork) return;
+    
+    // READ the actual flow between the components this pipe connects
+    // Example: pipe2 connects inletValve → tank1
+    // So we read the flow from inletValve to tank1
+    
+    if (this.inputs.length > 0 && this.outputs.length > 0) {
+      const fromId = this.inputs[0];
+      const toId = this.outputs[0];
+      
+      // Read flow from network
+      this.flowRate = this.flowNetwork.getFlow(fromId, toId);
+    } else {
+      this.flowRate = 0;
+    }
+    
+    // Calculate derived properties
+    this._calculateFlowProperties();
+    
+    // Update animation state
+    this._updateAnimation();
+  }
+
+  /**
+   * Calculate flow properties (velocity, Reynolds number, regime)
+   */
+  _calculateFlowProperties() {
+    // Cross-sectional area
+    const area = Math.PI * Math.pow(this.diameter / 2, 2);
+    
+    // Velocity: v = Q / A
+    this.velocity = area > 0 ? this.flowRate / area : 0;
+    
+    // Reynolds number: Re = ρ * v * D / μ
+    // For water at 20°C: ρ = 1000 kg/m³, μ = 0.001 Pa·s
+    const density = 1000; // kg/m³
+    const viscosity = 0.001; // Pa·s
+    
+    this.reynoldsNumber = (density * this.velocity * this.diameter) / viscosity;
+    
+    // Flow regime
+    if (this.reynoldsNumber < 2300) {
+      this.regime = 'Laminar';
+    } else if (this.reynoldsNumber < 4000) {
+      this.regime = 'Transitional';
+    } else {
+      this.regime = 'Turbulent';
+    }
+  }
+
+  /**
+   * Update animation based on flow rate
+   */
+  _updateAnimation() {
+    if (!this.flowPath) return;
+    
+    const hasFlow = this.flowRate > 0.001; // Threshold to avoid noise
+    
+    if (hasFlow) {
+      // Start animation
+      if (!this.animating) {
+        this.flowPath.classList.add('on');
+        this.animating = true;
+      }
+      
+      // Adjust animation speed based on flow rate
+      // Higher flow = faster animation
+      // Speed range: 200ms (fast) to 2000ms (slow)
+      const maxFlow = 1.0; // m³/s (assumed max for scaling)
+      const normalizedFlow = Math.min(1, this.flowRate / maxFlow);
+      const duration = 2000 - (1800 * normalizedFlow); // 2000ms to 200ms
+      
+      this.flowPath.style.setProperty('--duration', `${duration}ms`);
+    } else {
+      // Stop animation
+      if (this.animating) {
+        this.flowPath.classList.remove('on');
+        this.animating = false;
+      }
+    }
+  }
+
+  /**
+   * Render pipe visual state
+   */
+  render() {
+    // Animation is handled by CSS and update()
+    // Could add color coding based on flow rate or regime here
+    
+    if (!this.flowPath) return;
+    
+    // Optional: Change color based on regime
+    if (this.flowRate > 0) {
+      if (this.regime === 'Turbulent') {
+        // Could add a class for turbulent flow visualization
+      }
+    }
+  }
+
+  /**
+   * Get flow velocity
+   */
+  getVelocity() {
+    return this.velocity;
+  }
+
+  /**
+   * Get Reynolds number
+   */
+  getReynoldsNumber() {
+    return this.reynoldsNumber;
+  }
+
+  /**
+   * Get flow regime
+   */
+  getFlowRegime() {
+    return this.regime;
+  }
+
+  /**
+   * Check if pipe is flowing
+   */
+  isFlowing() {
+    return this.flowRate > 0.001;
+  }
+
+  /**
+   * Calculate pressure drop (for future use)
+   */
+  getPressureDrop() {
+    // Darcy-Weisbach equation: ΔP = f * (L/D) * (ρv²/2)
+    // Simplified for now
+    
+    if (this.velocity === 0) return 0;
+    
+    // Friction factor (simplified - use Moody chart for accuracy)
+    let frictionFactor;
+    if (this.reynoldsNumber < 2300) {
+      // Laminar: f = 64/Re
+      frictionFactor = 64 / this.reynoldsNumber;
+    } else {
+      // Turbulent: Colebrook-White (simplified)
+      frictionFactor = 0.02; // Approximation
+    }
+    
+    const density = 1000; // kg/m³
+    const pressureDrop = frictionFactor * 
+                        (this.length / this.diameter) * 
+                        (density * Math.pow(this.velocity, 2) / 2);
+    
+    return pressureDrop / 100000; // Convert Pa to bar
+  }
+
+  /**
+   * Reset pipe
+   */
+  reset() {
+    super.reset();
+    this.flowRate = 0;
+    this.velocity = 0;
+    this.reynoldsNumber = 0;
+    this.regime = 'Laminar';
+    this.animating = false;
+    
+    if (this.flowPath) {
+      this.flowPath.classList.remove('on');
+    }
+  }
+
+  /**
+   * Get pipe info
+   */
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      flowRate: this.flowRate.toFixed(3) + ' m³/s',
+      velocity: this.velocity.toFixed(2) + ' m/s',
+      reynolds: Math.round(this.reynoldsNumber),
+      regime: this.regime,
+      diameter: (this.diameter * 1000).toFixed(0) + ' mm',
+      length: this.length.toFixed(1) + ' m',
+      pressureDrop: this.getPressureDrop().toFixed(3) + ' bar',
+      animating: this.animating
+    };
+  }
+}
+
+// Export
+window.Pipe = Pipe;
+
+
+class Tank extends Component {
+  constructor(config) {
+    super(config);
+    this.type = 'tank';
+    this.area = config.area || 1.0;
+    this.maxHeight = config.maxHeight || 1.0;
+    this.maxVolume = this.area * this.maxHeight;
+    this.volume = config.initialVolume || 0;
+    this.level = this.volume / this.maxVolume;
+    this.levelRect = null;
+    this.levelRectHeight = config.levelRectHeight || 360;
+    this.levelRectY = config.levelRectY || 360;
+    this.lowThreshold = config.lowThreshold || 0.1;
+    this.highThreshold = config.highThreshold || 0.9;
+    this.lastInputFlow = 0;
+    this.lastOutputFlow = 0;
+    this._initializeVisuals();
+    console.log('Tank created: ' + this.name);
+  }
+
+  _initializeVisuals() {
+    const element = this.getElement();
+    if (!element) return;
+    this.levelRect = element.querySelector('#levelRect') || element.querySelector('.levelRect');
+    if (!this.levelRect) {
+      console.warn('Level rect not found for tank ' + this.name);
+    }
+  }
+
+  getOutputFlow() {
+    return 0;
+  }
+
+  update(dt) {
+    const Qin = this.flowNetwork ? this.flowNetwork.getInputFlow(this.id) : 0;
+    const Qout = this.flowNetwork ? this.flowNetwork.getOutputFlow(this.id) : 0;
+    this.lastInputFlow = Qin;
+    this.lastOutputFlow = Qout;
+    const dV = (Qin - Qout) * dt;
+    this.volume += dV;
+    this.volume = Math.max(0, Math.min(this.maxVolume, this.volume));
+    this.level = this.volume / this.maxVolume;
+  }
+
+  render() {
+    if (!this.levelRect) return;
+    const heightPx = this.levelRectHeight * this.level;
+    const yPx = this.levelRectY - heightPx;
+    this.levelRect.setAttribute('height', heightPx);
+    this.levelRect.setAttribute('y', yPx);
+    if (this.level < this.lowThreshold) {
+      this.levelRect.setAttribute('opacity', '0.6');
+    } else if (this.level > this.highThreshold) {
+      this.levelRect.setAttribute('opacity', '1.0');
+    } else {
+      this.levelRect.setAttribute('opacity', '0.8');
+    }
+  }
+
+  getLevel() {
+    return this.level;
+  }
+
+  getLevelPercent() {
+    return Math.round(this.level * 100);
+  }
+
+  isEmpty() {
+    return this.volume < 0.001;
+  }
+
+  isFull() {
+    return this.volume >= this.maxVolume - 0.001;
+  }
+
+  isLow() {
+    return this.level < this.lowThreshold;
+  }
+
+  isHigh() {
+    return this.level > this.highThreshold;
+  }
+
+  setVolume(volume) {
+    this.volume = Math.max(0, Math.min(this.maxVolume, volume));
+    this.level = this.volume / this.maxVolume;
+    this.notifyChange();
+  }
+
+  setLevelPercent(percent) {
+    const fraction = Math.max(0, Math.min(100, percent)) / 100;
+    this.setVolume(fraction * this.maxVolume);
+  }
+
+  reset() {
+    super.reset();
+    this.volume = 0;
+    this.level = 0;
+    this.lastInputFlow = 0;
+    this.lastOutputFlow = 0;
+  }
+
+  getInfo() {
+    return {
+      ...super.getInfo(),
+      volume: this.volume.toFixed(3) + ' m³',
+      level: this.getLevelPercent() + '%',
+      maxVolume: this.maxVolume.toFixed(2) + ' m³',
+      inputFlow: this.lastInputFlow.toFixed(3) + ' m³/s',
+      outputFlow: this.lastOutputFlow.toFixed(3) + ' m³/s',
+      status: this.isEmpty() ? 'EMPTY' : this.isFull() ? 'FULL' : this.isLow() ? 'LOW' : this.isHigh() ? 'HIGH' : 'NORMAL'
+    };
+  }
+}
+
+window.Tank = Tank;
+
+
 /**
  * TankManager.js - Manages all tanks in the system
  * 
@@ -1596,7 +2519,6 @@ class TankManager {
 window.TankManager = TankManager;
 
 
-/* ===== js/managers/PumpManager.js ===== */
 /**
  * PumpManager.js - Manages all pumps in the system
  * 
@@ -2021,7 +2943,6 @@ class PumpManager {
 window.PumpManager = PumpManager;
 
 
-/* ===== js/managers/ValveManager.js ===== */
 /**
  * ValveManager.js - Manages all valves with interactive wheel controls
  * 
@@ -2344,7 +3265,6 @@ class ValveManager {
 window.ValveManager = ValveManager;
 
 
-/* ===== js/managers/PipeManager.js ===== */
 /**
  * PipeManager.js - Manages all pipes and flow animations
  * 
@@ -2531,7 +3451,6 @@ class PipeManager {
 window.PipeManager = PipeManager;
 
 
-/* ===== js/managers/PressureManager.js ===== */
 /**
  * PressureManager.js - Manages all pressure sensors
  * 
@@ -2735,8 +3654,9 @@ class PressureManager {
 // Export
 window.PressureManager = PressureManager;
 
-</script>
-  <script>(function(){
+  </script>
+
+<script>(function(){
   try{
     const dataEl = document.getElementById('design-data');
     const design = JSON.parse(dataEl.textContent);
