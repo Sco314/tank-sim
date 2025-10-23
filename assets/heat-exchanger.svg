@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="HeatExchanger" data-name="Heat Exchanger" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160">
+  <defs>
+    <style>
+      .shell {
+        fill: #c3c3c3;
+      }
+
+      .panel {
+        fill: #e5e7ea;
+      }
+
+      .accent {
+        fill: #7a8795;
+      }
+
+      .fluid {
+        fill: #13bac7;
+      }
+
+      .fluid-dark {
+        fill: #007c90;
+      }
+
+      .shadow {
+        fill: #384550;
+      }
+
+      .highlight {
+        fill: #f89f3f;
+      }
+
+      .line {
+        fill: none;
+        stroke: #384550;
+        stroke-width: 1.5;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .detail {
+        fill: none;
+        stroke: #2b3a44;
+        stroke-width: 1;
+        vector-effect: non-scaling-stroke;
+      }
+    </style>
+  </defs>
+
+  <!-- support frame -->
+  <rect class="accent" x="20" y="126" width="28" height="8" rx="2"/>
+  <rect class="accent" x="152" y="126" width="28" height="8" rx="2"/>
+  <rect class="accent" x="24" y="134" width="20" height="9" rx="2"/>
+  <rect class="accent" x="156" y="134" width="20" height="9" rx="2"/>
+
+  <!-- main shell -->
+  <rect class="shell" x="32" y="18" width="136" height="110" rx="12"/>
+  <rect class="panel" x="42" y="28" width="116" height="90" rx="8"/>
+
+  <!-- tube bundle background -->
+  <rect class="fluid-dark" x="52" y="38" width="96" height="70" rx="6"/>
+  <rect class="fluid" x="56" y="42" width="88" height="62" rx="4"/>
+
+  <!-- internal tube rows -->
+  <g>
+    <rect class="fluid-dark" x="60" y="48" width="80" height="6" rx="2"/>
+    <rect class="fluid-dark" x="60" y="60" width="80" height="6" rx="2"/>
+    <rect class="fluid-dark" x="60" y="72" width="80" height="6" rx="2"/>
+    <rect class="fluid-dark" x="60" y="84" width="80" height="6" rx="2"/>
+    <rect class="fluid-dark" x="60" y="96" width="80" height="6" rx="2"/>
+  </g>
+
+  <!-- inspection ports -->
+  <circle class="shell" cx="54" cy="73" r="8"/>
+  <circle class="shell" cx="146" cy="73" r="8"/>
+  <circle class="panel" cx="54" cy="73" r="4"/>
+  <circle class="panel" cx="146" cy="73" r="4"/>
+  <circle class="detail" cx="54" cy="73" r="6"/>
+  <circle class="detail" cx="146" cy="73" r="6"/>
+
+  <!-- inlet nozzle -->
+  <rect class="accent" x="6" y="58" width="34" height="30" rx="6"/>
+  <rect class="panel" x="12" y="64" width="22" height="18" rx="4"/>
+  <rect class="fluid" x="26" y="70" width="10" height="6" rx="2"/>
+  <path class="line" d="M18 73 L24 79 L18 85"/>
+
+  <!-- outlet nozzle -->
+  <rect class="accent" x="160" y="58" width="34" height="30" rx="6"/>
+  <rect class="panel" x="164" y="64" width="22" height="18" rx="4"/>
+  <rect class="highlight" x="164" y="70" width="10" height="6" rx="2"/>
+  <path class="line" d="M186 85 L180 79 L186 73"/>
+
+  <!-- baffle highlights -->
+  <path class="shadow" d="M42 48h12v50h-12c-2.21 0-4-1.79-4-4V52c0-2.21 1.79-4 4-4Z" opacity="0.25"/>
+  <path class="shadow" d="M146 38h12c2.21 0 4 1.79 4 4v64c0 2.21-1.79 4-4 4h-12Z" opacity="0.25"/>
+
+  <!-- mounting ring bolts -->
+  <g>
+    <circle class="detail" cx="84" cy="22" r="3"/>
+    <circle class="detail" cx="116" cy="22" r="3"/>
+    <circle class="detail" cx="84" cy="124" r="3"/>
+    <circle class="detail" cx="116" cy="124" r="3"/>
+  </g>
+
+  <!-- orientation tag -->
+  <rect class="highlight" x="96" y="10" width="12" height="12" rx="2"/>
+  <path class="line" d="M102 12 v8"/>
+</svg>
