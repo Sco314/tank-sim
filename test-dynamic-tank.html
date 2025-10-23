@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Tank Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+      background: #0f172a;
+      color: #e9f0ff;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .tank-container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 8px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    svg {
+      display: block;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      max-width: 400px;
+    }
+    .info {
+      background: #2a3d78;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .controls {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+    .control-group label {
+      min-width: 120px;
+      font-weight: 600;
+    }
+    input[type="range"] {
+      flex: 1;
+      min-width: 200px;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e9f0ff;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #15bac7;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0da5b1;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    .success { color: #3ddc97; }
+    .error { color: #ff6b6b; }
+    .warning { color: #fbbf24; }
+    pre {
+      background: #0b1020;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .test-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .status-display {
+      background: #0b1020;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+    .stat-card {
+      background: #0b1020;
+      padding: 15px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #15bac7;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎚️ Dynamic Tank Level Test</h1>
+
+    <div class="info">
+      <h2>Test Results:</h2>
+      <div id="testResults"></div>
+    </div>
+
+    <div class="tank-container">
+      <h2>Tank Preview:</h2>
+      <svg id="tankSvg" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 359.25 654.75" width="400">
+        <defs>
+          <style>
+            .cls-1 { fill: #949299; }
+            .cls-2 { fill: #15bac7; }
+            .cls-3 { fill: #384551; }
+            .cls-percentage {
+              fill: #333333;
+              font-family: Arial, sans-serif;
+              font-size: 32px;
+              font-weight: bold;
+              text-anchor: middle;
+            }
+          </style>
+        </defs>
+
+        <!-- Liquid rectangle -->
+        <rect id="liquidRect" class="cls-2" x="10.14" y="88.127" width="342.685" height="396.825"/>
+
+        <!-- Curved top of liquid -->
+        <ellipse id="liquidTop" class="cls-2" cx="181.4825" cy="88.127" rx="171.3425" ry="15"/>
+
+        <!-- Percentage text -->
+        <text id="percentageText" class="cls-percentage" x="181.4825" y="66">100</text>
+
+        <!-- Grey top curved area -->
+        <path class="cls-1" d="M8.571,191.429c0-30.004,1.284-90.485,1.689-108.809.076-3.429.121-5.382.121-5.382l2.381-5.81,6.19-9.143,8.762-6.286,14.476-7.714,37.143-14.571,24.667-7.429,39.619-6.286,12.762-1.524h47.429l25.714,2.095,64.19,16.762,38.159,16.381,8,5.333,8.254,8.127,3.556,9.016,1.143,11.937v89.016c-2.207.143-5.466.379-9.397.762-37.613,3.667-47.026,12.062-66.286,13.524-31.318,2.377-33.111-17.795-63.619-14.667-24.588,2.521-24.952,15.781-48,17.524-31.257,2.364-37.144-21.526-66.286-18.286-22.112,2.459-27.281,17.164-54.857,19.175-13.013.949-23.861-1.451-30.857-3.556l-4.952-.19Z"/>
+
+        <!-- Grey side panels -->
+        <rect class="cls-1" x="292.762" y="149.714" width="60.064" height="335.619"/>
+        <rect class="cls-1" x="8.571" y="149.714" width="60.064" height="335.619"/>
+
+        <!-- Grey bottom -->
+        <rect class="cls-1" x="8.571" y="458.286" width="344.381" height="27.048"/>
+
+        <!-- Dark horizontal lines -->
+        <rect class="cls-3" x="10.26" y="82.62" width="342.565" height="5.507"/>
+        <rect class="cls-3" x="8.342" y="482.199" width="344.483" height="5.507"/>
+      </svg>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="currentLevel">100</div>
+          <div class="stat-label">Current Level (%)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="liquidHeight">396.8</div>
+          <div class="stat-label">Liquid Height (units)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="topPosition">88.1</div>
+          <div class="stat-label">Top Position (Y)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <h2>Manual Controls:</h2>
+      <div class="control-group">
+        <label>Tank Level:</label>
+        <input type="range" id="levelSlider" min="0" max="100" value="100" step="1">
+        <input type="number" id="levelInput" min="0" max="100" value="100" step="1">
+        <span>%</span>
+      </div>
+
+      <h3>Quick Set:</h3>
+      <div class="test-buttons">
+        <button onclick="setLevel(0)">Empty (0%)</button>
+        <button onclick="setLevel(25)">Low (25%)</button>
+        <button onclick="setLevel(50)">Half (50%)</button>
+        <button onclick="setLevel(75)">High (75%)</button>
+        <button onclick="setLevel(100)">Full (100%)</button>
+      </div>
+
+      <h3>Animations:</h3>
+      <div class="test-buttons">
+        <button onclick="animateLevel(0, 2000)">Drain (2s)</button>
+        <button onclick="animateLevel(100, 2000)">Fill (2s)</button>
+        <button onclick="startRandomWalk()">Random Walk</button>
+        <button onclick="stopRandomWalk()">Stop</button>
+        <button onclick="startSineWave()">Sine Wave</button>
+        <button onclick="stopSineWave()">Stop Wave</button>
+      </div>
+    </div>
+
+    <div class="info">
+      <h2>Component Status:</h2>
+      <div class="status-display" id="statusDisplay"></div>
+    </div>
+
+    <div class="info">
+      <h2>Integration Example:</h2>
+      <pre id="integrationExample"></pre>
+    </div>
+  </div>
+
+  <script src="assets/tank-controller.js"></script>
+  <script>
+    // Test tracking
+    const results = [];
+    let randomWalkInterval = null;
+    let sineWaveInterval = null;
+
+    // Test 1: Check if tank elements exist
+    const liquidRect = document.getElementById('liquidRect');
+    const liquidTop = document.getElementById('liquidTop');
+    const percentageText = document.getElementById('percentageText');
+
+    if (liquidRect && liquidTop && percentageText) {
+      results.push('✅ All SVG elements found');
+      results.push(`   - liquidRect: ${liquidRect.getAttribute('width')} x ${liquidRect.getAttribute('height')}`);
+      results.push(`   - liquidTop: rx=${liquidTop.getAttribute('rx')}, ry=${liquidTop.getAttribute('ry')}`);
+      results.push(`   - percentageText: ${percentageText.textContent}`);
+    } else {
+      results.push('❌ Missing SVG elements');
+    }
+
+    // Test 2: Check if controller functions are available
+    if (typeof updateTankLevel === 'function') {
+      results.push('✅ updateTankLevel() function available');
+    } else {
+      results.push('❌ updateTankLevel() not found');
+    }
+
+    if (typeof animateTankLevel === 'function') {
+      results.push('✅ animateTankLevel() function available');
+    } else {
+      results.push('❌ animateTankLevel() not found');
+    }
+
+    if (typeof TankDataSource === 'object') {
+      results.push('✅ TankDataSource object available');
+      results.push(`   - Methods: ${Object.keys(TankDataSource).join(', ')}`);
+    } else {
+      results.push('⚠️ TankDataSource not found (optional)');
+    }
+
+    // Test 3: Test basic functionality
+    try {
+      updateTankLevel(75);
+      const newHeight = liquidRect.getAttribute('height');
+      const expectedHeight = (75 / 100) * 396.825;
+      if (Math.abs(parseFloat(newHeight) - expectedHeight) < 0.1) {
+        results.push('✅ Tank update calculation correct');
+        results.push(`   - Set to 75%, height = ${newHeight} (expected ~${expectedHeight.toFixed(2)})`);
+      } else {
+        results.push('❌ Tank update calculation incorrect');
+        results.push(`   - Got ${newHeight}, expected ${expectedHeight}`);
+      }
+      updateTankLevel(100); // Reset
+    } catch (err) {
+      results.push(`❌ Error testing tank update: ${err.message}`);
+    }
+
+    // Display results
+    function updateDisplay() {
+      document.getElementById('testResults').innerHTML =
+        results.map(r => {
+          const className = r.includes('✅') ? 'success' :
+                           r.includes('❌') ? 'error' :
+                           r.includes('⚠️') ? 'warning' : '';
+          return `<div class="${className}">${r}</div>`;
+        }).join('');
+    }
+
+    updateDisplay();
+
+    // UI Control Functions
+    const slider = document.getElementById('levelSlider');
+    const input = document.getElementById('levelInput');
+
+    function setLevel(level) {
+      slider.value = level;
+      input.value = level;
+      updateTankLevel(level);
+      updateStats(level);
+    }
+
+    function animateLevel(level, duration) {
+      slider.value = level;
+      input.value = level;
+      animateTankLevel(level, duration);
+      // Update stats after animation completes
+      setTimeout(() => updateStats(level), duration);
+    }
+
+    function updateStats(percentage) {
+      const liquidHeight = (percentage / 100) * 396.825;
+      const topY = 484.952 - liquidHeight;
+
+      document.getElementById('currentLevel').textContent = Math.round(percentage);
+      document.getElementById('liquidHeight').textContent = liquidHeight.toFixed(1);
+      document.getElementById('topPosition').textContent = topY.toFixed(1);
+    }
+
+    slider.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      input.value = value;
+      updateTankLevel(value);
+      updateStats(value);
+    });
+
+    input.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      if (value >= 0 && value <= 100) {
+        slider.value = value;
+        updateTankLevel(value);
+        updateStats(value);
+      }
+    });
+
+    // Random walk simulation
+    function startRandomWalk() {
+      stopRandomWalk();
+      let currentLevel = parseInt(slider.value);
+
+      randomWalkInterval = setInterval(() => {
+        const change = (Math.random() - 0.5) * 10;
+        currentLevel = Math.max(0, Math.min(100, currentLevel + change));
+        setLevel(Math.round(currentLevel));
+      }, 1000);
+
+      updateStatus('Random walk simulation running...');
+    }
+
+    function stopRandomWalk() {
+      if (randomWalkInterval) {
+        clearInterval(randomWalkInterval);
+        randomWalkInterval = null;
+        updateStatus('Random walk stopped.');
+      }
+    }
+
+    // Sine wave simulation
+    function startSineWave() {
+      stopSineWave();
+      let time = 0;
+
+      sineWaveInterval = setInterval(() => {
+        time += 0.1;
+        const level = 50 + 40 * Math.sin(time);
+        setLevel(Math.round(level));
+      }, 100);
+
+      updateStatus('Sine wave simulation running...');
+    }
+
+    function stopSineWave() {
+      if (sineWaveInterval) {
+        clearInterval(sineWaveInterval);
+        sineWaveInterval = null;
+        updateStatus('Sine wave stopped.');
+      }
+    }
+
+    function updateStatus(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      document.getElementById('statusDisplay').textContent =
+        `[${timestamp}] ${message}`;
+    }
+
+    // Integration example
+    const integrationCode = `// Example 1: Simple update
+updateTankLevel(75);
+
+// Example 2: Animated update
+animateTankLevel(50, 1000);
+
+// Example 3: REST API polling
+const pollInterval = TankDataSource.pollAPI(
+  'https://api.example.com/tank/status',
+  5000,
+  (data) => data.percentage
+);
+
+// Example 4: WebSocket real-time
+const ws = TankDataSource.connectWebSocket(
+  'wss://api.example.com/tank/live',
+  (data) => data.level
+);
+
+// Example 5: Custom interval update
+setInterval(async () => {
+  const response = await fetch('/api/tank/1');
+  const data = await response.json();
+  const percentage = (data.volume / data.capacity) * 100;
+  animateTankLevel(percentage, 500);
+}, 10000);`;
+
+    document.getElementById('integrationExample').textContent = integrationCode;
+
+    // Initialize
+    updateTankLevel(100);
+    updateStats(100);
+    updateStatus('Tank initialized at 100%');
+  </script>
+</body>
+</html>

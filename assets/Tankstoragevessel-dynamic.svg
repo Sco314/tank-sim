@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 359.25 654.75">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #949299;
+      }
+
+      .cls-2 {
+        fill: #15bac7;
+      }
+
+      .cls-3 {
+        fill: #384551;
+      }
+
+      .cls-percentage {
+        fill: #333333;
+        font-family: Arial, sans-serif;
+        font-size: 32px;
+        font-weight: bold;
+        text-anchor: middle;
+      }
+    </style>
+  </defs>
+
+  <!--
+    DYNAMIC TANK CONFIGURATION
+    To change the liquid level, modify the PERCENTAGE variable below (0-100)
+
+    Calculations:
+    - Total liquid area height: 396.825
+    - Liquid bottom Y: 484.952 (fixed)
+    - Liquid top Y at 100%: 88.127
+
+    For any percentage P:
+    - liquidHeight = (P / 100) * 396.825
+    - liquidTopY = 484.952 - liquidHeight
+  -->
+
+  <!-- PERCENTAGE: 75 (Change this value between 0-100) -->
+  <!--
+    For 75%:
+    liquidHeight = 0.75 * 396.825 = 297.619
+    liquidTopY = 484.952 - 297.619 = 187.333
+  -->
+
+  <!-- Liquid rectangle (grows from bottom) -->
+  <rect class="cls-2" x="10.14" y="187.333" width="342.685" height="297.619"/>
+
+  <!-- Curved top of liquid (ellipse) -->
+  <ellipse class="cls-2" cx="181.4825" cy="187.333" rx="171.3425" ry="15"/>
+
+  <!-- Percentage text (positioned above liquid surface) -->
+  <text class="cls-percentage" x="181.4825" y="165">75</text>
+
+  <!-- Grey top curved area (tank top) -->
+  <path class="cls-1" d="M8.571,191.429c0-30.004,1.284-90.485,1.689-108.809.076-3.429.121-5.382.121-5.382l2.381-5.81,6.19-9.143,8.762-6.286,14.476-7.714,37.143-14.571,24.667-7.429,39.619-6.286,12.762-1.524h47.429l25.714,2.095,64.19,16.762,38.159,16.381,8,5.333,8.254,8.127,3.556,9.016,1.143,11.937v89.016c-2.207.143-5.466.379-9.397.762-37.613,3.667-47.026,12.062-66.286,13.524-31.318,2.377-33.111-17.795-63.619-14.667-24.588,2.521-24.952,15.781-48,17.524-31.257,2.364-37.144-21.526-66.286-18.286-22.112,2.459-27.281,17.164-54.857,19.175-13.013.949-23.861-1.451-30.857-3.556l-4.952-.19Z"/>
+
+  <!-- Grey side panels -->
+  <rect class="cls-1" x="292.762" y="149.714" width="60.064" height="335.619"/>
+  <rect class="cls-1" x="8.571" y="149.714" width="60.064" height="335.619"/>
+
+  <!-- Grey bottom -->
+  <rect class="cls-1" x="8.571" y="458.286" width="344.381" height="27.048"/>
+
+  <!-- Dark horizontal lines (top and bottom) -->
+  <rect class="cls-3" x="10.26" y="82.62" width="342.565" height="5.507"/>
+  <rect class="cls-3" x="8.342" y="482.199" width="344.483" height="5.507"/>
+</svg>
