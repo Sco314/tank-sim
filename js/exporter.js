@@ -41,6 +41,8 @@
       L: 'assets/cent-pump-inlet-left-01.svg',
       R: 'assets/cent-pump-inlet-right-01.svg'
     },
+    PumpVariable: 'assets/pumpVariable.svg',
+    Pump3Speed: 'assets/pump3speed.svg',
     // Visual variants for feed/drain
     Feed: {
       chemistry: 'assets/sourceChemistry.svg',
@@ -51,18 +53,20 @@
       chemistry: 'assets/sourceChemistry.svg',
       pumpjack: 'assets/sourcePumpjack.svg',
       refinery: 'assets/sourceRefinery.svg'
-    }
+    },
+    // Sensors (analog gauge only - others don't have SVGs yet)
+    AnalogGauge: 'assets/gaugeAnalog.svg'
   };
 
   // Component size mapping (from componentLibrary.js)
   const COMPONENT_SIZES = {
     tank: { w: 320, h: 360, x: -160, y: -180 },  // 2x larger
-    valve: { w: 25, h: 25, x: -12.5, y: -12.5 },  // 1/3 smaller
+    valve: { w: 50, h: 50, x: -25, y: -25 },  // 2x larger (was 25x25)
     pump: { w: 120, h: 120, x: -60, y: -60 },
     pumpFixed: { w: 120, h: 120, x: -60, y: -60 },
     pumpVariable: { w: 120, h: 120, x: -60, y: -60 },
     pump3Speed: { w: 120, h: 120, x: -60, y: -60 },
-    feed: { w: 40, h: 40, x: -20, y: -20 },
+    feed: { w: 80, h: 80, x: -40, y: -40 },  // 2x larger (was 40x40)
     drain: { w: 40, h: 40, x: -20, y: -20 },
     analogGauge: { w: 100, h: 100, x: -50, y: -50 },
     pressureSensor: { w: 40, h: 40, x: -20, y: -20 },

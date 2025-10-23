@@ -17,11 +17,12 @@ const COMPONENT_LIBRARY = {
     icon: '💧',
     color: '#3b82f6',
     description: 'Infinite water supply',
-    imageSize: { w: 40, h: 40, x: -20, y: -20 },
+    imageSize: { w: 80, h: 80, x: -40, y: -40 }, // 2x larger (was 40x40)
     defaultConfig: {
       type: 'feed',
       supplyPressure: 3,
       maxFlow: null,
+      flowRate: 0,
       temperature: 20,
       visual: 'chemistry'
     },
@@ -34,6 +35,7 @@ const COMPONENT_LIBRARY = {
         ]
       },
       { name: 'supplyPressure', label: 'Supply Pressure (bar)', type: 'number', default: 3, min: 0, step: 0.1 },
+      { name: 'flowRate', label: 'Flow Rate (gpm)', type: 'number', default: 0, min: 0, step: 1 },
       { name: 'temperature', label: 'Temperature (°C)', type: 'number', default: 20, min: -10, max: 100 }
     ],
     connectionPoints: [
@@ -63,7 +65,7 @@ const COMPONENT_LIBRARY = {
 
   // === SINKS ===
   drain: {
-    name: 'Drain (Discharge)',
+    name: 'Product (infinite drain)',
     category: 'Boundary',
     type: 'drain',
     icon: '🚰',
@@ -161,7 +163,7 @@ const COMPONENT_LIBRARY = {
       head: 10,
       efficiency: 0.7,
       maxFlow: 1,
-      orientation: 'R',
+      orientation: 'L',
       scale: 1.0
     },
     properties: [
@@ -209,7 +211,7 @@ const COMPONENT_LIBRARY = {
       efficiency: 0.7,
       maxFlow: 1,
       minSpeed: 0.2,
-      orientation: 'R',
+      orientation: 'L',
       scale: 1.0
     },
     properties: [
@@ -244,7 +246,7 @@ const COMPONENT_LIBRARY = {
       efficiency: 0.7,
       maxFlow: 1,
       speeds: [0.3, 0.6, 1.0],
-      orientation: 'R',
+      orientation: 'L',
       scale: 1.0
     },
     properties: [
@@ -271,9 +273,9 @@ const COMPONENT_LIBRARY = {
     color: '#10b981',
     description: 'Proportional control valve (0-100%)',
     image: 'https://sco314.github.io/tank-sim/Valve-Icon-Transparent-bg.png',
-    svg: 'Valve-Icon-handle-right-01.svg',
-    svgPath: 'assets/Valve-Icon-handle-right-01.svg',
-    imageSize: { w: 25, h: 25, x: -12.5, y: -12.5 }, // 1/3 smaller (was 76x76)
+    svg: 'Valve-Icon-handle-up-01.svg',
+    svgPath: 'assets/Valve-Icon-handle-up-01.svg',
+    imageSize: { w: 50, h: 50, x: -25, y: -25 }, // 2x larger (was 25x25)
     defaultConfig: {
       type: 'valve',
       open: 82,
@@ -286,32 +288,32 @@ const COMPONENT_LIBRARY = {
       { name: 'kv', label: 'Kv Coefficient', type: 'number', default: 1, min: 0.1, step: 0.1 }
     ],
     connectionPoints: [
-      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
-      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
+      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -25, y: 0 },
+      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 25, y: 0 }
     ],
     variants: {
       right: {
         svg: 'Valve-Icon-handle-right-01.svg',
         svgPath: 'assets/Valve-Icon-handle-right-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -25, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 25, y: 0 }
         ]
       },
       left: {
         svg: 'Valve-Icon-handle-left-01.svg',
         svgPath: 'assets/Valve-Icon-handle-left-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -25, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 25, y: 0 }
         ]
       },
       up: {
         svg: 'Valve-Icon-handle-up-01.svg',
         svgPath: 'assets/Valve-Icon-handle-up-01.svg',
         connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -12.5, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 12.5, y: 0 }
+          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -25, y: 0 },
+          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 25, y: 0 }
         ]
       }
     }
