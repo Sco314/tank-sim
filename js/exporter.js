@@ -1,22 +1,27 @@
 /**
- * exporter.js v5.3 - Scale Fix + Style Preservation
- * 
+ * exporter.js v5.5 - ACTUAL Color Bleed Fix + Visual Variants
+ *
+ * CHANGELOG v5.5:
+ * - ✅ FIXED: Actual color bleed fix using `color: initial !important` on canvas
+ * - ✅ FIXED: Removed incorrect `fill: none` override that broke SVG colors
+ * - ✅ NEW: Export CSS matches designer CSS for consistent rendering
+ *
+ * CHANGELOG v5.4:
+ * - ✅ NEW: Support for feed/drain visual variants (chemistry, pumpjack, refinery)
+ * - ✅ FIXED: Export full component config (scale, visual, orientation, etc.)
+ * - ✅ FIXED: Preserve component size, placement, and style from designer
+ *
  * CHANGELOG v5.3:
  * - ✅ FIXED: Uses correct imageSize from componentLibrary (Tank 2x, Valve 1/3)
  * - ✅ FIXED: Preserves SVG fill/stroke attributes (grey valve body)
  * - ✅ FIXED: Consistent SVG path resolution with designer
  * - ✅ Improved style scoping to prevent bleed
- * 
- * PREVIOUS (v5.2):
- * - ✅ Removed hardcoded /101125/ legacy path
- * - ✅ Fetches from /js/ directly
- * - ✅ Better error reporting
  */
 
 (function(global) {
   'use strict';
 
-  const EXPORTER_VERSION = '5.3.0';
+  const EXPORTER_VERSION = '5.5.0';
   const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
 
   // SVG assets mapping (matches designer.js EXACTLY)
@@ -35,6 +40,17 @@
     PumpFixed: {
       L: 'assets/cent-pump-inlet-left-01.svg',
       R: 'assets/cent-pump-inlet-right-01.svg'
+    },
+    // Visual variants for feed/drain
+    Feed: {
+      chemistry: 'assets/sourceChemistry.svg',
+      pumpjack: 'assets/sourcePumpjack.svg',
+      refinery: 'assets/sourceRefinery.svg'
+    },
+    Drain: {
+      chemistry: 'assets/sourceChemistry.svg',
+      pumpjack: 'assets/sourcePumpjack.svg',
+      refinery: 'assets/sourceRefinery.svg'
     }
   };
 
@@ -194,16 +210,26 @@
      */
     async _fetchAllSVGs(components, setDetail) {
       const neededAssets = new Set();
-      
+
       for (const comp of components) {
         const type = comp.type;
         const orient = comp.orientation || 'R';
-        const asset = SVG_ASSETS[type];
-        
+        const visual = comp.config?.visual; // For feed/drain variants
+
+        // Capitalize first letter for asset lookup
+        const assetKey = type.charAt(0).toUpperCase() + type.slice(1);
+        const asset = SVG_ASSETS[assetKey] || SVG_ASSETS[type];
+
         if (typeof asset === 'string') {
           neededAssets.add(asset);
-        } else if (asset && asset[orient]) {
-          neededAssets.add(asset[orient]);
+        } else if (asset) {
+          // Check for visual variant first (feed/drain)
+          if (visual && asset[visual]) {
+            neededAssets.add(asset[visual]);
+          } else if (asset[orient]) {
+            // Otherwise use orientation variant
+            neededAssets.add(asset[orient]);
+          }
         }
       }
 
@@ -444,20 +470,27 @@
   <title>${title}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
+    body {
       font-family: system-ui, -apple-system, sans-serif;
       background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
       color: #f1f5f9;
       height: 100vh;
       overflow: hidden;
     }
-    
+
     #canvas {
       width: 100%;
       height: 100%;
       background: #0f172a;
     }
-    
+
+    /* CRITICAL: Reset color inheritance to prevent theme bleed into SVGs */
+    #canvas,
+    #canvas svg,
+    #canvas svg * {
+      color: initial !important;
+    }
+
     .component {
       cursor: pointer;
       transition: opacity 0.2s;
@@ -465,16 +498,25 @@
     .component:hover {
       opacity: 0.8;
     }
-    
+
     .label {
       fill: #94a3b8;
       font-size: 12px;
       pointer-events: none;
     }
-    
-    /* Preserve SVG inline styles */
+
+    /* Preserve SVG inline styles - let symbol's <style> tags work */
     .comp-skin {
-      /* Let SVG attributes handle fill/stroke */
+      vector-effect: non-scaling-stroke;
+    }
+
+    /* Isolate symbols from each other */
+    svg symbol {
+      isolation: isolate;
+    }
+
+    .comp-frame {
+      isolation: isolate;
     }
   </style>
 </head>
@@ -573,7 +615,8 @@ ${data.content}
 
       // Try symbol first
       const orient = comp.config?.orientation || comp.orientation || 'R';
-      const symbolData = this._getSymbolForComponent(type, orient);
+      const visual = comp.config?.visual; // For feed/drain variants
+      const symbolData = this._getSymbolForComponent(type, orient, visual);
       if (symbolData) {
         const frameGroup = innerTransform
           ? `<g class="comp-frame" transform="${innerTransform}">
@@ -701,7 +744,8 @@ ${data.content}
           y: c.y,
           orientation: c.orientation,
           variant: 'std',
-          ports: c.ports
+          ports: c.ports,
+          config: c.config || {} // Include full config (scale, visual, etc.)
         })),
         pipes: design.pipes
       };
@@ -762,14 +806,22 @@ ${data.content}
       return 'R';
     }
 
-    _getSymbolForComponent(type, orient) {
-      const asset = SVG_ASSETS[type];
+    _getSymbolForComponent(type, orient, visual) {
+      // Capitalize first letter for asset lookup
+      const assetKey = type.charAt(0).toUpperCase() + type.slice(1);
+      const asset = SVG_ASSETS[assetKey] || SVG_ASSETS[type];
       let assetPath = null;
 
       if (typeof asset === 'string') {
         assetPath = asset;
-      } else if (asset && asset[orient]) {
-        assetPath = asset[orient];
+      } else if (asset) {
+        // Check for visual variant first (feed/drain)
+        if (visual && asset[visual]) {
+          assetPath = asset[visual];
+        } else if (asset[orient]) {
+          // Otherwise use orientation variant
+          assetPath = asset[orient];
+        }
       }
 
       if (assetPath && this.symbolRegistry.has(assetPath)) {

@@ -43,6 +43,9 @@
         <button id="connectTool" class="tool-btn" title="Connect Tool">
           <span>🔗</span> Connect
         </button>
+        <button id="sourcesBtn" class="tool-btn" title="Add Source/Drain">
+          <span>💧</span> Sources
+        </button>
       </div>
       
       <div class="toolbar-section">
@@ -143,18 +146,18 @@
 <!-- Export Modal (kept for compatibility with existing code) -->
 <div id="exportModal" class="modal-overlay" style="display: none;" aria-hidden="true">
   <div class="modal-container">
-    <button 
-      id="exportModalClose" 
-      class="modal-close" 
+    <button
+      id="exportModalClose"
+      class="modal-close"
       aria-label="Close export dialog"
     >
       ×
     </button>
-    
+
     <div class="modal-header">
       <h2>📤 Export Simulator</h2>
     </div>
-    
+
     <div class="modal-body">
       <div class="export-info">
         <div class="info-row">
@@ -169,9 +172,9 @@
 
       <div class="form-field">
         <label for="simName">Simulator Name:</label>
-        <input 
-          type="text" 
-          id="simName" 
+        <input
+          type="text"
+          id="simName"
           placeholder="My Process Simulator"
           value="My Simulator"
           class="text-input"
@@ -183,10 +186,79 @@
         <p>Exports standalone HTML file with all engine code embedded from GitHub.</p>
       </div>
     </div>
-    
+
     <div class="modal-footer">
       <button id="exportCancelBtn" class="btn">Cancel</button>
       <button id="exportConfirmBtn" class="btn btn-primary">Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sources Modal -->
+<div id="sourcesModal" class="modal-overlay" style="display: none;" aria-hidden="true">
+  <div class="modal-container">
+    <button
+      id="sourcesModalClose"
+      class="modal-close"
+      aria-label="Close sources dialog"
+    >
+      ×
+    </button>
+
+    <div class="modal-header">
+      <h2>💧 Add Source or Drain</h2>
+    </div>
+
+    <div class="modal-body">
+      <p style="margin-bottom: 20px; color: var(--muted);">
+        Select the type of source or drain component you want to add to your design.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <!-- Feed Sources -->
+        <div style="grid-column: 1 / -1;">
+          <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">💧 Feed (Water Supply)</h3>
+        </div>
+
+        <button class="source-variant-btn" data-type="feed" data-visual="chemistry">
+          <div class="source-icon">🧪</div>
+          <div class="source-label">Chemistry</div>
+        </button>
+
+        <button class="source-variant-btn" data-type="feed" data-visual="pumpjack">
+          <div class="source-icon">⛽</div>
+          <div class="source-label">Pumpjack</div>
+        </button>
+
+        <button class="source-variant-btn" data-type="feed" data-visual="refinery">
+          <div class="source-icon">🏭</div>
+          <div class="source-label">Refinery</div>
+        </button>
+
+        <!-- Drain Sinks -->
+        <div style="grid-column: 1 / -1; margin-top: 16px;">
+          <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">🚰 Drain (Discharge)</h3>
+        </div>
+
+        <button class="source-variant-btn" data-type="drain" data-visual="chemistry">
+          <div class="source-icon">🧪</div>
+          <div class="source-label">Chemistry</div>
+        </button>
+
+        <button class="source-variant-btn" data-type="drain" data-visual="pumpjack">
+          <div class="source-icon">⛽</div>
+          <div class="source-label">Pumpjack</div>
+        </button>
+
+        <button class="source-variant-btn" data-type="drain" data-visual="refinery">
+          <div class="source-icon">🏭</div>
+          <div class="source-label">Refinery</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="sourcesCancelBtn" class="btn">Cancel</button>
     </div>
   </div>
 </div>
@@ -333,6 +405,72 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
   }
+</script>
+
+<!-- Sources Modal Handler -->
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const sourcesBtn = document.getElementById('sourcesBtn');
+    const sourcesModal = document.getElementById('sourcesModal');
+    const sourcesModalClose = document.getElementById('sourcesModalClose');
+    const sourcesCancelBtn = document.getElementById('sourcesCancelBtn');
+
+    // Open sources modal
+    if (sourcesBtn) {
+      sourcesBtn.addEventListener('click', () => {
+        if (sourcesModal) {
+          sourcesModal.style.display = 'flex';
+          setTimeout(() => sourcesModal.classList.add('open'), 10);
+        }
+      });
+    }
+
+    // Close sources modal
+    const closeSourcesModal = () => {
+      if (sourcesModal) {
+        sourcesModal.classList.remove('open');
+        setTimeout(() => sourcesModal.style.display = 'none', 300);
+      }
+    };
+
+    if (sourcesModalClose) sourcesModalClose.addEventListener('click', closeSourcesModal);
+    if (sourcesCancelBtn) sourcesCancelBtn.addEventListener('click', closeSourcesModal);
+
+    // Close on outside click
+    if (sourcesModal) {
+      sourcesModal.addEventListener('click', (e) => {
+        if (e.target === sourcesModal) closeSourcesModal();
+      });
+    }
+
+    // Handle source variant selection
+    const variantBtns = document.querySelectorAll('.source-variant-btn');
+    variantBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.type;
+        const visual = btn.dataset.visual;
+
+        // Get canvas center position
+        const canvas = document.getElementById('canvas');
+        const viewBox = canvas.viewBox.baseVal;
+        const centerX = viewBox.x + viewBox.width / 2;
+        const centerY = viewBox.y + viewBox.height / 2;
+
+        // Add component with visual variant config
+        if (window.designer) {
+          window.designer.addComponent(type, centerX, centerY, {
+            config: { visual }
+          });
+          console.log(`Added ${type} with ${visual} visual variant`);
+        }
+
+        // Close modal
+        closeSourcesModal();
+      });
+    });
+
+    console.log('✅ Sources modal handler initialized');
+  });
 </script>
 
 </body>
