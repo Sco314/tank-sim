@@ -318,6 +318,66 @@ const COMPONENT_LIBRARY = {
   },
   
   // === SENSORS ===
+  analogGauge: {
+    name: 'Analog Gauge',
+    category: 'Sensors',
+    type: 'analogGauge',
+    icon: '🎚️',
+    color: '#f59e0b',
+    description: 'Analog gauge display for pressure, flow, temperature, or level',
+    svgPath: 'assets/gaugeAnalog.svg',
+    imageSize: { w: 100, h: 100, x: -50, y: -50 },
+    defaultConfig: {
+      type: 'analogGauge',
+      measurementType: 'pressure',
+      minRange: 0,
+      maxRange: 10,
+      units: 'bar',
+      decimals: 1,
+      orientation: 'R',
+      scale: 1.0
+    },
+    properties: [
+      {
+        name: 'measurementType',
+        label: 'Measurement Type',
+        type: 'select',
+        default: 'pressure',
+        options: [
+          { value: 'pressure', label: 'Pressure' },
+          { value: 'flow', label: 'Flow Rate' },
+          { value: 'temperature', label: 'Temperature' },
+          { value: 'level', label: 'Level' }
+        ]
+      },
+      { name: 'minRange', label: 'Min Range', type: 'number', default: 0, step: 0.1 },
+      { name: 'maxRange', label: 'Max Range', type: 'number', default: 10, min: 0.1, step: 0.1 },
+      {
+        name: 'units',
+        label: 'Units',
+        type: 'select',
+        default: 'bar',
+        options: [
+          { value: 'bar', label: 'bar (Pressure)' },
+          { value: 'psi', label: 'psi (Pressure)' },
+          { value: 'kPa', label: 'kPa (Pressure)' },
+          { value: 'm³/s', label: 'm³/s (Flow)' },
+          { value: 'L/min', label: 'L/min (Flow)' },
+          { value: 'gpm', label: 'gpm (Flow)' },
+          { value: '°C', label: '°C (Temperature)' },
+          { value: '°F', label: '°F (Temperature)' },
+          { value: 'K', label: 'K (Temperature)' },
+          { value: '%', label: '% (Level)' },
+          { value: 'm', label: 'm (Level)' }
+        ]
+      },
+      { name: 'decimals', label: 'Decimal Places', type: 'number', default: 1, min: 0, max: 3, step: 1 }
+    ],
+    connectionPoints: [
+      { id: 'cp_probe', name: 'probe', type: 'input', x: 0, y: 48 }
+    ]
+  },
+
   pressureSensor: {
     name: 'Pressure Sensor',
     category: 'Sensors',
@@ -432,7 +492,7 @@ const CATEGORIES = {
   'Sensors': {
     name: 'Sensors',
     icon: '📊',
-    components: ['pressureSensor', 'flowSensor', 'levelSensor']
+    components: ['analogGauge', 'pressureSensor', 'flowSensor', 'levelSensor']
   }
 };
 

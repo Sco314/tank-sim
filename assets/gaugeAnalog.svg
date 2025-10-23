@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Analog Gauge Template - Dynamic measurement display -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <!-- Gradient for gauge face -->
+    <radialGradient id="gaugeFaceGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#f0f0f0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d0d0d0;stop-opacity:1" />
+    </radialGradient>
+
+    <!-- Shadow for depth -->
+    <filter id="gaugeShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="1" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer bezel -->
+  <circle cx="100" cy="100" r="95" fill="#2a3d78" stroke="#1a2d68" stroke-width="2"/>
+
+  <!-- Gauge face -->
+  <circle cx="100" cy="100" r="85" fill="url(#gaugeFaceGradient)" stroke="#888" stroke-width="1"/>
+
+  <!-- Scale marks -->
+  <g id="scaleMarks" stroke="#333" stroke-linecap="round">
+    <!-- Major tick marks (0, 25, 50, 75, 100) at -135° to +135° (270° arc) -->
+    <line x1="100" y1="25" x2="100" y2="35" stroke-width="2" transform="rotate(-135 100 100)"/>
+    <line x1="100" y1="25" x2="100" y2="35" stroke-width="2" transform="rotate(-67.5 100 100)"/>
+    <line x1="100" y1="25" x2="100" y2="35" stroke-width="2" transform="rotate(0 100 100)"/>
+    <line x1="100" y1="25" x2="100" y2="35" stroke-width="2" transform="rotate(67.5 100 100)"/>
+    <line x1="100" y1="25" x2="100" y2="35" stroke-width="2" transform="rotate(135 100 100)"/>
+
+    <!-- Minor tick marks (every 10% between major marks) -->
+    <g stroke-width="1" opacity="0.5">
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(-108 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(-81 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(-54 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(-27 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(27 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(54 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(81 100 100)"/>
+      <line x1="100" y1="25" x2="100" y2="32" transform="rotate(108 100 100)"/>
+    </g>
+  </g>
+
+  <!-- Scale labels (will be set dynamically based on range) -->
+  <g id="scaleLabels" font-family="Arial, sans-serif" font-size="12" fill="#333" text-anchor="middle">
+    <text x="35" y="110" id="label_min">0</text>
+    <text x="60" y="50" id="label_25">25</text>
+    <text x="100" y="35" id="label_50">50</text>
+    <text x="140" y="50" id="label_75">75</text>
+    <text x="165" y="110" id="label_max">100</text>
+  </g>
+
+  <!-- Center hub -->
+  <circle cx="100" cy="100" r="8" fill="#444" filter="url(#gaugeShadow)"/>
+  <circle cx="100" cy="100" r="6" fill="#666"/>
+
+  <!-- Needle/Pointer (starts at -135°, rotates to +135° for full scale) -->
+  <!-- The needle rotation is controlled by: rotate(angle, 100, 100) where angle = -135 + (value/range) * 270 -->
+  <g id="gaugeNeedle" transform="rotate(-135 100 100)" style="transition: transform 0.3s ease-out;">
+    <path d="M 100,50 L 95,95 L 100,100 L 105,95 Z" fill="#c00" stroke="#800" stroke-width="1" filter="url(#gaugeShadow)"/>
+    <circle cx="100" cy="100" r="4" fill="#c00"/>
+  </g>
+
+  <!-- Value display -->
+  <g id="valueDisplay">
+    <!-- Background for value -->
+    <rect x="70" y="130" width="60" height="25" rx="3" fill="#fff" stroke="#888" stroke-width="1"/>
+
+    <!-- Current value text -->
+    <text x="100" y="147" id="gaugeValue" font-family="Arial, sans-serif" font-size="14" font-weight="bold"
+          fill="#333" text-anchor="middle">0.0</text>
+  </g>
+
+  <!-- Unit label -->
+  <text x="100" y="165" id="gaugeUnit" font-family="Arial, sans-serif" font-size="10"
+        fill="#666" text-anchor="middle">bar</text>
+
+  <!-- Measurement type label -->
+  <text x="100" y="180" id="gaugeType" font-family="Arial, sans-serif" font-size="9"
+        fill="#999" text-anchor="middle">PRESSURE</text>
+
+  <!-- Connection point (for data input) -->
+  <circle id="cp_probe" cx="100" cy="195" r="4" fill="#3b82f6" opacity="0.3"/>
+</svg>
