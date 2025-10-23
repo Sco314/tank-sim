@@ -971,18 +971,78 @@ html, body {
   transform: scale(0.95);
 }
 
-/* SVG Style Isolation */
+/* ============================================================================
+   SVG STYLE ISOLATION - Prevent theme color bleed
+   ============================================================================ */
+
+/*
+ * CRITICAL: Reset color inheritance on canvas to prevent currentColor bleed
+ * This kills theme accent color from leaking into SVG components
+ */
+#canvas,
+#canvas svg,
+#canvas svg * {
+  color: initial !important;
+}
+
+/* Keep stroke widths consistent during transforms */
 .comp-skin {
   vector-effect: non-scaling-stroke;
 }
 
-/* Prevent CSS bleeding between SVG components */
+/* Isolate SVG symbols from each other */
 svg symbol {
   isolation: isolate;
 }
 
 .comp-frame {
   isolation: isolate;
+}
+
+/*
+ * DO NOT override fill/stroke on <use> elements!
+ * Let the symbol's internal <style> and attributes control appearance.
+ * The valve body is grey (#384551), handle is teal (#15bac7) - these are correct.
+ */
+
+/* ============================================================================
+   SOURCES MODAL
+   ============================================================================ */
+
+.source-variant-btn {
+  padding: 20px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.source-variant-btn:hover {
+  background: rgba(127, 200, 255, 0.1);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(127, 200, 255, 0.2);
+}
+
+.source-variant-btn:active {
+  transform: translateY(0);
+}
+
+.source-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.source-label {
+  font-weight: 500;
+  color: var(--ink);
 }
 
 /* ============================================================================
