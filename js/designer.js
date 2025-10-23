@@ -95,12 +95,41 @@ class ProcessDesigner {
         const svgText = await res.text();
         const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
         const inner = this._extractSvgInner(svgText);
-        
-        // IMPORTANT: Preserve original styles, then scope IDs and classes
-        const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
-        symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
+        // Check if SVG has separate artwork and labels groups
+        const hasArtworkGroup = inner.includes('id="artwork"');
+        const hasLabelsGroup = inner.includes('id="labels"');
+
+        if (hasArtworkGroup && hasLabelsGroup) {
+          // Extract artwork group
+          const artworkMatch = inner.match(/<g\s+id="artwork"[^>]*>([\s\S]*?)<\/g>\s*<!--.*?Label group/i);
+          if (artworkMatch) {
+            const artworkContent = artworkMatch[1];
+            const prefixedArtwork = this._prefixSvgIds(artworkContent, `${meta.symbolId}-artwork`);
+            const scopedArtwork = this._scopeSvgStylesPreserving(prefixedArtwork, `${meta.symbolId}-artwork`);
+            symbols.push(`<symbol id="${meta.symbolId}-artwork" viewBox="${viewBox}">${scopedArtwork}</symbol>`);
+            this._symbolRegistry.set(`${meta.type}-artwork`, `${meta.symbolId}-artwork`);
+          }
+
+          // Extract labels group
+          const labelsMatch = inner.match(/<!--.*?Label group.*?-->\s*<g\s+id="labels"[^>]*>([\s\S]*?)<\/g>/i);
+          if (labelsMatch) {
+            const labelsContent = labelsMatch[1];
+            const prefixedLabels = this._prefixSvgIds(labelsContent, `${meta.symbolId}-labels`);
+            const scopedLabels = this._scopeSvgStylesPreserving(prefixedLabels, `${meta.symbolId}-labels`);
+            symbols.push(`<symbol id="${meta.symbolId}-labels" viewBox="${viewBox}">${scopedLabels}</symbol>`);
+            this._symbolRegistry.set(`${meta.type}-labels`, `${meta.symbolId}-labels`);
+          }
+
+          console.log(`✅ Created separate artwork/labels symbols for ${meta.type}`);
+        } else {
+          // IMPORTANT: Preserve original styles, then scope IDs and classes
+          const prefixed = this._prefixSvgIds(inner, meta.symbolId);
+          const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
+
+          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
+          this._symbolRegistry.set(meta.type, meta.symbolId);
+        }
 
         // Parse and cache ports
         const ports = this._extractPortsFromSvg(svgText, viewBox);
@@ -109,7 +138,6 @@ class ProcessDesigner {
           console.log(`✅ Cached ${Object.keys(ports).length} ports for ${meta.type}:`, ports);
         }
 
-        this._symbolRegistry.set(meta.type, meta.symbolId);
       } catch (e) {
         console.warn(`Failed to load SVG: ${assetPath}`, e);
       }
@@ -575,27 +603,73 @@ class ProcessDesigner {
     g.id = comp.id;
     g.classList.add('component');
     g.setAttribute('data-type', comp.type);
+    g.setAttribute('data-orientation', comp.config?.orientation || comp.orientation || 'L');
     g.setAttribute('transform', transforms.outer);
 
-    // Inner group: orientation + scale (if needed)
-    const frame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    frame.classList.add('comp-frame');
-    if (transforms.inner) {
-      frame.setAttribute('transform', transforms.inner);
+    // Check if we have separate artwork and labels symbols
+    const artworkSymbolId = this._symbolRegistry.get(`${comp.type}-artwork`);
+    const labelsSymbolId = this._symbolRegistry.get(`${comp.type}-labels`);
+
+    if (artworkSymbolId && labelsSymbolId) {
+      // Component has separate artwork and labels - render them separately
+      // Artwork frame: gets orientation + scale transforms
+      const artworkFrame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      artworkFrame.classList.add('comp-frame', 'artwork');
+      if (transforms.inner) {
+        artworkFrame.setAttribute('transform', transforms.inner);
+      }
+
+      const artworkUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      artworkUse.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${artworkSymbolId}`);
+      artworkUse.setAttribute('width', size.w);
+      artworkUse.setAttribute('height', size.h);
+      artworkUse.setAttribute('x', size.x);
+      artworkUse.setAttribute('y', size.y);
+      artworkUse.classList.add('comp-skin');
+      artworkUse.setAttribute('vector-effect', 'non-scaling-stroke');
+
+      artworkFrame.appendChild(artworkUse);
+      g.appendChild(artworkFrame);
+
+      // Labels frame: gets ONLY scale transform, NO flip
+      const labelsFrame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      labelsFrame.classList.add('comp-frame', 'labels');
+      const scale = comp.config?.scale || 1.0;
+      if (scale !== 1.0) {
+        labelsFrame.setAttribute('transform', `scale(${scale})`);
+      }
+
+      const labelsUse = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      labelsUse.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${labelsSymbolId}`);
+      labelsUse.setAttribute('width', size.w);
+      labelsUse.setAttribute('height', size.h);
+      labelsUse.setAttribute('x', size.x);
+      labelsUse.setAttribute('y', size.y);
+      labelsUse.classList.add('comp-skin');
+      labelsUse.setAttribute('vector-effect', 'non-scaling-stroke');
+
+      labelsFrame.appendChild(labelsUse);
+      g.appendChild(labelsFrame);
+    } else {
+      // Regular component - single use element with full transform
+      const frame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      frame.classList.add('comp-frame');
+      if (transforms.inner) {
+        frame.setAttribute('transform', transforms.inner);
+      }
+
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
+      use.setAttribute('width', size.w);
+      use.setAttribute('height', size.h);
+      use.setAttribute('x', size.x);
+      use.setAttribute('y', size.y);
+      use.classList.add('comp-skin');
+      use.setAttribute('vector-effect', 'non-scaling-stroke');
+
+      frame.appendChild(use);
+      g.appendChild(frame);
     }
-
-    // SVG use element
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
-    use.setAttribute('width', size.w);
-    use.setAttribute('height', size.h);
-    use.setAttribute('x', size.x);
-    use.setAttribute('y', size.y);
-    use.classList.add('comp-skin');
-    use.setAttribute('vector-effect', 'non-scaling-stroke'); // Keep stroke width consistent
-
-    frame.appendChild(use);
-    g.appendChild(frame);
 
     // Add label text below component
     if (comp.label || comp.name) {
@@ -826,7 +900,8 @@ class ProcessDesigner {
     const lib = window.COMPONENT_LIBRARY || {};
     const def = lib[comp.key] || {};
 
-    const currentOrient = comp.config?.orientation || comp.orientation || 'R';
+    // Read actual orientation from component (no default - should always have a value)
+    const currentOrient = comp.config?.orientation || comp.orientation || 'L';
     const currentScale = comp.config?.scale || 1.0;
     const scalePercent = Math.round(currentScale * 100);
 
