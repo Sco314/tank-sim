@@ -17,21 +17,50 @@ const COMPONENT_LIBRARY = {
     icon: '💧',
     color: '#3b82f6',
     description: 'Infinite water supply',
+    imageSize: { w: 40, h: 40, x: -20, y: -20 },
     defaultConfig: {
       type: 'feed',
       supplyPressure: 3,
       maxFlow: null,
-      temperature: 20
+      temperature: 20,
+      visual: 'chemistry'
     },
     properties: [
+      { name: 'visual', label: 'Visual Style', type: 'select', default: 'chemistry',
+        options: [
+          { value: 'chemistry', label: 'Chemistry' },
+          { value: 'pumpjack', label: 'Pumpjack' },
+          { value: 'refinery', label: 'Refinery' }
+        ]
+      },
       { name: 'supplyPressure', label: 'Supply Pressure (bar)', type: 'number', default: 3, min: 0, step: 0.1 },
       { name: 'temperature', label: 'Temperature (°C)', type: 'number', default: 20, min: -10, max: 100 }
     ],
     connectionPoints: [
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 20, y: 0 }
-    ]
+    ],
+    visualVariants: {
+      chemistry: {
+        svgPath: 'assets/sourceChemistry.svg',
+        connectionPoints: [
+          { id: 'cp_right', name: 'outlet', type: 'output', x: 71, y: 35.5 }
+        ]
+      },
+      pumpjack: {
+        svgPath: 'assets/sourcePumpjack.svg',
+        connectionPoints: [
+          { id: 'cp_right', name: 'outlet', type: 'output', x: 71, y: 35.5 }
+        ]
+      },
+      refinery: {
+        svgPath: 'assets/sourceRefinery.svg',
+        connectionPoints: [
+          { id: 'cp_right', name: 'outlet', type: 'output', x: 71, y: 35.5 }
+        ]
+      }
+    }
   },
-  
+
   // === SINKS ===
   drain: {
     name: 'Drain (Discharge)',
@@ -40,17 +69,46 @@ const COMPONENT_LIBRARY = {
     icon: '🚰',
     color: '#6366f1',
     description: 'Infinite discharge capacity',
+    imageSize: { w: 40, h: 40, x: -20, y: -20 },
     defaultConfig: {
       type: 'drain',
       ambientPressure: 1,
-      maxCapacity: null
+      maxCapacity: null,
+      visual: 'chemistry'
     },
     properties: [
+      { name: 'visual', label: 'Visual Style', type: 'select', default: 'chemistry',
+        options: [
+          { value: 'chemistry', label: 'Chemistry' },
+          { value: 'pumpjack', label: 'Pumpjack' },
+          { value: 'refinery', label: 'Refinery' }
+        ]
+      },
       { name: 'ambientPressure', label: 'Ambient Pressure (bar)', type: 'number', default: 1, min: 0, step: 0.1 }
     ],
     connectionPoints: [
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -20, y: 0 }
-    ]
+    ],
+    visualVariants: {
+      chemistry: {
+        svgPath: 'assets/sourceChemistry.svg',
+        connectionPoints: [
+          { id: 'cp_left', name: 'inlet', type: 'input', x: 6.3, y: 35.5 }
+        ]
+      },
+      pumpjack: {
+        svgPath: 'assets/sourcePumpjack.svg',
+        connectionPoints: [
+          { id: 'cp_left', name: 'inlet', type: 'input', x: 6.3, y: 35.5 }
+        ]
+      },
+      refinery: {
+        svgPath: 'assets/sourceRefinery.svg',
+        connectionPoints: [
+          { id: 'cp_left', name: 'inlet', type: 'input', x: 6.3, y: 35.5 }
+        ]
+      }
+    }
   },
   
   // === TANKS === (2x LARGER)
@@ -69,7 +127,9 @@ const COMPONENT_LIBRARY = {
       type: 'tank',
       capacity: 10,
       initialLevel: 2,
-      maxLevel: 9.5
+      maxLevel: 9.5,
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'capacity', label: 'Capacity (m³)', type: 'number', default: 10, min: 0.1, step: 0.1 },
@@ -101,7 +161,8 @@ const COMPONENT_LIBRARY = {
       head: 10,
       efficiency: 0.7,
       maxFlow: 1,
-      orientation: 'left'
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
@@ -131,7 +192,7 @@ const COMPONENT_LIBRARY = {
       }
     }
   },
-  
+
   variablePump: {
     name: 'Variable Speed Pump',
     category: 'Pumps',
@@ -140,8 +201,7 @@ const COMPONENT_LIBRARY = {
     color: '#ec4899',
     description: 'VFD pump (0-100% speed control)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
-    svg: 'cent-pump-inlet-left-01.svg',
-    svgPath: 'assets/cent-pump-inlet-left-01.svg',
+    svgPath: 'assets/pumpVariable.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pumpVariable',
@@ -149,7 +209,8 @@ const COMPONENT_LIBRARY = {
       efficiency: 0.7,
       maxFlow: 1,
       minSpeed: 0.2,
-      orientation: 'left'
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
@@ -161,26 +222,12 @@ const COMPONENT_LIBRARY = {
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
     ],
-    variants: {
-      left: {
-        svg: 'cent-pump-inlet-left-01.svg',
-        svgPath: 'assets/cent-pump-inlet-left-01.svg',
-        connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
-        ]
-      },
-      right: {
-        svg: 'cent-pump-inlet-right-01.svg',
-        svgPath: 'assets/cent-pump-inlet-right-01.svg',
-        connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
-        ]
-      }
-    }
+    portsR: [
+      { name: 'inlet', x: -60, y: 0 },
+      { name: 'outlet', x: 60, y: 0 }
+    ]
   },
-  
+
   threeSpeedPump: {
     name: '3-Speed Pump',
     category: 'Pumps',
@@ -189,8 +236,7 @@ const COMPONENT_LIBRARY = {
     color: '#ec4899',
     description: 'Multi-speed pump (Low/Med/High)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
-    svg: 'cent-pump-inlet-left-01.svg',
-    svgPath: 'assets/cent-pump-inlet-left-01.svg',
+    svgPath: 'assets/pump3speed.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pump3Speed',
@@ -198,7 +244,8 @@ const COMPONENT_LIBRARY = {
       efficiency: 0.7,
       maxFlow: 1,
       speeds: [0.3, 0.6, 1.0],
-      orientation: 'left'
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'head', label: 'Head (m)', type: 'number', default: 10, min: 0, step: 0.5 },
@@ -209,24 +256,10 @@ const COMPONENT_LIBRARY = {
       { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
       { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
     ],
-    variants: {
-      left: {
-        svg: 'cent-pump-inlet-left-01.svg',
-        svgPath: 'assets/cent-pump-inlet-left-01.svg',
-        connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
-        ]
-      },
-      right: {
-        svg: 'cent-pump-inlet-right-01.svg',
-        svgPath: 'assets/cent-pump-inlet-right-01.svg',
-        connectionPoints: [
-          { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
-          { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
-        ]
-      }
-    }
+    portsR: [
+      { name: 'inlet', x: -60, y: 0 },
+      { name: 'outlet', x: 60, y: 0 }
+    ]
   },
   
   // === VALVES === (1/3 SMALLER)
@@ -245,7 +278,8 @@ const COMPONENT_LIBRARY = {
       type: 'valve',
       open: 82,
       kv: 1,
-      orientation: 'right'
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'open', label: 'Opening (%)', type: 'number', default: 82, min: 0, max: 100, step: 1 },
@@ -403,35 +437,49 @@ const CATEGORIES = {
 };
 
 /**
- * Helper: Get the correct SVG file for a component based on its orientation
+ * Helper: Get the correct SVG file for a component based on its orientation/visual
  */
 function getComponentSVG(component) {
   const def = COMPONENT_LIBRARY[component.key];
   if (!def) return null;
-  
+
+  // Check for visual variant (feed/drain)
+  if (component.config?.visual && def.visualVariants) {
+    const visualVariant = def.visualVariants[component.config.visual];
+    if (visualVariant?.svgPath) return visualVariant.svgPath;
+  }
+
   // Check if component has orientation and variants
   if (component.config?.orientation && def.variants) {
     const variant = def.variants[component.config.orientation];
     return variant?.svgPath || variant?.svg || def.svgPath || def.svg;
   }
-  
+
   // Return default SVG
   return def.svgPath || def.svg || null;
 }
 
 /**
- * Helper: Get connection points for a component based on its orientation
+ * Helper: Get connection points for a component based on its orientation/visual
  */
 function getComponentConnectionPoints(component) {
   const def = COMPONENT_LIBRARY[component.key];
   if (!def) return [];
-  
+
+  // Check for visual variant (feed/drain)
+  if (component.config?.visual && def.visualVariants) {
+    const visualVariant = def.visualVariants[component.config.visual];
+    if (visualVariant?.connectionPoints) {
+      return visualVariant.connectionPoints;
+    }
+  }
+
   // Check if component has orientation and variants
   if (component.config?.orientation && def.variants) {
     const variant = def.variants[component.config.orientation];
     return variant?.connectionPoints || def.connectionPoints || [];
   }
-  
+
   // Return default connection points
   return def.connectionPoints || [];
 }

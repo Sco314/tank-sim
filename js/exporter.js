@@ -525,25 +525,64 @@ ${data.content}
      * Generate SVG for a single component
      * FIXED: Uses correct imageSize from COMPONENT_SIZES
      */
+    /**
+     * Get orientation transform for component
+     */
+    _getOrientationTransform(orient) {
+      const o = String(orient || 'R').toUpperCase();
+      switch (o) {
+        case 'L': return 'scale(-1, 1)'; // Flip horizontal
+        case 'U': return 'rotate(-90)';  // Rotate up
+        case 'D': return 'rotate(90)';   // Rotate down
+        case 'R':
+        default:  return '';             // Right (no transform)
+      }
+    }
+
+    /**
+     * Get complete transform for a component
+     */
+    _getComponentTransform(comp) {
+      const orient = comp.config?.orientation || comp.orientation || 'R';
+      const scale = comp.config?.scale || 1.0;
+
+      const orientTransform = this._getOrientationTransform(orient);
+      const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
+
+      let innerTransforms = [orientTransform, scaleTransform].filter(t => t).join(' ');
+
+      return {
+        outer: `translate(${comp.x|0}, ${comp.y|0})`,
+        inner: innerTransforms || null
+      };
+    }
+
     _generateComponentSVG(comp) {
       const cleanId = this._sanitizeId(comp.id);
       const type = comp.type || 'Component';
-      const orient = comp.orientation || 'R';
       const label = this._escapeHtml(comp.name || cleanId);
 
       // Get correct size for this component type
       const typeKey = type.toLowerCase();
       const size = COMPONENT_SIZES[typeKey] || COMPONENT_SIZES.default;
 
-      // Rotation (only for valve facing down)
-      let rot = 0;
-      if (/valve/i.test(type) && orient === 'D') rot = 180;
+      // Get transforms (bake appearance into export)
+      const transforms = this._getComponentTransform(comp);
+      const outerTransform = transforms.outer;
+      const innerTransform = transforms.inner;
 
       // Try symbol first
+      const orient = comp.config?.orientation || comp.orientation || 'R';
       const symbolData = this._getSymbolForComponent(type, orient);
       if (symbolData) {
-        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
-  <use href="#${symbolData.symbolId}" class="comp-skin" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />
+        const frameGroup = innerTransform
+          ? `<g class="comp-frame" transform="${innerTransform}">
+    <use href="#${symbolData.symbolId}" class="comp-skin" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />
+  </g>`
+          : `<use href="#${symbolData.symbolId}" class="comp-skin" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />`;
+
+        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="${outerTransform}" tabindex="0" role="button">
+  ${frameGroup}
   <text class="label" x="0" y="${size.y + size.h + 20}" text-anchor="middle" font-size="12">${label}</text>
 </g>`;
       }
@@ -551,14 +590,20 @@ ${data.content}
       // Try PNG fallback
       const pngUrl = this._getPNGForComponent(type);
       if (pngUrl) {
-        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="translate(${comp.x|0}, ${comp.y|0}) rotate(${rot})" tabindex="0" role="button">
-  <image href="${pngUrl}" x="${size.x}" y="${size.y}" width="${size.w}" height="${size.h}" />
+        const frameGroup = innerTransform
+          ? `<g class="comp-frame" transform="${innerTransform}">
+    <image href="${pngUrl}" x="${size.x}" y="${size.y}" width="${size.w}" height="${size.h}" />
+  </g>`
+          : `<image href="${pngUrl}" x="${size.x}" y="${size.y}" width="${size.w}" height="${size.h}" />`;
+
+        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="${outerTransform}" tabindex="0" role="button">
+  ${frameGroup}
   <text class="label" x="0" y="${size.y - 10}" text-anchor="middle" font-size="12">${label}</text>
 </g>`;
       }
 
       // Fallback to diagnostic box
-      return `<g id="${cleanId}" class="component Missing" transform="translate(${comp.x|0}, ${comp.y|0})">
+      return `<g id="${cleanId}" class="component Missing" transform="${outerTransform}">
   <rect x="-20" y="-20" width="40" height="40" fill="#fee" stroke="#c00" stroke-width="2"/>
   <text class="label" x="0" y="-30" text-anchor="middle" font-size="12">${label}</text>
 </g>`;
@@ -591,21 +636,16 @@ ${data.content}
     }
 
     /**
-     * Get world coordinates for a component port
+     * Get world coordinates for a component port (with transform support)
      */
     _getPortWorldCoords(comp, portName) {
       const cx = comp.x | 0;
       const cy = comp.y | 0;
       const type = comp.type;
-      const orient = comp.orientation || 'R';
 
       // Get correct size for this component type
       const typeKey = type.toLowerCase();
       const size = COMPONENT_SIZES[typeKey] || COMPONENT_SIZES.default;
-
-      // Rotation (only for valve facing down)
-      const rotDeg = (/valve/i.test(type) && orient === 'D') ? 180 : 0;
-      const rot = (rotDeg * Math.PI) / 180;
 
       // Get port coordinates (prefer design, fallback to extracted)
       const ports = comp.ports || this.portIndex.get(type) || {};
@@ -613,14 +653,29 @@ ${data.content}
 
       if (port) {
         // Convert from 0-100 space to component's local space
-        const lx = ((port.x - 50) / 100) * size.w;
-        const ly = ((port.y - 50) / 100) * size.h;
+        let lx = ((port.x - 50) / 100) * size.w;
+        let ly = ((port.y - 50) / 100) * size.h;
 
-        // Apply rotation
-        const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
-        const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
+        // Apply orientation transform
+        const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
+        switch (orient) {
+          case 'L': // Flip horizontal
+            lx = -lx;
+            break;
+          case 'U': // Rotate -90° (up)
+            [lx, ly] = [ly, -lx];
+            break;
+          case 'D': // Rotate 90° (down)
+            [lx, ly] = [-ly, lx];
+            break;
+        }
 
-        return { x: cx + rx, y: cy + ry };
+        // Apply scale
+        const scale = comp.config?.scale || 1.0;
+        lx *= scale;
+        ly *= scale;
+
+        return { x: cx + lx, y: cy + ly };
       }
 
       // Fallback to component center

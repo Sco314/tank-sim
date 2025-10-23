@@ -61,12 +61,27 @@ class ProcessDesigner {
     // Collect all component types from library
     for (const [key, def] of Object.entries(lib)) {
       const type = def.type || key;
-      const assetPath = this._resolveSvgAssetPath(type, { orientation: 'R' }, def);
-      if (!assetPath) continue;
 
-      const symbolId = `sym-${type.replace(/\s+/g, '_')}`;
-      if (!needed.has(assetPath)) {
-        needed.set(assetPath, { symbolId, type, def });
+      // Handle components with visual variants (feed/drain)
+      if (def.visualVariants) {
+        for (const [variantName, variantDef] of Object.entries(def.visualVariants)) {
+          const assetPath = variantDef.svgPath;
+          if (!assetPath) continue;
+
+          const symbolId = `sym-${type}-${variantName}`;
+          if (!needed.has(assetPath)) {
+            needed.set(assetPath, { symbolId, type: `${type}-${variantName}`, def: variantDef, baseType: type });
+          }
+        }
+      } else {
+        // Regular components
+        const assetPath = this._resolveSvgAssetPath(type, { orientation: 'R' }, def);
+        if (!assetPath) continue;
+
+        const symbolId = `sym-${type.replace(/\s+/g, '_')}`;
+        if (!needed.has(assetPath)) {
+          needed.set(assetPath, { symbolId, type, def });
+        }
       }
     }
 
@@ -279,6 +294,43 @@ class ProcessDesigner {
   }
 
   /**
+   * Get orientation transform matrix
+   * R = Right (default, no transform)
+   * L = Left (flip horizontal)
+   * U = Up (rotate -90°)
+   * D = Down (rotate 90°)
+   */
+  _getOrientationTransform(orient) {
+    const o = String(orient || 'R').toUpperCase();
+    switch (o) {
+      case 'L': return 'scale(-1, 1)'; // Flip horizontal
+      case 'U': return 'rotate(-90)';  // Rotate up
+      case 'D': return 'rotate(90)';   // Rotate down
+      case 'R':
+      default:  return '';             // Right (no transform)
+    }
+  }
+
+  /**
+   * Get complete transform for a component
+   * Transform order: translate → orientation → scale
+   */
+  _getComponentTransform(comp) {
+    const orient = comp.config?.orientation || comp.orientation || 'R';
+    const scale = comp.config?.scale || 1.0;
+
+    const orientTransform = this._getOrientationTransform(orient);
+    const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
+
+    let innerTransforms = [orientTransform, scaleTransform].filter(t => t).join(' ');
+
+    return {
+      outer: `translate(${comp.x}, ${comp.y})`,
+      inner: innerTransforms || null
+    };
+  }
+
+  /**
    * Populate component palette
    */
   _populateComponentPalette() {
@@ -380,6 +432,77 @@ class ProcessDesigner {
     const clearBtn = document.getElementById('clearBtn');
     if (clearBtn) clearBtn.addEventListener('click', () => this.clearCanvas());
 
+    // Keyboard shortcuts for transform operations
+    document.addEventListener('keydown', (e) => {
+      // Only handle shortcuts when a component is selected and not typing in an input
+      if (!this.selectedComponent || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+        return;
+      }
+
+      const comp = this.components.get(this.selectedComponent);
+      if (!comp) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'h': // Flip horizontal
+          e.preventDefault();
+          this.flipComponent(this.selectedComponent);
+          console.log('Flipped component (H)');
+          break;
+
+        case 'r': // Rotate
+          e.preventDefault();
+          if (e.shiftKey) {
+            this.rotateComponent(this.selectedComponent, 'ccw');
+            console.log('Rotated CCW (Shift+R)');
+          } else {
+            this.rotateComponent(this.selectedComponent, 'cw');
+            console.log('Rotated CW (R)');
+          }
+          break;
+
+        case '=':
+        case '+': // Grow
+          e.preventDefault();
+          this.scaleComponent(this.selectedComponent, 0.1);
+          console.log('Increased scale (+)');
+          break;
+
+        case '-':
+        case '_': // Shrink
+          e.preventDefault();
+          this.scaleComponent(this.selectedComponent, -0.1);
+          console.log('Decreased scale (-)');
+          break;
+
+        case '1': // 50% scale
+          e.preventDefault();
+          this.setComponentScale(this.selectedComponent, 0.5);
+          break;
+
+        case '2': // 75% scale
+          e.preventDefault();
+          this.setComponentScale(this.selectedComponent, 0.75);
+          break;
+
+        case '3': // 100% scale
+          e.preventDefault();
+          this.setComponentScale(this.selectedComponent, 1.0);
+          break;
+
+        case '4': // 150% scale
+          e.preventDefault();
+          this.setComponentScale(this.selectedComponent, 1.5);
+          break;
+
+        case 'delete':
+        case 'backspace': // Delete component
+          e.preventDefault();
+          this.deleteComponent(this.selectedComponent);
+          console.log('Deleted component (Delete)');
+          break;
+      }
+    });
+
     // Grid toggle
     const gridToggle = document.getElementById('gridToggle');
     const gridRect = document.getElementById('gridRect');
@@ -420,11 +543,22 @@ class ProcessDesigner {
 
   /**
    * Render component on canvas
+   * Uses nested transform groups: outer (translate) + inner (orient + scale)
    */
   _renderComponent(comp) {
-    const symbolId = this._symbolRegistry.get(comp.type);
+    // Get the correct symbol ID (handle visual variants)
+    let symbolId = this._symbolRegistry.get(comp.type);
+
+    // Check for visual variant (feed/drain with chemistry/pumpjack/refinery)
+    if (comp.config?.visual) {
+      const variantSymbolId = `sym-${comp.type}-${comp.config.visual}`;
+      if (this._symbolRegistry.has(`${comp.type}-${comp.config.visual}`)) {
+        symbolId = variantSymbolId;
+      }
+    }
+
     if (!symbolId) {
-      console.warn(`No symbol found for type: ${comp.type}`);
+      console.warn(`No symbol found for type: ${comp.type}`, comp);
       return;
     }
 
@@ -432,16 +566,24 @@ class ProcessDesigner {
     const def = lib[comp.key] || {};
     const size = def.imageSize || { w: 100, h: 100, x: -50, y: -50 };
 
-    const orient = String(comp.orientation || 'R').toUpperCase();
-    let rot = 0;
-    if (/valve/i.test(comp.type) && orient === 'D') rot = 180;
+    // Get transforms
+    const transforms = this._getComponentTransform(comp);
 
+    // Outer group: position (translate)
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.id = comp.id;
     g.classList.add('component');
     g.setAttribute('data-type', comp.type);
-    g.setAttribute('transform', `translate(${comp.x}, ${comp.y}) rotate(${rot})`);
+    g.setAttribute('transform', transforms.outer);
 
+    // Inner group: orientation + scale (if needed)
+    const frame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    frame.classList.add('comp-frame');
+    if (transforms.inner) {
+      frame.setAttribute('transform', transforms.inner);
+    }
+
+    // SVG use element
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
     use.setAttribute('width', size.w);
@@ -449,13 +591,15 @@ class ProcessDesigner {
     use.setAttribute('x', size.x);
     use.setAttribute('y', size.y);
     use.classList.add('comp-skin');
+    use.setAttribute('vector-effect', 'non-scaling-stroke'); // Keep stroke width consistent
 
-    g.appendChild(use);
+    frame.appendChild(use);
+    g.appendChild(frame);
     this.componentsLayer.appendChild(g);
   }
 
   /**
-   * Get port position for a component
+   * Get port position for a component (with transform support)
    */
   _getPortPosition(comp, portName) {
     const ports = this._portCache.get(comp.type) || {};
@@ -466,23 +610,121 @@ class ProcessDesigner {
     const size = def.imageSize || { w: 100, h: 100, x: -50, y: -50 };
 
     if (port) {
-      // Convert from 0-100 space to actual position
-      const lx = (port.x - 50) * (size.w / 100);
-      const ly = (port.y - 50) * (size.h / 100);
+      // Convert from 0-100 space to actual local position
+      let lx = (port.x - 50) * (size.w / 100);
+      let ly = (port.y - 50) * (size.h / 100);
 
-      // Apply rotation if needed
-      const orient = String(comp.orientation || 'R').toUpperCase();
-      const rotDeg = (/valve/i.test(comp.type) && orient === 'D') ? 180 : 0;
-      const rot = (rotDeg * Math.PI) / 180;
+      // Apply orientation transform
+      const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
+      switch (orient) {
+        case 'L': // Flip horizontal
+          lx = -lx;
+          break;
+        case 'U': // Rotate -90° (up)
+          [lx, ly] = [ly, -lx];
+          break;
+        case 'D': // Rotate 90° (down)
+          [lx, ly] = [-ly, lx];
+          break;
+      }
 
-      const rx = lx * Math.cos(rot) - ly * Math.sin(rot);
-      const ry = lx * Math.sin(rot) + ly * Math.cos(rot);
+      // Apply scale
+      const scale = comp.config?.scale || 1.0;
+      lx *= scale;
+      ly *= scale;
 
-      return { x: comp.x + rx, y: comp.y + ry };
+      // Return world position
+      return { x: comp.x + lx, y: comp.y + ly };
     }
 
     // Fallback to component center
     return { x: comp.x, y: comp.y };
+  }
+
+  /**
+   * Update component transform and refresh rendering
+   */
+  updateComponentTransform(compId, updates) {
+    const comp = this.components.get(compId);
+    if (!comp) return;
+
+    // Update config
+    if (updates.orientation !== undefined) {
+      comp.config.orientation = updates.orientation;
+      comp.orientation = updates.orientation;
+    }
+    if (updates.scale !== undefined) {
+      comp.config.scale = Math.max(0.25, Math.min(4.0, updates.scale));
+    }
+
+    // Re-render component
+    const el = document.getElementById(compId);
+    if (el) el.remove();
+    this._renderComponent(comp);
+
+    // Update all connected lines
+    this.connections.forEach(conn => {
+      const [fromId] = conn.from.split('.');
+      const [toId] = conn.to.split('.');
+      if (fromId === compId || toId === compId) {
+        const lineEl = document.getElementById(conn.id);
+        if (lineEl) lineEl.remove();
+        this._renderConnection(conn);
+      }
+    });
+
+    // Re-select if this was selected
+    if (this.selectedComponent === compId) {
+      this.selectComponent(compId);
+    }
+  }
+
+  /**
+   * Flip component horizontally (toggle R ↔ L)
+   */
+  flipComponent(compId) {
+    const comp = this.components.get(compId);
+    if (!comp) return;
+
+    const current = comp.config?.orientation || comp.orientation || 'R';
+    const newOrient = current === 'R' ? 'L' : 'R';
+
+    this.updateComponentTransform(compId, { orientation: newOrient });
+  }
+
+  /**
+   * Rotate component (R → U → L → D → R)
+   */
+  rotateComponent(compId, direction = 'cw') {
+    const comp = this.components.get(compId);
+    if (!comp) return;
+
+    const current = comp.config?.orientation || comp.orientation || 'R';
+    const cycle = direction === 'cw' ? ['R', 'D', 'L', 'U'] : ['R', 'U', 'L', 'D'];
+    const idx = cycle.indexOf(current);
+    const newOrient = cycle[(idx + 1) % 4];
+
+    this.updateComponentTransform(compId, { orientation: newOrient });
+  }
+
+  /**
+   * Scale component
+   */
+  scaleComponent(compId, delta) {
+    const comp = this.components.get(compId);
+    if (!comp) return;
+
+    const current = comp.config?.scale || 1.0;
+    const newScale = current + delta;
+
+    this.updateComponentTransform(compId, { scale: newScale });
+  }
+
+  /**
+   * Set component scale to specific value
+   */
+  setComponentScale(compId, scale) {
+    this.updateComponentTransform(compId, { scale });
   }
 
   /**
@@ -568,6 +810,10 @@ class ProcessDesigner {
     const lib = window.COMPONENT_LIBRARY || {};
     const def = lib[comp.key] || {};
 
+    const currentOrient = comp.config?.orientation || comp.orientation || 'R';
+    const currentScale = comp.config?.scale || 1.0;
+    const scalePercent = Math.round(currentScale * 100);
+
     let html = `<div class="properties-form">
       <h3>${comp.name}</h3>
       <div class="form-field">
@@ -581,22 +827,68 @@ class ProcessDesigner {
       <div class="form-field">
         <label>Position:</label>
         <input type="text" value="(${comp.x}, ${comp.y})" readonly>
+      </div>
+
+      <!-- Transform Controls -->
+      <div class="transform-section">
+        <h4>Transform</h4>
+
+        <div class="form-field">
+          <label>Orientation:</label>
+          <div class="transform-controls">
+            <button class="btn btn-icon" onclick="designer.flipComponent('${comp.id}')" title="Flip Horizontal (H)">⬅️➡️</button>
+            <button class="btn btn-icon" onclick="designer.rotateComponent('${comp.id}', 'ccw')" title="Rotate CCW (Shift+R)">↺</button>
+            <button class="btn btn-icon" onclick="designer.rotateComponent('${comp.id}', 'cw')" title="Rotate CW (R)">↻</button>
+            <span class="orient-indicator">${currentOrient}</span>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Scale:</label>
+          <div class="transform-controls">
+            <button class="btn btn-icon" onclick="designer.scaleComponent('${comp.id}', -0.1)" title="Shrink (-)">−</button>
+            <span class="scale-value">${scalePercent}%</span>
+            <button class="btn btn-icon" onclick="designer.scaleComponent('${comp.id}', 0.1)" title="Grow (+)">+</button>
+          </div>
+          <div class="scale-presets">
+            <button class="btn btn-sm" onclick="designer.setComponentScale('${comp.id}', 0.5)">50%</button>
+            <button class="btn btn-sm" onclick="designer.setComponentScale('${comp.id}', 0.75)">75%</button>
+            <button class="btn btn-sm" onclick="designer.setComponentScale('${comp.id}', 1.0)">100%</button>
+            <button class="btn btn-sm" onclick="designer.setComponentScale('${comp.id}', 1.5)">150%</button>
+            <button class="btn btn-sm" onclick="designer.setComponentScale('${comp.id}', 2.0)">200%</button>
+          </div>
+        </div>
       </div>`;
 
     // Add editable properties
     if (def.properties) {
+      html += `<div class="config-section"><h4>Configuration</h4>`;
       for (const prop of def.properties) {
-        html += `<div class="form-field">
-          <label>${prop.label}:</label>
-          <input 
-            type="${prop.type}" 
-            value="${comp.config[prop.name] || prop.default}" 
-            data-prop="${prop.name}"
-            min="${prop.min || ''}"
-            max="${prop.max || ''}"
-            step="${prop.step || ''}">
-        </div>`;
+        if (prop.type === 'select') {
+          // Handle select dropdowns
+          html += `<div class="form-field">
+            <label>${prop.label}:</label>
+            <select data-prop="${prop.name}">`;
+          for (const opt of (prop.options || [])) {
+            const selected = (comp.config[prop.name] || prop.default) === opt.value ? 'selected' : '';
+            html += `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+          }
+          html += `</select></div>`;
+        } else {
+          // Handle text/number inputs
+          html += `<div class="form-field">
+            <label>${prop.label}:</label>
+            <input
+              type="${prop.type}"
+              value="${comp.config[prop.name] || prop.default}"
+              data-prop="${prop.name}"
+              min="${prop.min || ''}"
+              max="${prop.max || ''}"
+              step="${prop.step || ''}">
+          </div>`;
+        }
       }
+      html += `</div>`;
     }
 
     html += `<button class="btn btn-danger" onclick="designer.deleteComponent('${comp.id}')">Delete</button>
@@ -605,12 +897,20 @@ class ProcessDesigner {
     panel.innerHTML = html;
 
     // Add property change listeners
-    panel.querySelectorAll('input[data-prop]').forEach(input => {
+    panel.querySelectorAll('[data-prop]').forEach(input => {
       input.addEventListener('change', (e) => {
         const propName = e.target.dataset.prop;
-        const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+        let value = e.target.value;
+        if (e.target.type === 'number') {
+          value = parseFloat(value);
+        }
         comp.config[propName] = value;
         console.log(`Updated ${comp.id}.${propName} = ${value}`);
+
+        // If visual variant changed, re-render
+        if (propName === 'visual') {
+          this.updateComponentTransform(comp.id, {});
+        }
       });
     });
   }
