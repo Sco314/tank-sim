@@ -1,5 +1,10 @@
 /**
- * exporter.js v5.4 - Visual Variants + Full Config Export
+ * exporter.js v5.5 - ACTUAL Color Bleed Fix + Visual Variants
+ *
+ * CHANGELOG v5.5:
+ * - ✅ FIXED: Actual color bleed fix using `color: initial !important` on canvas
+ * - ✅ FIXED: Removed incorrect `fill: none` override that broke SVG colors
+ * - ✅ NEW: Export CSS matches designer CSS for consistent rendering
  *
  * CHANGELOG v5.4:
  * - ✅ NEW: Support for feed/drain visual variants (chemistry, pumpjack, refinery)
@@ -11,17 +16,12 @@
  * - ✅ FIXED: Preserves SVG fill/stroke attributes (grey valve body)
  * - ✅ FIXED: Consistent SVG path resolution with designer
  * - ✅ Improved style scoping to prevent bleed
- *
- * PREVIOUS (v5.2):
- * - ✅ Removed hardcoded /101125/ legacy path
- * - ✅ Fetches from /js/ directly
- * - ✅ Better error reporting
  */
 
 (function(global) {
   'use strict';
 
-  const EXPORTER_VERSION = '5.4.0';
+  const EXPORTER_VERSION = '5.5.0';
   const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
 
   // SVG assets mapping (matches designer.js EXACTLY)
@@ -470,20 +470,27 @@
   <title>${title}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
+    body {
       font-family: system-ui, -apple-system, sans-serif;
       background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
       color: #f1f5f9;
       height: 100vh;
       overflow: hidden;
     }
-    
+
     #canvas {
       width: 100%;
       height: 100%;
       background: #0f172a;
     }
-    
+
+    /* CRITICAL: Reset color inheritance to prevent theme bleed into SVGs */
+    #canvas,
+    #canvas svg,
+    #canvas svg * {
+      color: initial !important;
+    }
+
     .component {
       cursor: pointer;
       transition: opacity 0.2s;
@@ -491,16 +498,25 @@
     .component:hover {
       opacity: 0.8;
     }
-    
+
     .label {
       fill: #94a3b8;
       font-size: 12px;
       pointer-events: none;
     }
-    
-    /* Preserve SVG inline styles */
+
+    /* Preserve SVG inline styles - let symbol's <style> tags work */
     .comp-skin {
-      /* Let SVG attributes handle fill/stroke */
+      vector-effect: non-scaling-stroke;
+    }
+
+    /* Isolate symbols from each other */
+    svg symbol {
+      isolation: isolate;
+    }
+
+    .comp-frame {
+      isolation: isolate;
     }
   </style>
 </head>

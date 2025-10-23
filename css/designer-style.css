@@ -971,14 +971,26 @@ html, body {
   transform: scale(0.95);
 }
 
-/* SVG Style Isolation - FIXED: Prevent color bleed */
-.comp-skin {
-  vector-effect: non-scaling-stroke;
-  /* Do NOT inherit color from parent - let SVG attributes control fill/stroke */
-  color: inherit !important;
+/* ============================================================================
+   SVG STYLE ISOLATION - Prevent theme color bleed
+   ============================================================================ */
+
+/*
+ * CRITICAL: Reset color inheritance on canvas to prevent currentColor bleed
+ * This kills theme accent color from leaking into SVG components
+ */
+#canvas,
+#canvas svg,
+#canvas svg * {
+  color: initial !important;
 }
 
-/* Prevent CSS bleeding between SVG components */
+/* Keep stroke widths consistent during transforms */
+.comp-skin {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Isolate SVG symbols from each other */
 svg symbol {
   isolation: isolate;
 }
@@ -987,25 +999,11 @@ svg symbol {
   isolation: isolate;
 }
 
-/* CRITICAL: Prevent SVG components from inheriting accent color */
-.component use,
-.component .comp-skin,
-.comp-frame use {
-  /* Let the SVG's own fill/stroke attributes control appearance */
-  fill: none;
-  stroke: none;
-}
-
-/* Ensure SVG content preserves its original styling */
-#componentsLayer .component {
-  color: inherit;
-}
-
-/* Prevent <use> elements from picking up text color */
-use[href^="#sym-"] {
-  fill: none !important;
-  stroke: none !important;
-}
+/*
+ * DO NOT override fill/stroke on <use> elements!
+ * Let the symbol's internal <style> and attributes control appearance.
+ * The valve body is grey (#384551), handle is teal (#15bac7) - these are correct.
+ */
 
 /* ============================================================================
    SOURCES MODAL
