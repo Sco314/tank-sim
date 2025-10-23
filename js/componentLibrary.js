@@ -377,6 +377,41 @@ const COMPONENT_LIBRARY = {
     connectionPoints: [
       { id: 'cp_probe', name: 'probe', type: 'input', x: 0, y: 0 }
     ]
+  },
+
+  analogGauge: {
+    name: 'Analog Gauge',
+    category: 'Sensors',
+    type: 'analogGauge',
+    icon: '🎚️',
+    color: '#f59e0b',
+    description: 'Visual analog gauge with rotating pointer (0-100%)',
+    svgPath: 'assets/guageAnalog.svg',
+    imageSize: { w: 100, h: 100, x: -50, y: -50 },
+    defaultConfig: {
+      type: 'analogGauge',
+      value: 0,
+      minValue: 0,
+      maxValue: 100,
+      units: '%',
+      minAngle: -135,
+      maxAngle: 135,
+      smoothing: true,
+      smoothingFactor: 0.15,
+      yellowThreshold: 75,
+      redThreshold: 90
+    },
+    properties: [
+      { name: 'value', label: 'Current Value', type: 'number', default: 0, min: 0, max: 100, step: 1 },
+      { name: 'minValue', label: 'Min Value', type: 'number', default: 0, step: 1 },
+      { name: 'maxValue', label: 'Max Value', type: 'number', default: 100, step: 1 },
+      { name: 'units', label: 'Units', type: 'text', default: '%' },
+      { name: 'yellowThreshold', label: 'Warning Threshold (%)', type: 'number', default: 75, min: 0, max: 100, step: 5 },
+      { name: 'redThreshold', label: 'Critical Threshold (%)', type: 'number', default: 90, min: 0, max: 100, step: 5 }
+    ],
+    connectionPoints: [
+      { id: 'cp_input', name: 'input', type: 'input', x: 0, y: 0 }
+    ]
   }
 };
 
@@ -395,6 +430,7 @@ window.getComponentList = function() {
     pressureSensor: '📊',
     flowSensor: '🌊',
     levelSensor: '📏',
+    analogGauge: '🎚️',
     sensor: '📊'
   };
   
@@ -432,7 +468,7 @@ const CATEGORIES = {
   'Sensors': {
     name: 'Sensors',
     icon: '📊',
-    components: ['pressureSensor', 'flowSensor', 'levelSensor']
+    components: ['pressureSensor', 'flowSensor', 'levelSensor', 'analogGauge']
   }
 };
 
