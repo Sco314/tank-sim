@@ -148,7 +148,8 @@ class ProcessDesigner {
       if (o === 'L') return base + 'Valve-Icon-handle-left-01.svg';
       if (o === 'R') return base + 'Valve-Icon-handle-right-01.svg';
       if (o === 'U') return base + 'Valve-Icon-handle-up-01.svg';
-      return base + 'Valve-Icon-handle-up-01.svg'; // Down = reuse up + rotate
+      if (o === 'D') return base + 'Valve-Icon-handle-up-01.svg'; // Down = reuse up + rotate
+      return base + 'Valve-Icon-handle-up-01.svg'; // Default to up
     }
 
     if (t.includes('pump')) {
@@ -551,9 +552,9 @@ class ProcessDesigner {
 
     // Check for visual variant (feed/drain with chemistry/pumpjack/refinery)
     if (comp.config?.visual) {
-      const variantSymbolId = `sym-${comp.type}-${comp.config.visual}`;
-      if (this._symbolRegistry.has(`${comp.type}-${comp.config.visual}`)) {
-        symbolId = variantSymbolId;
+      const variantKey = `${comp.type}-${comp.config.visual}`;
+      if (this._symbolRegistry.has(variantKey)) {
+        symbolId = this._symbolRegistry.get(variantKey);
       }
     }
 
@@ -595,6 +596,21 @@ class ProcessDesigner {
 
     frame.appendChild(use);
     g.appendChild(frame);
+
+    // Add label text below component
+    if (comp.label || comp.name) {
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.classList.add('component-label');
+      label.setAttribute('x', '0');
+      label.setAttribute('y', size.y + size.h + 20); // Position below component
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '12');
+      label.setAttribute('fill', '#94a3b8');
+      label.setAttribute('pointer-events', 'none');
+      label.textContent = comp.label || comp.name || '';
+      g.appendChild(label);
+    }
+
     this.componentsLayer.appendChild(g);
   }
 
@@ -829,6 +845,11 @@ class ProcessDesigner {
         <input type="text" value="(${comp.x}, ${comp.y})" readonly>
       </div>
 
+      <div class="form-field">
+        <label>Label:</label>
+        <input type="text" id="comp-label-input" value="${comp.label || ''}" placeholder="Enter label text...">
+      </div>
+
       <!-- Transform Controls -->
       <div class="transform-section">
         <h4>Transform</h4>
@@ -913,6 +934,24 @@ class ProcessDesigner {
         }
       });
     });
+
+    // Add label change listener
+    const labelInput = document.getElementById('comp-label-input');
+    if (labelInput) {
+      labelInput.addEventListener('input', (e) => {
+        comp.label = e.target.value;
+        console.log(`Updated ${comp.id} label = "${comp.label}"`);
+
+        // Update the label text in the SVG
+        const compEl = document.getElementById(comp.id);
+        if (compEl) {
+          const labelEl = compEl.querySelector('.component-label');
+          if (labelEl) {
+            labelEl.textContent = comp.label || comp.name || '';
+          }
+        }
+      });
+    }
   }
 
   /**
