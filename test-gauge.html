@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gauge Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+      background: #0f172a;
+      color: #e9f0ff;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .gauge-container {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    svg {
+      display: block;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+    }
+    .info {
+      background: #2a3d78;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .success { color: #3ddc97; }
+    .error { color: #ff6b6b; }
+    pre {
+      background: #0b1020;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎚️ Analog Gauge Component Test</h1>
+
+    <div class="info">
+      <h2>Test Results:</h2>
+      <div id="testResults"></div>
+    </div>
+
+    <div class="gauge-container">
+      <h2>Gauge Preview:</h2>
+      <div id="gaugePreview"></div>
+    </div>
+
+    <div class="info">
+      <h2>Component Library Check:</h2>
+      <pre id="componentCheck"></pre>
+    </div>
+  </div>
+
+  <script src="js/componentLibrary.js"></script>
+  <script>
+    // Test 1: Check if componentLibrary loaded
+    const results = [];
+
+    if (typeof COMPONENT_LIBRARY !== 'undefined') {
+      results.push('✅ COMPONENT_LIBRARY loaded');
+    } else {
+      results.push('❌ COMPONENT_LIBRARY not found');
+    }
+
+    // Test 2: Check if analogGauge exists
+    if (COMPONENT_LIBRARY && COMPONENT_LIBRARY.analogGauge) {
+      results.push('✅ analogGauge component found');
+
+      const gauge = COMPONENT_LIBRARY.analogGauge;
+      results.push(`   - Name: ${gauge.name}`);
+      results.push(`   - Type: ${gauge.type}`);
+      results.push(`   - SVG Path: ${gauge.svgPath}`);
+      results.push(`   - Icon: ${gauge.icon}`);
+      results.push(`   - Properties: ${gauge.properties.length}`);
+    } else {
+      results.push('❌ analogGauge component NOT found');
+    }
+
+    // Test 3: Check if gauge is in Sensors category
+    if (CATEGORIES && CATEGORIES.Sensors) {
+      const sensorsComponents = CATEGORIES.Sensors.components;
+      if (sensorsComponents.includes('analogGauge')) {
+        results.push('✅ analogGauge in Sensors category');
+        results.push(`   - Category components: ${sensorsComponents.join(', ')}`);
+      } else {
+        results.push('❌ analogGauge NOT in Sensors category');
+      }
+    }
+
+    // Test 4: Try to load the SVG
+    fetch('assets/gaugeAnalog.svg')
+      .then(response => {
+        if (response.ok) {
+          results.push('✅ gaugeAnalog.svg file accessible');
+          return response.text();
+        } else {
+          results.push(`❌ gaugeAnalog.svg HTTP ${response.status}`);
+          throw new Error(`HTTP ${response.status}`);
+        }
+      })
+      .then(svgContent => {
+        results.push(`   - SVG size: ${svgContent.length} bytes`);
+        document.getElementById('gaugePreview').innerHTML = svgContent;
+        updateDisplay();
+      })
+      .catch(err => {
+        results.push(`❌ Error loading SVG: ${err.message}`);
+        updateDisplay();
+      });
+
+    function updateDisplay() {
+      document.getElementById('testResults').innerHTML =
+        results.map(r => {
+          const className = r.includes('✅') ? 'success' : r.includes('❌') ? 'error' : '';
+          return `<div class="${className}">${r}</div>`;
+        }).join('');
+
+      // Display component definition
+      if (COMPONENT_LIBRARY && COMPONENT_LIBRARY.analogGauge) {
+        document.getElementById('componentCheck').textContent =
+          JSON.stringify(COMPONENT_LIBRARY.analogGauge, null, 2);
+      } else {
+        document.getElementById('componentCheck').textContent =
+          'Component not found in library';
+      }
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>

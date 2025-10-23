@@ -64,6 +64,10 @@
     pump3Speed: { w: 120, h: 120, x: -60, y: -60 },
     feed: { w: 40, h: 40, x: -20, y: -20 },
     drain: { w: 40, h: 40, x: -20, y: -20 },
+    analogGauge: { w: 100, h: 100, x: -50, y: -50 },
+    pressureSensor: { w: 40, h: 40, x: -20, y: -20 },
+    flowSensor: { w: 40, h: 40, x: -20, y: -20 },
+    levelSensor: { w: 40, h: 40, x: -20, y: -20 },
     default: { w: 100, h: 100, x: -50, y: -50 }
   };
 
@@ -754,10 +758,148 @@ ${data.content}
     }
 
     /**
+     * Generate gauge controller class
+     */
+    _generateGaugeController() {
+      return `
+/**
+ * GaugeController - Manages analog gauge displays
+ */
+class GaugeController {
+  constructor(flowNetwork, compManager) {
+    this.flowNetwork = flowNetwork;
+    this.compManager = compManager;
+    this.gauges = new Map();
+  }
+
+  /**
+   * Initialize gauge from component config
+   */
+  initGauge(comp) {
+    const gaugeEl = document.getElementById(comp.id);
+    if (!gaugeEl) return;
+
+    const config = comp.config || {};
+    const gauge = {
+      id: comp.id,
+      element: gaugeEl,
+      needleEl: gaugeEl.querySelector('#gaugeNeedle'),
+      valueEl: gaugeEl.querySelector('#gaugeValue'),
+      unitEl: gaugeEl.querySelector('#gaugeUnit'),
+      typeEl: gaugeEl.querySelector('#gaugeType'),
+      labelEls: {
+        min: gaugeEl.querySelector('#label_min'),
+        label_25: gaugeEl.querySelector('#label_25'),
+        label_50: gaugeEl.querySelector('#label_50'),
+        label_75: gaugeEl.querySelector('#label_75'),
+        max: gaugeEl.querySelector('#label_max')
+      },
+      config: {
+        measurementType: config.measurementType || 'pressure',
+        minRange: config.minRange || 0,
+        maxRange: config.maxRange || 10,
+        units: config.units || 'bar',
+        decimals: config.decimals !== undefined ? config.decimals : 1
+      },
+      currentValue: 0
+    };
+
+    // Set up scale labels
+    this.updateGaugeLabels(gauge);
+
+    // Set units and type
+    if (gauge.unitEl) gauge.unitEl.textContent = gauge.config.units;
+    if (gauge.typeEl) gauge.typeEl.textContent = gauge.config.measurementType.toUpperCase();
+
+    this.gauges.set(comp.id, gauge);
+    console.log('✅ Initialized gauge:', comp.id, gauge.config);
+  }
+
+  /**
+   * Update gauge scale labels based on range
+   */
+  updateGaugeLabels(gauge) {
+    const { minRange, maxRange, decimals } = gauge.config;
+    const range = maxRange - minRange;
+
+    if (gauge.labelEls.min) gauge.labelEls.min.textContent = minRange.toFixed(decimals);
+    if (gauge.labelEls.label_25) gauge.labelEls.label_25.textContent = (minRange + range * 0.25).toFixed(decimals);
+    if (gauge.labelEls.label_50) gauge.labelEls.label_50.textContent = (minRange + range * 0.5).toFixed(decimals);
+    if (gauge.labelEls.label_75) gauge.labelEls.label_75.textContent = (minRange + range * 0.75).toFixed(decimals);
+    if (gauge.labelEls.max) gauge.labelEls.max.textContent = maxRange.toFixed(decimals);
+  }
+
+  /**
+   * Get sensor value from flow network based on measurement type
+   */
+  getSensorValue(gauge) {
+    const { measurementType } = gauge.config;
+
+    // TODO: Connect to actual sensor readings from flow network
+    // For now, return simulated values
+    switch (measurementType) {
+      case 'pressure':
+        // Get pressure from connected component
+        return Math.random() * gauge.config.maxRange;
+      case 'flow':
+        // Get flow rate from connected pipe
+        return Math.random() * gauge.config.maxRange;
+      case 'temperature':
+        // Get temperature from connected component
+        return gauge.config.minRange + Math.random() * (gauge.config.maxRange - gauge.config.minRange);
+      case 'level':
+        // Get level from connected tank
+        return Math.random() * 100;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Update a single gauge display
+   */
+  updateGauge(gauge) {
+    const value = this.getSensorValue(gauge);
+    const { minRange, maxRange, decimals } = gauge.config;
+
+    // Clamp value to range
+    const clampedValue = Math.max(minRange, Math.min(maxRange, value));
+
+    // Calculate needle angle (-135° to +135° = 270° total arc)
+    const normalizedValue = (clampedValue - minRange) / (maxRange - minRange);
+    const angle = -135 + (normalizedValue * 270);
+
+    // Update needle rotation
+    if (gauge.needleEl) {
+      gauge.needleEl.setAttribute('transform', \`rotate(\${angle} 100 100)\`);
+    }
+
+    // Update value display
+    if (gauge.valueEl) {
+      gauge.valueEl.textContent = clampedValue.toFixed(decimals);
+    }
+
+    gauge.currentValue = clampedValue;
+  }
+
+  /**
+   * Update all gauges
+   */
+  updateAll() {
+    this.gauges.forEach(gauge => this.updateGauge(gauge));
+  }
+}
+`;
+    }
+
+    /**
      * Generate boot script that initializes the simulation
      */
     _generateBootScript() {
-      return `<script>(function(){
+      return `<script>
+${this._generateGaugeController()}
+
+(function(){
   try{
     const dataEl = document.getElementById('design-data');
     const design = JSON.parse(dataEl.textContent);
@@ -770,9 +912,17 @@ ${data.content}
     const pumpManager  = new (window.PumpManager||function(){})  (flowNetwork, compManager);
     const tankManager  = new (window.TankManager||function(){})  (flowNetwork, compManager);
     const pressureMgr  = new (window.PressureManager||function(){}) (flowNetwork, compManager);
+    const gaugeCtrl    = new GaugeController(flowNetwork, compManager);
 
     compManager.loadFromDesign?.(design);
     pipeManager.loadFromDesign?.(design);
+
+    // Initialize gauges
+    design.components.forEach(comp => {
+      if (comp.type === 'analogGauge') {
+        gaugeCtrl.initGauge(comp);
+      }
+    });
 
     flowNetwork.solve?.();
     valveManager.initUI?.();
@@ -785,11 +935,12 @@ ${data.content}
       tankManager.step?.(dt);
       flowNetwork.solve?.();
       pressureMgr.updateUI?.();
+      gaugeCtrl.updateAll();
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
 
-    console.log('✅ Simulator v${EXPORTER_VERSION} running');
+    console.log('✅ Simulator v${EXPORTER_VERSION} running with gauge controller');
   }catch(e){ console.error('💥 Boot failed', e); }
 })();</script>`;
     }
