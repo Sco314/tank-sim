@@ -971,9 +971,11 @@ html, body {
   transform: scale(0.95);
 }
 
-/* SVG Style Isolation */
+/* SVG Style Isolation - FIXED: Prevent color bleed */
 .comp-skin {
   vector-effect: non-scaling-stroke;
+  /* Do NOT inherit color from parent - let SVG attributes control fill/stroke */
+  color: inherit !important;
 }
 
 /* Prevent CSS bleeding between SVG components */
@@ -983,6 +985,66 @@ svg symbol {
 
 .comp-frame {
   isolation: isolate;
+}
+
+/* CRITICAL: Prevent SVG components from inheriting accent color */
+.component use,
+.component .comp-skin,
+.comp-frame use {
+  /* Let the SVG's own fill/stroke attributes control appearance */
+  fill: none;
+  stroke: none;
+}
+
+/* Ensure SVG content preserves its original styling */
+#componentsLayer .component {
+  color: inherit;
+}
+
+/* Prevent <use> elements from picking up text color */
+use[href^="#sym-"] {
+  fill: none !important;
+  stroke: none !important;
+}
+
+/* ============================================================================
+   SOURCES MODAL
+   ============================================================================ */
+
+.source-variant-btn {
+  padding: 20px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.source-variant-btn:hover {
+  background: rgba(127, 200, 255, 0.1);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(127, 200, 255, 0.2);
+}
+
+.source-variant-btn:active {
+  transform: translateY(0);
+}
+
+.source-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.source-label {
+  font-weight: 500;
+  color: var(--ink);
 }
 
 /* ============================================================================

@@ -1,12 +1,17 @@
 /**
- * exporter.js v5.3 - Scale Fix + Style Preservation
- * 
+ * exporter.js v5.4 - Visual Variants + Full Config Export
+ *
+ * CHANGELOG v5.4:
+ * - ✅ NEW: Support for feed/drain visual variants (chemistry, pumpjack, refinery)
+ * - ✅ FIXED: Export full component config (scale, visual, orientation, etc.)
+ * - ✅ FIXED: Preserve component size, placement, and style from designer
+ *
  * CHANGELOG v5.3:
  * - ✅ FIXED: Uses correct imageSize from componentLibrary (Tank 2x, Valve 1/3)
  * - ✅ FIXED: Preserves SVG fill/stroke attributes (grey valve body)
  * - ✅ FIXED: Consistent SVG path resolution with designer
  * - ✅ Improved style scoping to prevent bleed
- * 
+ *
  * PREVIOUS (v5.2):
  * - ✅ Removed hardcoded /101125/ legacy path
  * - ✅ Fetches from /js/ directly
@@ -16,7 +21,7 @@
 (function(global) {
   'use strict';
 
-  const EXPORTER_VERSION = '5.3.0';
+  const EXPORTER_VERSION = '5.4.0';
   const GITHUB_BASE_URL = 'https://sco314.github.io/tank-sim/';
 
   // SVG assets mapping (matches designer.js EXACTLY)
@@ -35,6 +40,17 @@
     PumpFixed: {
       L: 'assets/cent-pump-inlet-left-01.svg',
       R: 'assets/cent-pump-inlet-right-01.svg'
+    },
+    // Visual variants for feed/drain
+    Feed: {
+      chemistry: 'assets/sourceChemistry.svg',
+      pumpjack: 'assets/sourcePumpjack.svg',
+      refinery: 'assets/sourceRefinery.svg'
+    },
+    Drain: {
+      chemistry: 'assets/sourceChemistry.svg',
+      pumpjack: 'assets/sourcePumpjack.svg',
+      refinery: 'assets/sourceRefinery.svg'
     }
   };
 
@@ -194,16 +210,26 @@
      */
     async _fetchAllSVGs(components, setDetail) {
       const neededAssets = new Set();
-      
+
       for (const comp of components) {
         const type = comp.type;
         const orient = comp.orientation || 'R';
-        const asset = SVG_ASSETS[type];
-        
+        const visual = comp.config?.visual; // For feed/drain variants
+
+        // Capitalize first letter for asset lookup
+        const assetKey = type.charAt(0).toUpperCase() + type.slice(1);
+        const asset = SVG_ASSETS[assetKey] || SVG_ASSETS[type];
+
         if (typeof asset === 'string') {
           neededAssets.add(asset);
-        } else if (asset && asset[orient]) {
-          neededAssets.add(asset[orient]);
+        } else if (asset) {
+          // Check for visual variant first (feed/drain)
+          if (visual && asset[visual]) {
+            neededAssets.add(asset[visual]);
+          } else if (asset[orient]) {
+            // Otherwise use orientation variant
+            neededAssets.add(asset[orient]);
+          }
         }
       }
 
@@ -573,7 +599,8 @@ ${data.content}
 
       // Try symbol first
       const orient = comp.config?.orientation || comp.orientation || 'R';
-      const symbolData = this._getSymbolForComponent(type, orient);
+      const visual = comp.config?.visual; // For feed/drain variants
+      const symbolData = this._getSymbolForComponent(type, orient, visual);
       if (symbolData) {
         const frameGroup = innerTransform
           ? `<g class="comp-frame" transform="${innerTransform}">
@@ -701,7 +728,8 @@ ${data.content}
           y: c.y,
           orientation: c.orientation,
           variant: 'std',
-          ports: c.ports
+          ports: c.ports,
+          config: c.config || {} // Include full config (scale, visual, etc.)
         })),
         pipes: design.pipes
       };
@@ -762,14 +790,22 @@ ${data.content}
       return 'R';
     }
 
-    _getSymbolForComponent(type, orient) {
-      const asset = SVG_ASSETS[type];
+    _getSymbolForComponent(type, orient, visual) {
+      // Capitalize first letter for asset lookup
+      const assetKey = type.charAt(0).toUpperCase() + type.slice(1);
+      const asset = SVG_ASSETS[assetKey] || SVG_ASSETS[type];
       let assetPath = null;
 
       if (typeof asset === 'string') {
         assetPath = asset;
-      } else if (asset && asset[orient]) {
-        assetPath = asset[orient];
+      } else if (asset) {
+        // Check for visual variant first (feed/drain)
+        if (visual && asset[visual]) {
+          assetPath = asset[visual];
+        } else if (asset[orient]) {
+          // Otherwise use orientation variant
+          assetPath = asset[orient];
+        }
       }
 
       if (assetPath && this.symbolRegistry.has(assetPath)) {
