@@ -95,10 +95,6 @@ class ProcessDesigner {
         const svgText = await res.text();
         const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
         const inner = this._extractSvgInner(svgText);
-        
-        // IMPORTANT: Preserve original styles, then scope IDs and classes
-        const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
         // Detect special grouping for artwork/labels (used by pumps so labels never mirror)
         const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
@@ -609,6 +605,7 @@ class ProcessDesigner {
     g.id = comp.id;
     g.classList.add('component');
     g.setAttribute('data-type', comp.type);
+    g.setAttribute('data-orientation', comp.config?.orientation || comp.orientation || 'L');
     g.setAttribute('transform', transforms.outer);
     g.setAttribute('data-orientation', transforms.orientation || 'R');
 
@@ -892,7 +889,8 @@ class ProcessDesigner {
     const lib = window.COMPONENT_LIBRARY || {};
     const def = lib[comp.key] || {};
 
-    const currentOrient = comp.config?.orientation || comp.orientation || 'R';
+    // Read actual orientation from component (no default - should always have a value)
+    const currentOrient = comp.config?.orientation || comp.orientation || 'L';
     const currentScale = comp.config?.scale || 1.0;
     const scalePercent = Math.round(currentScale * 100);
 
