@@ -285,27 +285,43 @@
     _buildSymbolRegistry() {
       for (const [assetPath, svgText] of this.fetchedSVGs) {
         const symbolId = this._assetPathToSymbolId(assetPath);
-        
+
         // Extract viewBox from SVG
         const viewBoxMatch = svgText.match(/viewBox="([^"]+)"/);
         const viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 100 100';
-        
+
         // Extract inner content (between <svg> and </svg>)
         const inner = this._extractSvgInner(svgText);
-        
+
         // Prefix IDs to avoid collisions
         const prefixed = this._prefixSvgIds(inner, symbolId);
-        
+
         // Scope classes BUT PRESERVE inline styles (fill, stroke, etc.)
         const scoped = this._scopeSvgStylesPreserving(prefixed, symbolId);
-        
-        this.symbolRegistry.set(assetPath, {
+
+        const artworkRegex = new RegExp(`<g[^>]*id="${symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
+        const labelsRegex = new RegExp(`<g[^>]*id="${symbolId}-labels"[^>]*>[\\s\\S]*?<\/g>`, 'i');
+        const artworkMatch = scoped.match(artworkRegex);
+        const labelsMatch = scoped.match(labelsRegex);
+
+        const record = {
           symbolId,
           viewBox,
-          content: scoped,
-          type: this._assetPathToType(assetPath)
-        });
-        
+          type: this._assetPathToType(assetPath),
+          content: null
+        };
+
+        if (artworkMatch) {
+          record.artwork = { id: `${symbolId}-artwork`, content: artworkMatch[0] };
+          if (labelsMatch) {
+            record.labels = { id: `${symbolId}-labels`, content: labelsMatch[0] };
+          }
+        } else {
+          record.content = scoped;
+        }
+
+        this.symbolRegistry.set(assetPath, record);
+
         console.log(`✅ Registered symbol: ${symbolId}`);
       }
     }
@@ -564,9 +580,20 @@ ${bootScript}
     _generateSymbolDefs() {
       const defs = [];
       for (const [path, data] of this.symbolRegistry.entries()) {
-        defs.push(`    <symbol id="${data.symbolId}" viewBox="${data.viewBox}">
+        if (data.artwork) {
+          defs.push(`    <symbol id="${data.artwork.id}" viewBox="${data.viewBox}">
+${data.artwork.content}
+    </symbol>`);
+          if (data.labels) {
+            defs.push(`    <symbol id="${data.labels.id}" viewBox="${data.viewBox}">
+${data.labels.content}
+    </symbol>`);
+          }
+        } else {
+          defs.push(`    <symbol id="${data.symbolId}" viewBox="${data.viewBox}">
 ${data.content}
     </symbol>`);
+        }
       }
       return defs.join('\n');
     }
@@ -593,17 +620,30 @@ ${data.content}
      * Get complete transform for a component
      */
     _getComponentTransform(comp) {
-      const orient = comp.config?.orientation || comp.orientation || 'R';
+      const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
       const scale = comp.config?.scale || 1.0;
 
-      const orientTransform = this._getOrientationTransform(orient);
+      let orientTransform = this._getOrientationTransform(orient);
       const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
 
-      let innerTransforms = [orientTransform, scaleTransform].filter(t => t).join(' ');
+      const typeKey = String(comp.type || '').toLowerCase();
+      if (typeKey.includes('pump')) {
+        if (orient === 'L') {
+          orientTransform = '';
+        } else if (orient === 'R') {
+          orientTransform = 'scale(-1, 1)';
+        }
+      }
+
+      const combined = [orientTransform, scaleTransform].filter(t => t).join(' ');
+      const labelOnly = [scaleTransform].filter(t => t).join(' ');
 
       return {
         outer: `translate(${comp.x|0}, ${comp.y|0})`,
-        inner: innerTransforms || null
+        inner: combined || null,
+        artwork: combined || null,
+        labels: labelOnly || null,
+        orientation: orient
       };
     }
 
@@ -626,14 +666,37 @@ ${data.content}
       const visual = comp.config?.visual; // For feed/drain variants
       const symbolData = this._getSymbolForComponent(type, orient, visual);
       if (symbolData) {
-        const frameGroup = innerTransform
-          ? `<g class="comp-frame" transform="${innerTransform}">
-    <use href="#${symbolData.symbolId}" class="comp-skin" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />
-  </g>`
-          : `<use href="#${symbolData.symbolId}" class="comp-skin" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />`;
+        const createUse = (hrefId, className) => `    <use href="#${hrefId}" class="${className}" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />`;
 
-        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="${outerTransform}" tabindex="0" role="button">
-  ${frameGroup}
+        let frames = '';
+
+        if (symbolData.artwork) {
+          const artTransform = transforms.artwork ? ` transform="${transforms.artwork}"` : '';
+          frames += `<g class="comp-frame"${artTransform}>
+${createUse(symbolData.artwork.id, 'comp-skin')}
+  </g>`;
+        }
+
+        if (symbolData.labels) {
+          const labelTransform = transforms.labels ? ` transform="${transforms.labels}"` : '';
+          frames += `
+  <g class="comp-label-frame"${labelTransform}>
+${createUse(symbolData.labels.id, 'comp-skin-label')}
+  </g>`;
+        }
+
+        if (!symbolData.artwork && !symbolData.labels) {
+          const frameGroup = innerTransform
+            ? `<g class="comp-frame" transform="${innerTransform}">
+${createUse(symbolData.symbolId, 'comp-skin')}
+  </g>`
+            : createUse(symbolData.symbolId, 'comp-skin');
+
+          frames = frameGroup;
+        }
+
+        return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="${outerTransform}" data-orientation="${transforms.orientation}" tabindex="0" role="button">
+  ${frames}
   <text class="label" x="0" y="${size.y + size.h + 20}" text-anchor="middle" font-size="12">${label}</text>
 </g>`;
       }
@@ -709,9 +772,17 @@ ${data.content}
 
         // Apply orientation transform
         const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
+        const isPump = typeKey.includes('pump');
         switch (orient) {
-          case 'L': // Flip horizontal
-            lx = -lx;
+          case 'L':
+            if (!isPump) {
+              lx = -lx;
+            }
+            break;
+          case 'R':
+            if (isPump) {
+              lx = -lx;
+            }
             break;
           case 'U': // Rotate -90° (up)
             [lx, ly] = [ly, -lx];
