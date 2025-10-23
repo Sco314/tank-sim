@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SVG Gauge Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      color: #263238;
+      background: #f5f7fa;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    main {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(38, 50, 56, 0.15);
+      max-width: 960px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2rem;
+    }
+
+    header {
+      grid-column: 1 / -1;
+    }
+
+    header h1 {
+      margin: 0 0 0.5rem;
+      font-size: 2rem;
+    }
+
+    header p {
+      margin: 0;
+      color: #546e7a;
+    }
+
+    .gauge-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    object {
+      width: min(100%, 420px);
+      height: auto;
+    }
+
+    form {
+      display: grid;
+      gap: 1.5rem;
+      align-content: start;
+    }
+
+    label {
+      display: grid;
+      gap: 0.5rem;
+      font-weight: 600;
+      color: #37474f;
+    }
+
+    input[type="range"] {
+      accent-color: #ff7058;
+    }
+
+    input[type="number"] {
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #b0bec5;
+      font-size: 1rem;
+      width: 6rem;
+    }
+
+    footer {
+      grid-column: 1 / -1;
+      color: #607d8b;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Tank Gauge Controller Demo</h1>
+      <p>
+        This page shows how to drive the <code>assets/guage.svg</code> pointer with JavaScript. Move the slider or
+        enter an absolute value to see the needle respond instantly.
+      </p>
+    </header>
+    <section class="gauge-wrapper">
+      <object id="tank-gauge" type="image/svg+xml" data="../assets/guage.svg" aria-label="Tank level gauge"></object>
+    </section>
+    <form>
+      <label>
+        Gauge percent
+        <input id="gauge-percent" type="range" min="0" max="100" value="0" step="1" />
+      </label>
+      <label>
+        Tank level (0 – 250 psi)
+        <input id="gauge-value" type="number" min="0" max="250" step="0.5" value="0" />
+      </label>
+    </form>
+    <footer>
+      Tip: re-use <code>SvgGaugeController</code> to sync the gauge with live sensor data inside the simulator UI.
+    </footer>
+  </main>
+
+  <script type="module">
+    import SvgGaugeController from '../js/utils/svgGaugeController.js';
+
+    const gaugeObject = document.getElementById('tank-gauge');
+    const percentInput = document.getElementById('gauge-percent');
+    const valueInput = document.getElementById('gauge-value');
+
+    SvgGaugeController.fromExternalObject(gaugeObject, {
+      minValue: Number(valueInput.min),
+      maxValue: Number(valueInput.max),
+      initialValue: 125
+    }).then((controller) => {
+      // Keep the numeric field in sync with the slider-driven gauge.
+      const updateValueDisplay = () => {
+        valueInput.value = controller.getValue().toFixed(1);
+      };
+
+      controller.bindInput(percentInput, { asPercent: true });
+      percentInput.addEventListener('input', updateValueDisplay);
+      percentInput.addEventListener('change', updateValueDisplay);
+
+      valueInput.addEventListener('input', () => {
+        controller.setValue(valueInput.value);
+        percentInput.value = controller.getPercent().toFixed(0);
+      });
+
+      // Initialise the form controls to match the gauge.
+      percentInput.value = controller.getPercent().toFixed(0);
+      updateValueDisplay();
+    }).catch((error) => {
+      console.error(error);
+      const wrapper = document.querySelector('.gauge-wrapper');
+      wrapper.textContent = 'Unable to load gauge demo. See console for details.';
+    });
+  </script>
+</body>
+</html>
