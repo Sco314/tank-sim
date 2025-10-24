@@ -201,10 +201,10 @@ class ProcessDesigner {
       return base + 'Valve-Icon-handle-up-01.svg'; // Default to up
     }
 
-    if (t.includes('pump')) {
-      if (o === 'L') return base + 'cent-pump-inlet-left-01.svg';
-      return base + 'cent-pump-inlet-right-01.svg';
-    }
+    // Handle different pump types
+    if (t.includes('variable')) return base + 'pumpVariable.svg';
+    if (t.includes('3speed')) return base + 'pump3speed.svg';
+    if (t.includes('pump')) return base + 'centpump.svg';
 
     return null;
   }
