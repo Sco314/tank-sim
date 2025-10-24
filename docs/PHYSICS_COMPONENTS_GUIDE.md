@@ -8,13 +8,16 @@ This document catalogs every component that reads, monitors, controls, or manipu
 ## Core Physics Engine
 
 ### **FlowNetwork.js** (`/js/core/FlowNetwork.js`)
-**Role:** Central flow calculation engine and network topology manager
+**Role:** Central flow calculation engine and network topology manager{Start new edit 10-24-25 19:31} with pressure propagation{end new edit 10-24-25 19:31}
 
 **Physics Functions:**
 - **Mass Flow Routing:** Manages flow connections between components using a directed graph
 - **Flow Conservation:** Calculates flow distribution through the network topology
 - **Boundary Condition Handling:** Implements feed (infinite source) and drain (infinite sink) boundary conditions
 - **Network Validation:** Verifies flow continuity from sources to sinks
+{Start new edit 10-24-25 19:31}
+- **Pressure Propagation:** Calculates pressure at all nodes using hydrostatic, pump head, and valve drop equations
+{end new edit 10-24-25 19:31}
 
 **Key Physics Methods:**
 - `calculateFlows(dt)` - Computes all flows in network based on component states
@@ -22,6 +25,16 @@ This document catalogs every component that reads, monitors, controls, or manipu
 - `getInputFlow(componentId)` - Returns total inflow to a component
 - `getOutputFlow(componentId)` - Returns total outflow from a component
 - `_applyBoundaryConditions()` - Ensures boundary conditions are satisfied
+{Start new edit 10-24-25 19:31}
+- `_calculatePressures()` - Calculates pressure at all components:
+  - Feed: Uses `supplyPressure` boundary condition
+  - Tank: Hydrostatic pressure `P = P_atm + ρgh`
+  - Pump: Adds pump head `ΔP = ρg × (capacity × 10m)`
+  - Valve: Pressure drop `ΔP = K × ½ρv²` where K = f(position)
+  - Drain: Uses `ambientPressure` boundary condition
+- `getPressure(componentId)` - Returns pressure at component (bar)
+- `_getInletPressure(componentId)` - Gets pressure from upstream component
+{end new edit 10-24-25 19:31}
 
 **Data Read:**
 - Component states (enabled, position, speed)
@@ -30,14 +43,20 @@ This document catalogs every component that reads, monitors, controls, or manipu
 
 **Data Written:**
 - Flow rates in `this.flows` Map (`'from->to'` → flowRate)
-- Pressure data in `this.pressures` Map (optional, future use)
+- ~~Pressure data in `this.pressures` Map (optional, future use)~~ {10-24-25 19:31}
+{Start new edit 10-24-25 19:31}
+- Pressure data in `this.pressures` Map (bar, calculated each timestep)
+{end new edit 10-24-25 19:31}
 
 **Physics Processing Order:**
 1. Feed (boundary sources)
 2. Valve (flow controllers)
 3. Pump (active movers)
-4. Drain (boundary sinks)
-5. Sensor (monitors only)
+{Start new edit 10-24-25 19:31}
+4. Heat exchanger (temperature modifiers, passive to flow)
+{end new edit 10-24-25 19:31}
+~~4.~~ 5. Drain (boundary sinks) {10-24-25 19:31}
+~~5.~~ 6. Sensor (monitors only) {10-24-25 19:31}
 
 **Note:** Tanks are passive accumulators and pipes are visual-only in the topology.
 
@@ -46,13 +65,19 @@ This document catalogs every component that reads, monitors, controls, or manipu
 ## Accumulation Components
 
 ### **Tank.js** (`/js/components/tanks/Tank.js`)
-**Role:** Mass accumulation and storage with level tracking
+**Role:** Mass accumulation and storage with level tracking{Start new edit 10-24-25 19:31} and thermal energy balance{end new edit 10-24-25 19:31}
 
 **Physics Implementation:**
 - **Mass Balance Equation:** `dV/dt = Qin - Qout`
 - **Volume Integration:** `volume(t) = volume(t-1) + (Qin - Qout) * dt`
 - **Level Calculation:** `level = volume / maxVolume`
 - **Saturation Constraints:** Volume clamped to `[0, maxVolume]`
+{Start new edit 10-24-25 19:31}
+- **Energy Balance Equation:** `dH/dt = Hin - Hout + Qheat`
+- **Enthalpy Calculation:** `H = m × Cp × T` (reference at 0°C)
+- **Temperature Integration:** `T = H / (m × Cp)`
+- **Heat Transfer with Environment:** `Q = h × A × (Tambient - T)`
+{end new edit 10-24-25 19:31}
 
 **Key Physics Properties:**
 - `area` - Cross-sectional area (m²)
@@ -60,6 +85,14 @@ This document catalogs every component that reads, monitors, controls, or manipu
 - `maxVolume` - Maximum volume = area × maxHeight (m³)
 - `volume` - Current volume (m³)
 - `level` - Fill level as fraction [0, 1]
+{Start new edit 10-24-25 19:31}
+- `temperature` - Fluid temperature (°C)
+- `enthalpy` - Total thermal energy (J)
+- `fluidDensity` - Density (kg/m³, default 1000 for water)
+- `specificHeat` - Specific heat capacity (J/(kg·K), default 4186 for water)
+- `ambientTemperature` - Surrounding temperature (°C)
+- `heatTransferCoeff` - Heat transfer coefficient (W/(m²·K), 0 = insulated)
+{end new edit 10-24-25 19:31}
 
 **Key Physics Methods:**
 - `update(dt)` - Integrates mass balance over timestep
@@ -67,6 +100,16 @@ This document catalogs every component that reads, monitors, controls, or manipu
   - Reads: `Qout` from `flowNetwork.getOutputFlow(this.id)`
   - Calculates: `dV = (Qin - Qout) * dt`
   - Updates: `volume`, `level`
+{Start new edit 10-24-25 19:31}
+  - Calls: `_updateEnergyBalance(Qin, Qout, dt)` to update temperature and enthalpy
+- `_updateEnergyBalance(Qin, Qout, dt)` - Integrates energy balance
+  - Reads: Inlet temperature from upstream components
+  - Calculates: Enthalpy flows (Hin, Hout)
+  - Calculates: Heat transfer with environment
+  - Updates: `enthalpy`, `temperature`
+- `setTemperature(temp)` - Sets temperature and updates enthalpy
+- `_getInletTemperature()` - Retrieves temperature from upstream components or feeds
+{end new edit 10-24-25 19:31}
 - `getOutputFlow()` - Returns 0 (tanks are passive)
 
 **Physical Constraints:**
@@ -167,6 +210,75 @@ This document catalogs every component that reads, monitors, controls, or manipu
 - Can be used as flow limiter or on/off control
 
 ---
+
+{Start new edit 10-24-25 19:31}
+
+## Heat Transfer Components
+
+### **HeatExchanger.js** (`/js/components/heat/HeatExchanger.js`)
+**Role:** Thermal energy transfer between two fluid streams
+
+**Physics Implementation:**
+- **Effectiveness-NTU Method:** `Q = ε × Cmin × (Th,in - Tc,in)`
+- **Heat Transfer Rate:** `Q = U × A × LMTD` (alternative formulation)
+- **Energy Balance:** Hot side cools, cold side heats
+- **Flow Configurations:** Counterflow, parallel flow, crossflow supported
+
+**Key Physics Properties:**
+- `heatTransferCoeff` - U: Overall heat transfer coefficient (W/(m²·K))
+- `area` - A: Heat transfer surface area (m²)
+- `effectiveness` - ε: Thermal effectiveness (0-1)
+- `flowConfiguration` - Flow arrangement ('counterflow', 'parallel', 'crossflow')
+- `hotFluidDensity` - Hot side fluid density (kg/m³)
+- `hotFluidSpecificHeat` - Hot side Cp (J/(kg·K))
+- `coldFluidDensity` - Cold side fluid density (kg/m³)
+- `coldFluidSpecificHeat` - Cold side Cp (J/(kg·K))
+- `foulingFactor` - Thermal resistance from fouling (m²·K/W)
+
+**Key Physics Methods:**
+- `_calculateHeatTransfer()` - Calculates Q using effectiveness-NTU method:
+  ```
+  Chot = mdot_hot × Cp_hot  (W/K)
+  Ccold = mdot_cold × Cp_cold  (W/K)
+  Cmin = min(Chot, Ccold)
+  Cr = Cmin / Cmax
+  NTU = (U × A) / Cmin
+  ε = f(NTU, Cr, configuration)  (effectiveness correlations)
+  Qmax = Cmin × (Th,in - Tc,in)
+  Q = ε × Qmax
+  ```
+- `_calculateOutletTemperatures()` - Determines outlet temperatures:
+  ```
+  Th,out = Th,in - Q / Chot
+  Tc,out = Tc,in + Q / Ccold
+  ```
+- `getLMTD()` - Calculates Log Mean Temperature Difference:
+  ```
+  LMTD = (ΔT1 - ΔT2) / ln(ΔT1 / ΔT2)
+  where ΔT1 = Th,in - Tc,out
+        ΔT2 = Th,out - Tc,in
+  ```
+- `update(dt)` - Updates heat transfer and outlet temperatures
+
+**Operating States:**
+- `heatTransferRate` - Current Q (W, positive = hot to cold)
+- `hotSideInletTemp`, `hotSideOutletTemp` - Hot side temperatures (°C)
+- `coldSideInletTemp`, `coldSideOutletTemp` - Cold side temperatures (°C)
+- `hotSideFlowRate`, `coldSideFlowRate` - Flow rates (m³/s)
+
+**Physical Constraints:**
+- Hot outlet temperature ≥ cold inlet temperature (2nd law of thermodynamics)
+- Cold outlet temperature ≤ hot inlet temperature
+- Heat transfer only occurs when Th,in > Tc,in
+
+**Effectiveness Correlations:**
+- **Counterflow:** Most efficient, ε = (1 - exp(-NTU(1-Cr))) / (1 - Cr×exp(-NTU(1-Cr)))
+- **Parallel flow:** ε = (1 - exp(-NTU(1+Cr))) / (1 + Cr)
+- **Crossflow:** Intermediate efficiency, approximate correlation
+
+---
+
+{end new edit 10-24-25 19:31}
 
 ## Boundary Condition Components
 
@@ -300,6 +412,114 @@ This document catalogs every component that reads, monitors, controls, or manipu
 
 ---
 
+{Start new edit 10-24-25 19:31}
+
+### **FlowSensor.js** (`/js/components/sensors/FlowSensor.js`)
+**Role:** Flow rate measurement at any system location
+
+**Physics Implementation:**
+- **Volumetric Flow:** Measures m³/s directly from flow network
+- **Mass Flow:** Converts to kg/s using fluid density
+- **Time-Averaging:** Smooths readings over configurable time window
+- **Totalizer:** Accumulates total volume passed through sensor
+
+**Key Physics Properties:**
+- `range` - Measurement range [min, max] in m³/s or gpm
+- `units` - Display units ('m³/s', 'gpm', 'lps', 'kg/s')
+- `accuracy` - Reading precision (m³/s)
+- `measurementType` - 'volumetric' or 'mass'
+- `fluidDensity` - ρ for mass flow conversion (kg/m³)
+- `averagingTime` - Time window for averaging (s)
+
+**Key Physics Methods:**
+- `measureFlow()` - Reads flow from network: `flowNetwork.getInputFlow(this.id)`
+- `update(dt)` - Updates reading, average, totalizer, and checks alarms
+- `resetTotalizer()` - Resets cumulative volume counter
+
+**Measurements:**
+- `flowRate` - Instantaneous flow rate
+- `averageFlow` - Time-averaged flow rate
+- `totalVolume` - Cumulative volume (totalizer)
+- `trend` - Rate of change (flow acceleration)
+
+**Alarm Logic:**
+- `lowAlarm` - Low flow alarm threshold
+- `highAlarm` - High flow alarm threshold
+- Supports no-flow detection
+
+---
+
+### **TemperatureSensor.js** (`/js/components/sensors/TemperatureSensor.js`)
+**Role:** Temperature measurement at any system location
+
+**Physics Implementation:**
+- **Fluid Temperature:** Reads temperature from connected components (tanks, feeds, heat exchangers)
+- **Multiple Measurement Points:** 'fluid', 'tank', 'inlet', 'outlet', 'ambient'
+- **Unit Conversion:** Supports both Celsius and Fahrenheit display
+- **Time-Averaging:** Smooths readings for stability
+
+**Key Physics Properties:**
+- `range` - Measurement range [min, max] in °C
+- `units` - Display units ('°C' or '°F')
+- `accuracy` - Reading precision (°C)
+- `measurementPoint` - Location type for measurement
+- `averagingTime` - Time window for averaging (s)
+
+**Measurement Point Types:**
+1. **`ambient`** - Constant ambient temperature (20°C)
+2. **`tank`** - Temperature of fluid in connected tank
+3. **`inlet`** - Temperature of incoming flow
+4. **`outlet`** - Temperature of outgoing flow
+5. **`fluid`** - General fluid temperature from any connected component
+
+**Key Physics Methods:**
+- `measureTemperature()` - Reads temperature from connected components
+- `getTemperatureFahrenheit()` - Converts reading to Fahrenheit
+- `update(dt)` - Updates reading, trend, and checks alarms
+
+**Alarm Logic:**
+- `lowAlarm` - Low temperature alarm (°C)
+- `highAlarm` - High temperature alarm (°C)
+
+---
+
+### **LevelSensor.js** (`/js/components/sensors/LevelSensor.js`)
+**Role:** Liquid level measurement in tanks
+
+**Physics Implementation:**
+- **Level Reading:** Reads level fraction (0-1) from connected tank
+- **Multiple Units:** Supports %, meters, feet, volume (m³, gallons)
+- **Four-Level Alarming:** Low-low, low, high, high-high thresholds
+- **Trend Detection:** Monitors rate of level change
+
+**Key Physics Properties:**
+- `range` - Measurement range [min, max]
+- `units` - Display units ('%', 'm', 'ft', 'm³', 'gal')
+- `accuracy` - Reading precision (%)
+- `measurementType` - 'percent', 'height', or 'volume'
+
+**Measurements:**
+- `level` - Level as fraction (0-1)
+- `levelPercent` - Level as percentage (0-100%)
+- `height` - Liquid height in meters
+- `volume` - Liquid volume in m³
+
+**Key Physics Methods:**
+- `measureLevel()` - Reads level from connected tank
+- `update(dt)` - Updates reading, trend, and checks alarms
+- `getLevelString()` - Formats reading with appropriate units
+
+**Alarm Logic:**
+- `lowLowAlarm` - Critical low level alarm
+- `lowAlarm` - Low level warning
+- `highAlarm` - High level warning
+- `highHighAlarm` - Critical high level alarm
+- Color-coded visual indication (green/orange/red)
+
+---
+
+{end new edit 10-24-25 19:31}
+
 ## Orchestration Components
 
 ### **ComponentManager.js** (`/js/core/ComponentManager.js`)
@@ -385,6 +605,32 @@ For each tank:
   level = V / V_max
 ```
 
+{Start new edit 10-24-25 19:31}
+
+### **Energy Balance Model**
+Tanks implement thermal energy conservation with environment heat transfer:
+
+```
+For each tank:
+  dH/dt = Hin - Hout + Qheat
+  H = m × Cp × T  (enthalpy, reference at 0°C)
+  Hin = mdot_in × Cp × T_in
+  Hout = mdot_out × Cp × T_out
+  Qheat = h × A × (T_ambient - T)  (heat transfer with environment)
+  T = H / (m × Cp)  (temperature from enthalpy)
+```
+
+Heat exchangers use effectiveness-NTU method for energy transfer between streams:
+
+```
+Q = ε × Cmin × (Th,in - Tc,in)
+where ε = effectiveness (0-1)
+      C = mdot × Cp (heat capacity rate)
+      Cmin = min(Chot, Ccold)
+```
+
+{end new edit 10-24-25 19:31}
+
 ### **Flow Constraints**
 Flow is determined by the minimum of all constraints:
 
@@ -398,15 +644,24 @@ Q_actual = min(
 ```
 
 ### **Pressure Model**
-Current implementation uses simplified hydrostatic and pump head equations:
+~~Current implementation uses simplified hydrostatic and pump head equations:~~ {10-24-25 19:31}
+{Start new edit 10-24-25 19:31}
+The simulator calculates pressure at all network nodes using simplified hydrostatic and pump head equations:
+{end new edit 10-24-25 19:31}
 
 ```
 P_static = P_atm + ρ × g × h
 P_pump = P_inlet + ρ × g × h_pump
 h_pump ≈ 10m per m³/s capacity (simplified)
+{Start new edit 10-24-25 19:31}
+P_valve = P_inlet - K × (½ρv²)  (pressure drop through valve)
+{end new edit 10-24-25 19:31}
 ```
 
-**Note:** The pressure system is partially implemented and marked for future enhancement with full Bernoulli equation and friction losses.
+~~**Note:** The pressure system is partially implemented and marked for future enhancement with full Bernoulli equation and friction losses.~~ {10-24-25 19:31}
+{Start new edit 10-24-25 19:31}
+**Note:** Pressure is calculated each timestep and available via `flowNetwork.getPressure(componentId)`. Future enhancements may include full Bernoulli equation and detailed friction losses.
+{end new edit 10-24-25 19:31}
 
 ### **Boundary Conditions**
 - **Dirichlet (Feed):** Infinite supply at specified pressure
@@ -422,12 +677,12 @@ h_pump ≈ 10m per m³/s capacity (simplified)
 ## Physics-Related Files Complete List
 
 **Core Engine:**
-1. `/js/core/FlowNetwork.js` - Flow calculation and routing
+1. `/js/core/FlowNetwork.js` - Flow calculation and routing{Start new edit 10-24-25 19:31}, pressure propagation{end new edit 10-24-25 19:31}
 2. `/js/core/ComponentManager.js` - Time integration and orchestration
 3. `/js/core/Component.js` - Base physics interface
 
 **Accumulation:**
-4. `/js/components/tanks/Tank.js` - Mass accumulation and level
+4. `/js/components/tanks/Tank.js` - Mass accumulation and level{Start new edit 10-24-25 19:31}, temperature and energy balance{end new edit 10-24-25 19:31}
 
 **Flow Generation:**
 5. `/js/components/pumps/Pump.js` - Base pump physics
@@ -438,21 +693,116 @@ h_pump ≈ 10m per m³/s capacity (simplified)
 **Flow Control:**
 9. `/js/components/valves/Valve.js` - Throttling and flow control
 
+{Start new edit 10-24-25 19:31}
+**Heat Transfer:**
+10. `/js/components/heat/HeatExchanger.js` - Energy transfer between fluid streams
+{end new edit 10-24-25 19:31}
+
 **Boundary Conditions:**
-10. `/js/components/sources/Feed.js` - Infinite source
-11. `/js/components/sinks/Drain.js` - Infinite sink
+~~10.~~ 11. `/js/components/sources/Feed.js` - Infinite source {10-24-25 19:31}
+~~11.~~ 12. `/js/components/sinks/Drain.js` - Infinite sink {10-24-25 19:31}
 
 **Monitoring:**
-12. `/js/components/sensors/PressureSensor.js` - Pressure measurement
+~~12.~~ 13. `/js/components/sensors/PressureSensor.js` - Pressure measurement {10-24-25 19:31}
+{Start new edit 10-24-25 19:31}
+14. `/js/components/sensors/FlowSensor.js` - Flow rate measurement (volumetric and mass)
+15. `/js/components/sensors/TemperatureSensor.js` - Temperature measurement
+16. `/js/components/sensors/LevelSensor.js` - Tank level measurement
+{end new edit 10-24-25 19:31}
+
+{Start new edit 10-24-25 19:31}
+**Utilities:**
+17. `/js/utils/units.js` - Unit conversion and formatting (Temperature, Pressure, Flow, Level, Volume)
+{end new edit 10-24-25 19:31}
 
 **Non-Physics (Visual Only):**
 - `/js/components/pipes/Pipe.js` - Visual connections (no flow physics)
 
-**Stub Files (Unused):**
-- `/js/utils/math.js` - Empty stub
-- `/js/utils/validation.js` - Empty stub
+~~**Stub Files (Unused):**~~ {10-24-25 19:31}
+~~- `/js/utils/math.js` - Empty stub~~ {10-24-25 19:31}
+~~- `/js/utils/validation.js` - Empty stub~~ {10-24-25 19:31}
 
 ---
+
+{Start new edit 10-24-25 19:31}
+
+## Unit Conversion and Formatting
+
+### **units.js** (`/js/utils/units.js`)
+**Role:** Comprehensive unit conversion and formatting utility for all process variables
+
+**Purpose:**
+Supports both SI (metric) and US customary units to meet requirements for:
+- **Primary Units (User-Facing):** Temperature in °F, Pressure in psi, Flow in gpm, Level in %
+- **Internal Units (Calculations):** Temperature in °C, Pressure in bar, Flow in m³/s, Level in fraction
+
+**Conversion Functions:**
+
+**Temperature:**
+- `celsiusToFahrenheit(celsius)` / `fahrenheitToCelsius(fahrenheit)`
+- `celsiusToKelvin(celsius)` / `kelvinToCelsius(kelvin)`
+
+**Pressure:**
+- `barToPsi(bar)` / `psiToBar(psi)` — 1 bar = 14.5038 psi
+- `barToPa(bar)` / `paToBar(pa)` — 1 bar = 100,000 Pa
+
+**Flow:**
+- `m3sToGpm(m3s)` / `gpmToM3s(gpm)` — 1 m³/s = 15,850.3 gpm
+- `m3sToLps(m3s)` / `lpsToM3s(lps)` — 1 m³/s = 1,000 L/s
+
+**Volume:**
+- `m3ToGal(m3)` / `galToM3(gal)` — 1 m³ = 264.172 gal
+- `m3ToL(m3)` / `lToM3(l)` — 1 m³ = 1,000 L
+
+**Length:**
+- `mToFt(m)` / `ftToM(ft)` — 1 m = 3.28084 ft
+
+**Level:**
+- `fractionToPercent(fraction)` / `percentToFraction(percent)`
+
+**Thermodynamic Calculations:**
+- `waterEnthalpy(tempCelsius)` - Calculates H = Cp × T (J/kg)
+- `temperatureFromEnthalpy(enthalpy)` - Inverse calculation T = H / Cp
+- `volumeToMass(volume_m3, density)` - Converts volume to mass: m = ρ × V
+- `heightToPressure(height_m, density)` - Hydrostatic pressure: P = ρ × g × h
+
+**Formatting Functions:**
+- `formatTemperature(celsius, useFahrenheit, precision)` - Returns formatted string with units
+- `formatPressure(bar, usePsi, precision)` - Returns formatted string with units
+- `formatFlow(m3s, useGpm, precision)` - Returns formatted string with units
+- `formatLevel(fraction, precision)` - Returns percentage with % symbol
+- `formatVolume(m3, useGallons, precision)` - Returns formatted string with units
+
+**Physical Constants:**
+```javascript
+WATER_DENSITY: 1000 kg/m³ (at 20°C)
+WATER_SPECIFIC_HEAT: 4186 J/(kg·K) (at 20°C)
+GRAVITY: 9.81 m/s²
+BAR_TO_PSI: 14.5038
+M3S_TO_GPM: 15850.3
+```
+
+**Usage Example:**
+```javascript
+// Convert and format
+const tempF = Units.celsiusToFahrenheit(25);  // 77°F
+const pressurePsi = Units.barToPsi(3.0);  // 43.51 psi
+const flowGpm = Units.m3sToGpm(0.001);  // 15.85 gpm
+
+// Formatted output
+const tempStr = Units.formatTemperature(25, true);  // "77.0 °F"
+const pressureStr = Units.formatPressure(3.0, true);  // "43.51 psi"
+const flowStr = Units.formatFlow(0.001, true);  // "15.85 gpm"
+```
+
+**Integration:**
+- All sensor components support unit conversion via `units` property
+- Tank, Feed, and HeatExchanger use Units for display formatting
+- Available globally as `window.Units` singleton
+
+---
+
+{end new edit 10-24-25 19:31}
 
 ## Future Physics Enhancements
 
@@ -462,11 +812,11 @@ Based on code comments and placeholder properties, planned enhancements include:
    - Complete Bernoulli equation implementation
    - Friction losses (Darcy-Weisbach)
    - Minor losses (fittings, valves)
-   - Network pressure solver
+   - ~~Network pressure solver~~ {10-24-25 19:31} {Start new edit 10-24-25 19:31}**IMPLEMENTED** - Basic pressure solver active{end new edit 10-24-25 19:31}
 
 2. **Thermal Modeling:**
-   - Temperature tracking (property exists in Feed.js)
-   - Heat exchangers
+   - ~~Temperature tracking (property exists in Feed.js)~~ {10-24-25 19:31} {Start new edit 10-24-25 19:31}**IMPLEMENTED** - Tank temperature and energy balance complete{end new edit 10-24-25 19:31}
+   - ~~Heat exchangers~~ {10-24-25 19:31} {Start new edit 10-24-25 19:31}**IMPLEMENTED** - HeatExchanger component with effectiveness-NTU method{end new edit 10-24-25 19:31}
    - Thermal expansion effects
 
 3. **Pump Curves:**
@@ -489,6 +839,27 @@ Based on code comments and placeholder properties, planned enhancements include:
    - Compressible flow
    - Viscosity effects
    - Reynolds number dependent losses
+
+{Start new edit 10-24-25 19:31}
+
+7. **Chemical and Analytical Data (Future Expansion):**
+   - **Framework Prepared:** Component architecture supports extensible state variables
+   - **Concentration Tracking:** Add species concentration arrays to Tank, Feed components
+   - **Chemical Reactions:** Reaction rate equations in tanks (A + B → C)
+   - **pH and Conductivity:** Analytical property calculations
+   - **Component Composition:** Multi-component mixtures with mole fractions
+   - **Property Database:** Fluid property lookup (density, viscosity, Cp) as f(T, composition)
+   - **Sensors:** ChemicalSensor, pHSensor, ConductivitySensor, CompositionAnalyzer
+   - **Mixing Rules:** Volume-weighted or mass-weighted mixing at junctions
+   - **Material Balance:** Species conservation: `dCi/dt = (Cin,i × Qin - Cout,i × Qout) / V + Ri`
+
+**Implementation Notes:**
+- Use `tank.composition = { species1: concentration1, species2: concentration2, ... }`
+- Add `chemicalProperties` object to Component base class
+- Extend `flowNetwork.flows` to include composition data: `{ flowRate, composition }`
+- Create ChemicalManager to handle reactions and equilibrium
+
+{end new edit 10-24-25 19:31}
 
 ---
 
