@@ -339,18 +339,8 @@ class ProcessDesigner {
 
     let orientTransform = this._getOrientationTransform(orient);
     const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
-    let labelCompensation = null;
 
-    const typeKey = String(comp.type || comp.key || '').toLowerCase();
-    if (typeKey.includes('pump')) {
-      if (orient === 'L') {
-        orientTransform = '';
-      } else if (orient === 'R') {
-        orientTransform = 'scale(-1, 1)';
-        labelCompensation = 'scale(-1, 1)';
-      }
-    }
-
+    // Handle pump-specific orientation logic
     const typeKey = String(comp.type || comp.key || '').toLowerCase();
     if (typeKey.includes('pump')) {
       if (orient === 'L') {
@@ -439,17 +429,24 @@ class ProcessDesigner {
       e.preventDefault();
       const componentType = e.dataTransfer.getData('componentType');
       const componentKey = e.dataTransfer.getData('componentKey');
+      const visual = e.dataTransfer.getData('visual'); // Get visual variant
       if (!componentType) return;
 
       const rect = this.canvas.getBoundingClientRect();
       const viewBox = this.canvas.viewBox.baseVal;
       const scaleX = viewBox.width / rect.width;
       const scaleY = viewBox.height / rect.height;
-      
+
       const x = Math.round((e.clientX - rect.left) * scaleX + viewBox.x);
       const y = Math.round((e.clientY - rect.top) * scaleY + viewBox.y);
 
-      this.addComponent(componentType, x, y, { key: componentKey });
+      // Include visual variant in config if provided
+      const options = { key: componentKey };
+      if (visual) {
+        options.config = { visual };
+      }
+
+      this.addComponent(componentType, x, y, options);
     });
 
     // Canvas mouse events
