@@ -11,7 +11,7 @@
         .st8{fill:#007C90;}
         .st9{fill:#7A8795;}
         .st10{fill:#384550;stroke:#384550;stroke-width:1.5;}
-        .st11{stroke:#000000;stroke-miterlimit:10;}
+        .st11{fill:#384550;stroke:#000000;stroke-miterlimit:10;}
         .st12{fill:none;stroke:#000000;stroke-miterlimit:10;}
   </style>
   <g id="artwork" transform="scale(-1, 1) translate(-171.75, 0)">
