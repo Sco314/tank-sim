@@ -154,6 +154,36 @@ html, body {
   cursor: grabbing;
 }
 
+/* Dropdown for Feed/Product variants */
+.component-dropdown {
+  margin: 4px 0;
+}
+
+.dropdown-header {
+  cursor: pointer !important;
+}
+
+.dropdown-header .component-label {
+  font-weight: 500;
+}
+
+.dropdown-content {
+  padding-left: 16px;
+  margin-top: 4px;
+}
+
+.variant-item {
+  padding: 8px 10px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.variant-item .component-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+}
+
 .component-icon {
   width: 32px;
   height: 32px;

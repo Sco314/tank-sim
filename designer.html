@@ -29,44 +29,7 @@
       >
     </div>
     <div class="library-content" id="componentPalette">
-      <!-- Populated by designer.js -->
-    </div>
-
-    <!-- Sources Section (moved from toolbar) -->
-    <div class="component-category">
-      <div class="category-header" style="cursor: pointer;" id="sourcesExpander">
-        <span class="category-icon">💧</span>
-        <span class="category-name">Sources & Drains</span>
-      </div>
-      <div class="category-items" id="sourcesItems" style="display: none;">
-        <!-- Feed Sources -->
-        <div class="component-item" draggable="true" data-source-type="feed" data-visual="chemistry">
-          <span class="component-icon">🧪</span>
-          <span class="component-label">Feed (Chemistry)</span>
-        </div>
-        <div class="component-item" draggable="true" data-source-type="feed" data-visual="pumpjack">
-          <span class="component-icon">⛽</span>
-          <span class="component-label">Feed (Pumpjack)</span>
-        </div>
-        <div class="component-item" draggable="true" data-source-type="feed" data-visual="refinery">
-          <span class="component-icon">🏭</span>
-          <span class="component-label">Feed (Refinery)</span>
-        </div>
-
-        <!-- Drain Sinks -->
-        <div class="component-item" draggable="true" data-source-type="drain" data-visual="chemistry">
-          <span class="component-icon">🧪</span>
-          <span class="component-label">Drain (Chemistry)</span>
-        </div>
-        <div class="component-item" draggable="true" data-source-type="drain" data-visual="pumpjack">
-          <span class="component-icon">⛽</span>
-          <span class="component-label">Drain (Pumpjack)</span>
-        </div>
-        <div class="component-item" draggable="true" data-source-type="drain" data-visual="refinery">
-          <span class="component-icon">🏭</span>
-          <span class="component-label">Drain (Refinery)</span>
-        </div>
-      </div>
+      <!-- Populated by designer.js with Feed/Product dropdowns -->
     </div>
   </aside>
 
@@ -233,10 +196,10 @@
 <!-- JSZip for ZIP export support -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<!-- Load scripts in correct order with correct paths -->
-<script src="js/componentLibrary.js"></script>
-<script src="js/exporter.js"></script>
-<script src="js/designer.js"></script>
+<!-- Load scripts in correct order with cache-busting -->
+<script src="js/componentLibrary.js?v=3.2"></script>
+<script src="js/exporter.js?v=5.5"></script>
+<script src="js/designer.js?v=3.2"></script>
 
 <!-- ✅ NEW: Export button handler with progress tracking -->
 <script>
@@ -373,42 +336,6 @@
   }
 </script>
 
-<!-- Sources Section Handler -->
-<script>
-  window.addEventListener('DOMContentLoaded', () => {
-    const sourcesExpander = document.getElementById('sourcesExpander');
-    const sourcesItems = document.getElementById('sourcesItems');
-
-    // Toggle Sources section
-    if (sourcesExpander && sourcesItems) {
-      sourcesExpander.addEventListener('click', () => {
-        const isExpanded = sourcesItems.style.display !== 'none';
-        sourcesItems.style.display = isExpanded ? 'none' : 'block';
-      });
-
-      // Expand by default
-      sourcesItems.style.display = 'block';
-    }
-
-    // Setup drag handlers for source items
-    const sourceItems = document.querySelectorAll('[data-source-type]');
-    sourceItems.forEach(item => {
-      item.addEventListener('dragstart', (e) => {
-        const sourceType = item.dataset.sourceType;
-        const visual = item.dataset.visual;
-
-        // Set drag data
-        e.dataTransfer.setData('componentType', sourceType);
-        e.dataTransfer.setData('componentKey', sourceType);
-        e.dataTransfer.setData('visual', visual);
-
-        console.log(`Dragging ${sourceType} (${visual})`);
-      });
-    });
-
-    console.log('✅ Sources section handler initialized');
-  });
-</script>
 
 </body>
 </html>
