@@ -1,12 +1,11 @@
 /**
  * designer.js V3.2 - Process Simulator Designer
  * FIXES:
- * - ✅ Fixed missing 'scoped' variable in _buildSprite() - SVG symbols now load correctly
- * - ✅ Added fail-fast check for sprite symbol count
- * - ✅ Restored full drag-and-drop functionality for all components
- * - ✅ Unified sidebar into single scrollable list
- * - ✅ Added Feed/Product dropdowns inside Boundary category with visual variants
- * - ✅ Removed old hardcoded "Sources & Drains" section
+ * - ✅ Fixed SVG loading (scoped variable properly defined)
+ * - ✅ Fail-fast validation if no symbols load
+ * - ✅ Feed/Product dropdowns in Boundary section
+ * - ✅ Unified sidebar (single scrollable panel)
+ * - ✅ Full drag-and-drop support with visual variants
  * - ✅ Improved style preservation (fixes grey valve body appearing white)
  * - ✅ Better SVG class scoping to prevent style bleed
  * - ✅ Consistent SVG path resolution with exporter
@@ -14,6 +13,8 @@
  * - ✅ Parses and stores ports from SVGs
  * - ✅ Centers components properly for port alignment
  */
+
+console.log('🔧 Loading designer.js v3.2...');
 
 class ProcessDesigner {
   constructor(canvasId, options = {}) {
@@ -102,16 +103,17 @@ class ProcessDesigner {
         const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
         const inner = this._extractSvgInner(svgText);
 
-        // Apply ID prefixing and style scoping
+        // Prefix IDs to avoid collisions
         const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scopedResult = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
-        const scopedContent = scopedResult?.content ?? scopedResult ?? prefixed;
+
+        // Scope classes BUT PRESERVE inline styles (fill, stroke, etc.)
+        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
         // Detect special grouping for artwork/labels (used by pumps so labels never mirror)
-        const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
-        const labelsRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-labels"[^>]*>[\\s\\S]*?<\/g>`, 'i');
-        const artworkMatch = scopedContent.match(artworkRegex);
-        const labelsMatch = scopedContent.match(labelsRegex);
+        const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\\/g>`, 'i');
+        const labelsRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-labels"[^>]*>[\\s\\S]*?<\\/g>`, 'i');
+        const artworkMatch = scoped.match(artworkRegex);
+        const labelsMatch = scoped.match(labelsRegex);
 
         let registryValue = meta.symbolId;
 
@@ -153,6 +155,14 @@ class ProcessDesigner {
     }
 
     console.log(`✅ Built sprite with ${symbols.length} symbols`);
+
+    // Fail-fast if no symbols loaded
+    if (symbols.length === 0) {
+      const errorMsg = '❌ CRITICAL: No SVG symbols loaded! Designer cannot function. Check SVG paths and network.';
+      console.error(errorMsg);
+      alert(errorMsg);
+      throw new Error('SVG sprite build failed - no symbols loaded');
+    }
   }
 
   /**
@@ -382,7 +392,7 @@ class ProcessDesigner {
   }
 
   /**
-   * Populate component palette
+   * Populate component palette with Feed/Product dropdowns
    */
   _populateComponentPalette() {
     const palette = document.getElementById('componentPalette');
@@ -404,24 +414,23 @@ class ProcessDesigner {
         const def = lib[compKey];
         if (!def) continue;
 
-        // Check if component has visual variants (feed/drain)
-        if (def.visualVariants) {
-          // Create dropdown for variants
+        // Special handling for feed/drain with visual variants
+        if ((compKey === 'feed' || compKey === 'drain') && def.visualVariants) {
+          const label = compKey === 'feed' ? 'Feed' : 'Product';
           const dropdownId = `dropdown-${compKey}`;
-          const displayName = compKey === 'feed' ? 'Feed' : 'Product';
+
           html += `<div class="component-dropdown">
             <div class="component-item dropdown-header" data-dropdown="${dropdownId}">
               <span class="component-icon">${def.icon}</span>
-              <span class="component-label">${displayName}</span>
-              <span class="dropdown-arrow">▶</span>
+              <span class="component-label">${label} ▼</span>
             </div>
-            <div class="dropdown-items" id="${dropdownId}" style="display: none;">`;
+            <div class="dropdown-content" id="${dropdownId}" style="display: none;">`;
 
           // Add each visual variant
           for (const [variantName, variantDef] of Object.entries(def.visualVariants)) {
+            const variantIcon = variantName === 'chemistry' ? '🧪' : variantName === 'pumpjack' ? '⛽' : '🏭';
             const variantLabel = variantName.charAt(0).toUpperCase() + variantName.slice(1);
-            const variantIcon = variantName === 'chemistry' ? '🧪' :
-                               variantName === 'pumpjack' ? '⛽' : '🏭';
+
             html += `<div
               class="component-item variant-item"
               draggable="true"
@@ -436,7 +445,7 @@ class ProcessDesigner {
 
           html += `</div></div>`;
         } else {
-          // Regular component (no variants)
+          // Regular component item
           html += `<div
             class="component-item"
             draggable="true"
@@ -454,7 +463,20 @@ class ProcessDesigner {
 
     palette.innerHTML = html;
 
-    // Add drag event listeners to all draggable items
+    // Add dropdown toggle listeners
+    palette.querySelectorAll('.dropdown-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dropdownId = header.dataset.dropdown;
+        const dropdown = document.getElementById(dropdownId);
+        if (dropdown) {
+          const isVisible = dropdown.style.display !== 'none';
+          dropdown.style.display = isVisible ? 'none' : 'block';
+        }
+      });
+    });
+
+    // Add drag event listeners for all draggable items
     palette.querySelectorAll('.component-item[draggable="true"]').forEach(item => {
       item.addEventListener('dragstart', (e) => {
         const componentType = item.dataset.componentType;
@@ -467,28 +489,7 @@ class ProcessDesigner {
           e.dataTransfer.setData('visual', visual);
         }
 
-        console.log(`Dragging ${componentType}${visual ? ' (' + visual + ')' : ''}`);
-      });
-
-      item.addEventListener('dragend', (e) => {
-        // Optional: Add visual feedback on drag end
-      });
-    });
-
-    // Add dropdown toggle listeners
-    palette.querySelectorAll('.dropdown-header').forEach(header => {
-      header.addEventListener('click', (e) => {
-        const dropdownId = header.dataset.dropdown;
-        const dropdownItems = document.getElementById(dropdownId);
-        const arrow = header.querySelector('.dropdown-arrow');
-
-        if (dropdownItems) {
-          const isExpanded = dropdownItems.style.display !== 'none';
-          dropdownItems.style.display = isExpanded ? 'none' : 'block';
-          if (arrow) {
-            arrow.textContent = isExpanded ? '▶' : '▼';
-          }
-        }
+        console.log(`Dragging ${componentType}${visual ? ` (${visual})` : ''}`);
       });
     });
   }
@@ -1461,5 +1462,5 @@ window.addEventListener('DOMContentLoaded', () => {
     baseUrl: 'https://sco314.github.io/tank-sim/'
   });
   window.designer = designer; // Make globally accessible
-  console.log('✅ Designer v3.2 ready - Drag-and-drop fixed, sidebar unified');
+  console.log('✅ Designer v3.2 ready - Full drag-and-drop enabled');
 });
