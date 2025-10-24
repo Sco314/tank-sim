@@ -191,6 +191,41 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* Dropdown styles for Feed/Product variants */
+.component-dropdown {
+  margin-bottom: 4px;
+}
+
+.dropdown-header {
+  cursor: pointer;
+  position: relative;
+}
+
+.dropdown-header:hover {
+  background: rgba(127, 200, 255, 0.15);
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  margin-left: auto;
+}
+
+.dropdown-items {
+  padding-left: 16px;
+  margin-top: 4px;
+}
+
+.variant-item {
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.variant-item .component-label {
+  font-size: 13px;
+}
+
 /* ============================================================================
    CENTER PANEL - CANVAS
    ============================================================================ */
