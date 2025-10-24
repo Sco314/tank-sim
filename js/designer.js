@@ -129,7 +129,7 @@ class ProcessDesigner {
             registryValue.labels = labelsSymbolId;
           }
         } else {
-          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
+          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scopedContent}</symbol>`);
         }
 
         // Parse and cache ports
@@ -146,6 +146,14 @@ class ProcessDesigner {
     }
 
     defsEl.innerHTML = symbols.join('\n');
+
+    // Fail-fast check: ensure symbols were loaded
+    if (symbols.length === 0) {
+      console.error('❌ Sprite build failed — 0 symbols loaded');
+      console.error('This will prevent components from rendering correctly');
+      return;
+    }
+
     console.log(`✅ Built sprite with ${symbols.length} symbols`);
 
     // Fail-fast if no symbols loaded
