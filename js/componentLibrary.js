@@ -1,12 +1,14 @@
 /**
  * componentLibrary.js - Component definitions for designer
- * FIXED v3.2:
+ * FIXED v3.3:
  * - Feed/Product components now work with dropdown visual variants in sidebar
  * - Tank 2x larger (320x360)
  * - Valve 1/3 smaller (25x25)
  * - Consistent SVG paths between designer and exporter
  * - Improved style isolation
  * - Added svgPath to all components for consistent asset loading
+ * - Added svgPath and imageSize to pressure, flow, and level sensors
+ * - Added orientation and scale to sensor defaultConfig for transform support
  */
 
 const COMPONENT_LIBRARY = {
@@ -390,16 +392,20 @@ const COMPONENT_LIBRARY = {
     icon: '📊',
     color: '#f59e0b',
     description: 'Pressure measurement',
+    svgPath: 'assets/gaugeAnalog.svg',
+    imageSize: { w: 80, h: 80, x: -40, y: -40 },
     defaultConfig: {
       type: 'pressureSensor',
       range: [0, 10],
-      units: 'bar'
+      units: 'bar',
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'range', label: 'Range (bar)', type: 'text', default: '0-10' }
     ],
     connectionPoints: [
-      { id: 'cp_tap', name: 'tap', type: 'input', x: 0, y: 0 }
+      { id: 'cp_tap', name: 'tap', type: 'input', x: 0, y: 40 }
     ]
   },
   
@@ -410,17 +416,21 @@ const COMPONENT_LIBRARY = {
     icon: '🌊',
     color: '#f59e0b',
     description: 'Flow rate measurement',
+    svgPath: 'assets/gaugeAnalog.svg',
+    imageSize: { w: 80, h: 80, x: -40, y: -40 },
     defaultConfig: {
       type: 'flowSensor',
       range: [0, 5],
-      units: 'm³/s'
+      units: 'm³/s',
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'range', label: 'Range (m³/s)', type: 'text', default: '0-5' }
     ],
     connectionPoints: [
-      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -20, y: 0 },
-      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 20, y: 0 }
+      { id: 'cp_inlet', name: 'inlet', type: 'input', x: -40, y: 0 },
+      { id: 'cp_outlet', name: 'outlet', type: 'output', x: 40, y: 0 }
     ]
   },
   
@@ -431,16 +441,20 @@ const COMPONENT_LIBRARY = {
     icon: '📏',
     color: '#f59e0b',
     description: 'Tank level measurement',
+    svgPath: 'assets/gaugeAnalog.svg',
+    imageSize: { w: 80, h: 80, x: -40, y: -40 },
     defaultConfig: {
       type: 'levelSensor',
       range: [0, 100],
-      units: '%'
+      units: '%',
+      orientation: 'R',
+      scale: 1.0
     },
     properties: [
       { name: 'range', label: 'Range (%)', type: 'text', default: '0-100' }
     ],
     connectionPoints: [
-      { id: 'cp_probe', name: 'probe', type: 'input', x: 0, y: 0 }
+      { id: 'cp_probe', name: 'probe', type: 'input', x: 0, y: 40 }
     ]
   }
 };
@@ -556,8 +570,9 @@ window.getComponentSVG = getComponentSVG;
 window.getComponentConnectionPoints = getComponentConnectionPoints;
 
 // ✅ Then log (after window.COMPONENT_LIBRARY exists)
-console.log('✅ Component Library v3.2 loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
+console.log('✅ Component Library v3.3 loaded:', Object.keys(COMPONENT_LIBRARY).length, 'components');
 console.log('✅ Scale adjustments: Tank 2x larger, Valve 1/3 smaller');
 console.log('✅ SVG paths unified for designer and exporter');
+console.log('✅ Sensors now have SVG paths and render correctly');
 console.log('📌 Connection points: Enabled for designer hover markers');
 console.log('🎨 SVG variants: Valve (3), Pump (2), Feed/Product (3 each)');

@@ -1,5 +1,5 @@
 /**
- * designer.js V3.2 - Process Simulator Designer
+ * designer.js V3.3 - Process Simulator Designer
  * FIXES:
  * - ✅ Fixed SVG loading (scoped variable properly defined)
  * - ✅ Fail-fast validation if no symbols load
@@ -12,9 +12,11 @@
  * - ✅ Uses sprite system with <use> instances
  * - ✅ Parses and stores ports from SVGs
  * - ✅ Centers components properly for port alignment
+ * - ✅ Fixed shared SVG asset registration for drain/feed visual variants
+ * - ✅ Added missing SVG paths for sensors (pressure, flow, level)
  */
 
-console.log('🔧 Loading designer.js v3.2...');
+console.log('🔧 Loading designer.js v3.3...');
 
 class ProcessDesigner {
   constructor(canvasId, options = {}) {
@@ -64,6 +66,7 @@ class ProcessDesigner {
 
     const needed = new Map();
     const symbols = [];
+    const assetToTypes = new Map(); // Track all types that use each asset
 
     // Collect all component types from library
     for (const [key, def] of Object.entries(lib)) {
@@ -76,8 +79,16 @@ class ProcessDesigner {
           if (!assetPath) continue;
 
           const symbolId = `sym-${type}-${variantName}`;
+          const typeKey = `${type}-${variantName}`;
+
           if (!needed.has(assetPath)) {
-            needed.set(assetPath, { symbolId, type: `${type}-${variantName}`, def: variantDef, baseType: type });
+            needed.set(assetPath, { symbolId, type: typeKey, def: variantDef, baseType: type });
+            assetToTypes.set(assetPath, [typeKey]);
+          } else {
+            // Asset already exists, but add this type to the list
+            const types = assetToTypes.get(assetPath) || [];
+            types.push(typeKey);
+            assetToTypes.set(assetPath, types);
           }
         }
       } else {
@@ -88,6 +99,12 @@ class ProcessDesigner {
         const symbolId = `sym-${type.replace(/\s+/g, '_')}`;
         if (!needed.has(assetPath)) {
           needed.set(assetPath, { symbolId, type, def });
+          assetToTypes.set(assetPath, [type]);
+        } else {
+          // Asset already exists, but add this type to the list
+          const types = assetToTypes.get(assetPath) || [];
+          types.push(type);
+          assetToTypes.set(assetPath, types);
         }
       }
     }
@@ -142,7 +159,21 @@ class ProcessDesigner {
           console.log(`✅ Cached ${Object.keys(ports).length} ports for ${meta.type}:`, ports);
         }
 
+        // Register the primary type
         this._symbolRegistry.set(meta.type, registryValue);
+
+        // Also register all other types that share this asset
+        const allTypes = assetToTypes.get(assetPath) || [];
+        for (const typeKey of allTypes) {
+          if (typeKey !== meta.type) {
+            this._symbolRegistry.set(typeKey, registryValue);
+            // Also cache ports for shared types
+            if (Object.keys(ports).length > 0) {
+              this._portCache.set(typeKey, ports);
+            }
+            console.log(`✅ Registered shared type: ${typeKey} → ${registryValue}`);
+          }
+        }
       } catch (e) {
         console.warn(`Failed to load SVG: ${assetPath}`, e);
       }
@@ -1465,5 +1496,5 @@ window.addEventListener('DOMContentLoaded', () => {
     baseUrl: 'https://sco314.github.io/tank-sim/'
   });
   window.designer = designer; // Make globally accessible
-  console.log('✅ Designer v3.2 ready - Full drag-and-drop enabled');
+  console.log('✅ Designer v3.3 ready - Full drag-and-drop enabled');
 });
