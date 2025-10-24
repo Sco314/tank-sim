@@ -121,35 +121,39 @@ class FlowNetwork {
     // - 'feed': Boundary sources (infinite supply)
     // - 'valve': Flow controllers
     // - 'pump': Active movers (creates tank->pump flow)
+    // - 'heat_exchanger': Temperature modifiers (passive to flow)
     // - 'drain': Boundary sinks (infinite capacity)
     // - 'sensor': Monitors only
-    // 
+    //
     // NOTE: 'tank' is NOT in the list - tanks are passive
     // NOTE: 'pipe' is NOT in the list - pipes are visual only
-    const order = ['feed', 'valve', 'pump', 'drain', 'sensor'];
-    
+    const order = ['feed', 'valve', 'pump', 'heat_exchanger', 'drain', 'sensor'];
+
     for (const type of order) {
       const components = this.getComponentsByType(type);
-      
+
       for (const component of components) {
         if (!component.enabled) continue;
-        
+
         // Calculate output flow for this component
         const outputFlow = component.getOutputFlow();
-        
+
         // Distribute flow to all outputs
         if (component.outputs && component.outputs.length > 0) {
           const flowPerOutput = outputFlow / component.outputs.length;
-          
+
           for (const outputId of component.outputs) {
             this.setFlow(component.id, outputId, flowPerOutput);
           }
         }
       }
     }
-    
+
     // BOUNDARY HANDLING: Ensure boundary conditions are satisfied
     this._applyBoundaryConditions();
+
+    // PRESSURE CALCULATION: Calculate pressure at all nodes
+    this._calculatePressures();
   }
 
   /**
@@ -178,6 +182,105 @@ class FlowNetwork {
         // Flow successfully reaches drain
       }
     }
+  }
+
+  /**
+   * Calculate pressures at all nodes in the network
+   * Uses simplified hydrostatic and pump head calculations
+   */
+  _calculatePressures() {
+    // Clear existing pressures
+    this.pressures.clear();
+
+    // Constants
+    const P_atm = 1.01325; // bar (atmospheric pressure)
+    const rho = 1000; // kg/m³ (water density)
+    const g = 9.81; // m/s² (gravity)
+
+    // Start with feed pressures (boundary conditions)
+    const feeds = this.getComponentsByType('feed');
+    for (const feed of feeds) {
+      if (feed.enabled && feed.supplyPressure !== undefined) {
+        this.pressures.set(feed.id, feed.supplyPressure);
+      }
+    }
+
+    // Calculate tank bottom pressures (hydrostatic)
+    const tanks = this.getComponentsByType('tank');
+    for (const tank of tanks) {
+      const liquidHeight = tank.level * tank.maxHeight; // meters
+      const hydrostaticPressure_Pa = rho * g * liquidHeight;
+      const pressure_bar = P_atm + (hydrostaticPressure_Pa / 100000);
+      this.pressures.set(tank.id, pressure_bar);
+    }
+
+    // Calculate pump discharge pressures (adds pump head)
+    const pumps = this.getComponentsByType('pump');
+    for (const pump of pumps) {
+      if (!pump.running) {
+        // Pump off - pressure equals inlet
+        const inletPressure = this._getInletPressure(pump.id) || P_atm;
+        this.pressures.set(pump.id, inletPressure);
+        continue;
+      }
+
+      // Pump adds head: simplified as 10m per m³/s capacity
+      const inletPressure = this._getInletPressure(pump.id) || P_atm;
+      const pumpHead_m = pump.capacity * 10; // meters
+      const pumpPressure_Pa = pumpHead_m * rho * g;
+      const dischargePressure = inletPressure + (pumpPressure_Pa / 100000);
+      this.pressures.set(pump.id, dischargePressure);
+    }
+
+    // Propagate pressures through valves (with pressure drop)
+    const valves = this.getComponentsByType('valve');
+    for (const valve of valves) {
+      const inletPressure = this._getInletPressure(valve.id) || P_atm;
+
+      // Simplified pressure drop through valve
+      // dP = K * (1/2) * rho * v² where K depends on valve position
+      const flow = this.getOutputFlow(valve.id);
+      let pressureDrop = 0;
+
+      if (flow > 0.001 && valve.position < 0.95) {
+        // Resistance increases as valve closes
+        const K = 10 * (1 - valve.position); // Loss coefficient
+        const velocity = flow * 4; // Simplified: assume 0.25 m² area
+        const dynamicPressure_Pa = 0.5 * rho * velocity * velocity;
+        pressureDrop = (K * dynamicPressure_Pa) / 100000; // Convert to bar
+      }
+
+      this.pressures.set(valve.id, inletPressure - pressureDrop);
+    }
+
+    // Drain pressures (boundary conditions)
+    const drains = this.getComponentsByType('drain');
+    for (const drain of drains) {
+      if (drain.enabled && drain.ambientPressure !== undefined) {
+        this.pressures.set(drain.id, drain.ambientPressure);
+      }
+    }
+  }
+
+  /**
+   * Get inlet pressure for a component
+   */
+  _getInletPressure(componentId) {
+    const component = this.getComponent(componentId);
+    if (!component || !component.inputs || component.inputs.length === 0) {
+      return 1.01325; // Atmospheric
+    }
+
+    // Get pressure from first input component
+    const inputId = component.inputs[0];
+    return this.pressures.get(inputId) || 1.01325;
+  }
+
+  /**
+   * Get pressure at a component (bar)
+   */
+  getPressure(componentId) {
+    return this.pressures.get(componentId) || 1.01325; // Default to atmospheric
   }
 
   /**
