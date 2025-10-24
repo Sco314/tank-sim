@@ -98,9 +98,30 @@ class ProcessDesigner {
         
         // IMPORTANT: Preserve original styles, then scope IDs and classes
         const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
+        const scopedContent = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
-        symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
+        // Detect special grouping for artwork/labels (used by pumps so labels never mirror)
+        const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
+        const labelsRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-labels"[^>]*>[\\s\\S]*?<\/g>`, 'i');
+        const artworkMatch = scopedContent.match(artworkRegex);
+        const labelsMatch = scopedContent.match(labelsRegex);
+
+        let registryValue = meta.symbolId;
+
+        if (artworkMatch) {
+          const artworkSymbolId = `${meta.symbolId}-artwork`;
+          symbols.push(`<symbol id="${artworkSymbolId}" viewBox="${viewBox}">${artworkMatch[0]}</symbol>`);
+
+          registryValue = { artwork: artworkSymbolId };
+
+          if (labelsMatch) {
+            const labelsSymbolId = `${meta.symbolId}-labels`;
+            symbols.push(`<symbol id="${labelsSymbolId}" viewBox="${viewBox}">${labelsMatch[0]}</symbol>`);
+            registryValue.labels = labelsSymbolId;
+          }
+        } else {
+          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scopedContent}</symbol>`);
+        }
 
         // Parse and cache ports
         const ports = this._extractPortsFromSvg(svgText, viewBox);
@@ -109,7 +130,7 @@ class ProcessDesigner {
           console.log(`✅ Cached ${Object.keys(ports).length} ports for ${meta.type}:`, ports);
         }
 
-        this._symbolRegistry.set(meta.type, meta.symbolId);
+        this._symbolRegistry.set(meta.type, registryValue);
       } catch (e) {
         console.warn(`Failed to load SVG: ${assetPath}`, e);
       }
@@ -317,17 +338,32 @@ class ProcessDesigner {
    * Transform order: translate → orientation → scale
    */
   _getComponentTransform(comp) {
-    const orient = comp.config?.orientation || comp.orientation || 'R';
+    const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
     const scale = comp.config?.scale || 1.0;
 
-    const orientTransform = this._getOrientationTransform(orient);
+    let orientTransform = this._getOrientationTransform(orient);
     const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
+    let labelCompensation = null;
 
-    let innerTransforms = [orientTransform, scaleTransform].filter(t => t).join(' ');
+    const typeKey = String(comp.type || comp.key || '').toLowerCase();
+    if (typeKey.includes('pump')) {
+      if (orient === 'L') {
+        orientTransform = '';
+      } else if (orient === 'R') {
+        orientTransform = 'scale(-1, 1)';
+        labelCompensation = 'scale(-1, 1)';
+      }
+    }
+
+    const combined = [orientTransform, scaleTransform].filter(t => t).join(' ');
 
     return {
       outer: `translate(${comp.x}, ${comp.y})`,
-      inner: innerTransforms || null
+      inner: combined || null,
+      artwork: combined || null,
+      labels: combined || null,
+      labelComp: labelCompensation,
+      orientation: orient
     };
   }
 
@@ -576,26 +612,52 @@ class ProcessDesigner {
     g.classList.add('component');
     g.setAttribute('data-type', comp.type);
     g.setAttribute('transform', transforms.outer);
+    g.setAttribute('data-orientation', transforms.orientation || 'R');
 
-    // Inner group: orientation + scale (if needed)
-    const frame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    frame.classList.add('comp-frame');
-    if (transforms.inner) {
-      frame.setAttribute('transform', transforms.inner);
+    const createUse = (hrefId, className, extraTransform = null) => {
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${hrefId}`);
+      use.setAttribute('width', size.w);
+      use.setAttribute('height', size.h);
+      use.setAttribute('x', size.x);
+      use.setAttribute('y', size.y);
+      use.classList.add(className);
+      use.setAttribute('vector-effect', 'non-scaling-stroke');
+      if (extraTransform) {
+        use.setAttribute('transform', extraTransform);
+      }
+      return use;
+    };
+
+    if (symbolId && typeof symbolId === 'object') {
+      if (symbolId.artwork) {
+        const artFrame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        artFrame.classList.add('comp-frame');
+        if (transforms.artwork) {
+          artFrame.setAttribute('transform', transforms.artwork);
+        }
+        artFrame.appendChild(createUse(symbolId.artwork, 'comp-skin'));
+        g.appendChild(artFrame);
+      }
+
+      if (symbolId.labels) {
+        const labelFrame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        labelFrame.classList.add('comp-label-frame');
+        if (transforms.labels) {
+          labelFrame.setAttribute('transform', transforms.labels);
+        }
+        labelFrame.appendChild(createUse(symbolId.labels, 'comp-skin-label', transforms.labelComp));
+        g.appendChild(labelFrame);
+      }
+    } else {
+      const frame = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      frame.classList.add('comp-frame');
+      if (transforms.inner) {
+        frame.setAttribute('transform', transforms.inner);
+      }
+      frame.appendChild(createUse(symbolId, 'comp-skin'));
+      g.appendChild(frame);
     }
-
-    // SVG use element
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
-    use.setAttribute('width', size.w);
-    use.setAttribute('height', size.h);
-    use.setAttribute('x', size.x);
-    use.setAttribute('y', size.y);
-    use.classList.add('comp-skin');
-    use.setAttribute('vector-effect', 'non-scaling-stroke'); // Keep stroke width consistent
-
-    frame.appendChild(use);
-    g.appendChild(frame);
 
     // Add label text below component
     if (comp.label || comp.name) {
@@ -632,9 +694,18 @@ class ProcessDesigner {
 
       // Apply orientation transform
       const orient = String(comp.config?.orientation || comp.orientation || 'R').toUpperCase();
+      const typeKey = String(comp.type || comp.key || '').toLowerCase();
+      const isPump = typeKey.includes('pump');
       switch (orient) {
-        case 'L': // Flip horizontal
-          lx = -lx;
+        case 'L': // Flip horizontal (most components)
+          if (!isPump) {
+            lx = -lx;
+          }
+          break;
+        case 'R':
+          if (isPump) {
+            lx = -lx;
+          }
           break;
         case 'U': // Rotate -90° (up)
           [lx, ly] = [ly, -lx];
