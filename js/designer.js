@@ -107,13 +107,16 @@ class ProcessDesigner {
         const prefixed = this._prefixSvgIds(inner, meta.symbolId);
 
         // Scope classes BUT PRESERVE inline styles (fill, stroke, etc.)
-        const scoped = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
+        const scopedResult = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
+
+        // Define scopedContent properly - handle both string and object results
+        const scopedContent = scopedResult?.content ?? scopedResult ?? prefixed;
 
         // Detect special grouping for artwork/labels (used by pumps so labels never mirror)
         const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\\/g>`, 'i');
         const labelsRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-labels"[^>]*>[\\s\\S]*?<\\/g>`, 'i');
-        const artworkMatch = scoped.match(artworkRegex);
-        const labelsMatch = scoped.match(labelsRegex);
+        const artworkMatch = scopedContent.match(artworkRegex);
+        const labelsMatch = scopedContent.match(labelsRegex);
 
         let registryValue = meta.symbolId;
 
