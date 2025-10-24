@@ -21,15 +21,52 @@
   <aside class="library-panel">
     <div class="library-header">
       <h2>Components</h2>
-      <input 
-        type="text" 
-        id="searchComponents" 
+      <input
+        type="text"
+        id="searchComponents"
         placeholder="Search components..."
         class="search-input"
       >
     </div>
     <div class="library-content" id="componentPalette">
       <!-- Populated by designer.js -->
+    </div>
+
+    <!-- Sources Section (moved from toolbar) -->
+    <div class="component-category">
+      <div class="category-header" style="cursor: pointer;" id="sourcesExpander">
+        <span class="category-icon">💧</span>
+        <span class="category-name">Sources & Drains</span>
+      </div>
+      <div class="category-items" id="sourcesItems" style="display: none;">
+        <!-- Feed Sources -->
+        <div class="component-item" draggable="true" data-source-type="feed" data-visual="chemistry">
+          <span class="component-icon">🧪</span>
+          <span class="component-label">Feed (Chemistry)</span>
+        </div>
+        <div class="component-item" draggable="true" data-source-type="feed" data-visual="pumpjack">
+          <span class="component-icon">⛽</span>
+          <span class="component-label">Feed (Pumpjack)</span>
+        </div>
+        <div class="component-item" draggable="true" data-source-type="feed" data-visual="refinery">
+          <span class="component-icon">🏭</span>
+          <span class="component-label">Feed (Refinery)</span>
+        </div>
+
+        <!-- Drain Sinks -->
+        <div class="component-item" draggable="true" data-source-type="drain" data-visual="chemistry">
+          <span class="component-icon">🧪</span>
+          <span class="component-label">Drain (Chemistry)</span>
+        </div>
+        <div class="component-item" draggable="true" data-source-type="drain" data-visual="pumpjack">
+          <span class="component-icon">⛽</span>
+          <span class="component-label">Drain (Pumpjack)</span>
+        </div>
+        <div class="component-item" draggable="true" data-source-type="drain" data-visual="refinery">
+          <span class="component-icon">🏭</span>
+          <span class="component-label">Drain (Refinery)</span>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -42,9 +79,6 @@
         </button>
         <button id="connectTool" class="tool-btn" title="Connect Tool">
           <span>🔗</span> Connect
-        </button>
-        <button id="sourcesBtn" class="tool-btn" title="Add Source/Drain">
-          <span>💧</span> Sources
         </button>
       </div>
       
@@ -194,74 +228,6 @@
   </div>
 </div>
 
-<!-- Sources Modal -->
-<div id="sourcesModal" class="modal-overlay" style="display: none;" aria-hidden="true">
-  <div class="modal-container">
-    <button
-      id="sourcesModalClose"
-      class="modal-close"
-      aria-label="Close sources dialog"
-    >
-      ×
-    </button>
-
-    <div class="modal-header">
-      <h2>💧 Add Source or Drain</h2>
-    </div>
-
-    <div class="modal-body">
-      <p style="margin-bottom: 20px; color: var(--muted);">
-        Select the type of source or drain component you want to add to your design.
-      </p>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-        <!-- Feed Sources -->
-        <div style="grid-column: 1 / -1;">
-          <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">💧 Feed</h3>
-        </div>
-
-        <button class="source-variant-btn" data-type="feed" data-visual="chemistry">
-          <div class="source-icon">🧪</div>
-          <div class="source-label">Chemistry</div>
-        </button>
-
-        <button class="source-variant-btn" data-type="feed" data-visual="pumpjack">
-          <div class="source-icon">⛽</div>
-          <div class="source-label">Pumpjack</div>
-        </button>
-
-        <button class="source-variant-btn" data-type="feed" data-visual="refinery">
-          <div class="source-icon">🏭</div>
-          <div class="source-label">Refinery</div>
-        </button>
-
-        <!-- Drain Sinks -->
-        <div style="grid-column: 1 / -1; margin-top: 16px;">
-          <h3 style="color: var(--accent); margin-bottom: 12px; font-size: 16px;">🚰 Product (infinite drain)</h3>
-        </div>
-
-        <button class="source-variant-btn" data-type="drain" data-visual="chemistry">
-          <div class="source-icon">🧪</div>
-          <div class="source-label">Chemistry</div>
-        </button>
-
-        <button class="source-variant-btn" data-type="drain" data-visual="pumpjack">
-          <div class="source-icon">⛽</div>
-          <div class="source-label">Pumpjack</div>
-        </button>
-
-        <button class="source-variant-btn" data-type="drain" data-visual="refinery">
-          <div class="source-icon">🏭</div>
-          <div class="source-label">Refinery</div>
-        </button>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button id="sourcesCancelBtn" class="btn">Cancel</button>
-    </div>
-  </div>
-</div>
 
 <!-- Scripts -->
 <!-- JSZip for ZIP export support -->
@@ -407,69 +373,40 @@
   }
 </script>
 
-<!-- Sources Modal Handler -->
+<!-- Sources Section Handler -->
 <script>
   window.addEventListener('DOMContentLoaded', () => {
-    const sourcesBtn = document.getElementById('sourcesBtn');
-    const sourcesModal = document.getElementById('sourcesModal');
-    const sourcesModalClose = document.getElementById('sourcesModalClose');
-    const sourcesCancelBtn = document.getElementById('sourcesCancelBtn');
+    const sourcesExpander = document.getElementById('sourcesExpander');
+    const sourcesItems = document.getElementById('sourcesItems');
 
-    // Open sources modal
-    if (sourcesBtn) {
-      sourcesBtn.addEventListener('click', () => {
-        if (sourcesModal) {
-          sourcesModal.style.display = 'flex';
-          setTimeout(() => sourcesModal.classList.add('open'), 10);
-        }
+    // Toggle Sources section
+    if (sourcesExpander && sourcesItems) {
+      sourcesExpander.addEventListener('click', () => {
+        const isExpanded = sourcesItems.style.display !== 'none';
+        sourcesItems.style.display = isExpanded ? 'none' : 'block';
       });
+
+      // Expand by default
+      sourcesItems.style.display = 'block';
     }
 
-    // Close sources modal
-    const closeSourcesModal = () => {
-      if (sourcesModal) {
-        sourcesModal.classList.remove('open');
-        setTimeout(() => sourcesModal.style.display = 'none', 300);
-      }
-    };
+    // Setup drag handlers for source items
+    const sourceItems = document.querySelectorAll('[data-source-type]');
+    sourceItems.forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        const sourceType = item.dataset.sourceType;
+        const visual = item.dataset.visual;
 
-    if (sourcesModalClose) sourcesModalClose.addEventListener('click', closeSourcesModal);
-    if (sourcesCancelBtn) sourcesCancelBtn.addEventListener('click', closeSourcesModal);
+        // Set drag data
+        e.dataTransfer.setData('componentType', sourceType);
+        e.dataTransfer.setData('componentKey', sourceType);
+        e.dataTransfer.setData('visual', visual);
 
-    // Close on outside click
-    if (sourcesModal) {
-      sourcesModal.addEventListener('click', (e) => {
-        if (e.target === sourcesModal) closeSourcesModal();
-      });
-    }
-
-    // Handle source variant selection
-    const variantBtns = document.querySelectorAll('.source-variant-btn');
-    variantBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const type = btn.dataset.type;
-        const visual = btn.dataset.visual;
-
-        // Get canvas center position
-        const canvas = document.getElementById('canvas');
-        const viewBox = canvas.viewBox.baseVal;
-        const centerX = viewBox.x + viewBox.width / 2;
-        const centerY = viewBox.y + viewBox.height / 2;
-
-        // Add component with visual variant config
-        if (window.designer) {
-          window.designer.addComponent(type, centerX, centerY, {
-            config: { visual }
-          });
-          console.log(`Added ${type} with ${visual} visual variant`);
-        }
-
-        // Close modal
-        closeSourcesModal();
+        console.log(`Dragging ${sourceType} (${visual})`);
       });
     });
 
-    console.log('✅ Sources modal handler initialized');
+    console.log('✅ Sources section handler initialized');
   });
 </script>
 
