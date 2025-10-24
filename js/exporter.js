@@ -32,7 +32,7 @@
       U: 'assets/Valve-Icon-handle-up-01.svg',
       D: 'assets/Valve-Icon-handle-right-01.svg' // Will rotate 180°
     },
-    Tank: 'assets/Tankstoragevessel-01.svg',
+    Tank: 'assets/Tankstoragevessel-dynamic.svg',
     Pump: {
       L: 'assets/cent-pump-inlet-left-01.svg',
       R: 'assets/cent-pump-inlet-right-01.svg'
@@ -449,7 +449,8 @@
         'js/managers/ValveManager.js',
         'js/managers/PumpManager.js',
         'js/managers/TankManager.js',
-        'js/managers/PressureManager.js'
+        'js/managers/PressureManager.js',
+        'js/tank-controller.js'
       ];
 
       const code = [];
@@ -648,6 +649,31 @@ ${data.content}
       };
     }
 
+    /**
+     * Inline SVG content for a component (used for dynamic tanks)
+     * This is necessary because <use> creates shadow DOM that prevents ID access
+     */
+    _inlineSVGContent(symbolId, comp) {
+      const symbolData = this.symbolRegistry.get(symbolId);
+      if (!symbolData) return null;
+
+      // Get the raw SVG content from fetchedSVGs
+      for (const [assetPath, data] of this.symbolRegistry.entries()) {
+        if (data.symbolId === symbolData.symbolId || data === symbolData) {
+          const svgText = this.fetchedSVGs.get(assetPath);
+          if (!svgText) continue;
+
+          // Extract inner content and prefix IDs with component ID
+          const inner = this._extractSvgInner(svgText);
+          const prefixed = this._prefixSvgIds(inner, comp.id);
+          return prefixed;
+        }
+      }
+
+      // Fallback: use the content directly if available
+      return symbolData.content || null;
+    }
+
     _generateComponentSVG(comp) {
       const cleanId = this._sanitizeId(comp.id);
       const type = comp.type || 'Component';
@@ -662,7 +688,33 @@ ${data.content}
       const outerTransform = transforms.outer;
       const innerTransform = transforms.inner;
 
-      // Try symbol first
+      // Special handling for tanks - inline SVG instead of <use>
+      if (typeKey === 'tank') {
+        const orient = comp.config?.orientation || comp.orientation || 'R';
+        const assetPath = SVG_ASSETS.Tank;
+        const symbolData = this.symbolRegistry.get(assetPath);
+
+        if (symbolData) {
+          const inlineContent = this._inlineSVGContent(assetPath, comp);
+
+          if (inlineContent) {
+            const frameGroup = innerTransform
+              ? `<g class="comp-frame" transform="${innerTransform}">
+    ${inlineContent}
+  </g>`
+              : `<g class="comp-frame">
+    ${inlineContent}
+  </g>`;
+
+            return `<g id="${cleanId}" class="component ${this._escapeHtml(type)}" transform="${outerTransform}" data-orientation="${transforms.orientation}" data-type="tank" tabindex="0" role="button">
+  ${frameGroup}
+  <text class="label" x="0" y="${size.y + size.h + 20}" text-anchor="middle" font-size="12">${label}</text>
+</g>`;
+          }
+        }
+      }
+
+      // Try symbol first (for non-tank components)
       const orient = comp.config?.orientation || comp.orientation || 'R';
       const visual = comp.config?.visual; // For feed/drain variants
       const symbolData = this._getSymbolForComponent(type, orient, visual);
@@ -997,6 +1049,16 @@ ${this._generateGaugeController()}
     design.components.forEach(comp => {
       if (comp.type === 'analogGauge') {
         gaugeCtrl.initGauge(comp);
+      }
+    });
+
+    // Initialize tank levels
+    design.components.forEach(comp => {
+      if (comp.type === 'tank') {
+        const levelPercent = comp.config?.levelPercent ?? 75;
+        if (typeof window.updateTankLevel === 'function') {
+          window.updateTankLevel(comp.id, levelPercent);
+        }
       }
     });
 

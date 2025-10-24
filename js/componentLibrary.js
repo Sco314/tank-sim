@@ -121,23 +121,25 @@ const COMPONENT_LIBRARY = {
     type: 'tank',
     icon: '🛢️',
     color: '#8b5cf6',
-    description: 'Liquid storage tank',
+    description: 'Liquid storage tank with dynamic level display',
     image: 'https://sco314.github.io/tank-sim/assets/Tank-Icon-Transparent-bg.png',
-    svg: 'Tankstoragevessel-01.svg',
-    svgPath: 'assets/Tankstoragevessel-01.svg',
+    svg: 'Tankstoragevessel-dynamic.svg',
+    svgPath: 'assets/Tankstoragevessel-dynamic.svg',
     imageSize: { w: 320, h: 360, x: -160, y: -180 }, // 2x larger
     defaultConfig: {
       type: 'tank',
       capacity: 10,
       initialLevel: 2,
       maxLevel: 9.5,
+      levelPercent: 75,  // Visual fill level (0-100%)
       orientation: 'R',
       scale: 1.0
     },
     properties: [
       { name: 'capacity', label: 'Capacity (m³)', type: 'number', default: 10, min: 0.1, step: 0.1 },
       { name: 'initialLevel', label: 'Initial Level (m³)', type: 'number', default: 2, min: 0, step: 0.1 },
-      { name: 'maxLevel', label: 'Max Level (m³)', type: 'number', default: 9.5, min: 0, step: 0.1 }
+      { name: 'maxLevel', label: 'Max Level (m³)', type: 'number', default: 9.5, min: 0, step: 0.1 },
+      { name: 'levelPercent', label: 'Fill Level (%)', type: 'number', default: 75, min: 0, max: 100, step: 1 }
     ],
     connectionPoints: [
       { id: 'cp_top', name: 'top', type: 'input', x: 0, y: -180 },
