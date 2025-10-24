@@ -1,6 +1,11 @@
 /**
- * designer.js V3.1 - Process Simulator Designer
+ * designer.js V3.2 - Process Simulator Designer
  * FIXES:
+ * - ✅ Fixed SVG loading (scoped variable properly defined)
+ * - ✅ Fail-fast validation if no symbols load
+ * - ✅ Feed/Product dropdowns in Boundary section
+ * - ✅ Unified sidebar (single scrollable panel)
+ * - ✅ Full drag-and-drop support with visual variants
  * - ✅ Improved style preservation (fixes grey valve body appearing white)
  * - ✅ Better SVG class scoping to prevent style bleed
  * - ✅ Consistent SVG path resolution with exporter
@@ -8,6 +13,8 @@
  * - ✅ Parses and stores ports from SVGs
  * - ✅ Centers components properly for port alignment
  */
+
+console.log('🔧 Loading designer.js v3.2...');
 
 class ProcessDesigner {
   constructor(canvasId, options = {}) {
@@ -140,6 +147,14 @@ class ProcessDesigner {
 
     defsEl.innerHTML = symbols.join('\n');
     console.log(`✅ Built sprite with ${symbols.length} symbols`);
+
+    // Fail-fast if no symbols loaded
+    if (symbols.length === 0) {
+      const errorMsg = '❌ CRITICAL: No SVG symbols loaded! Designer cannot function. Check SVG paths and network.';
+      console.error(errorMsg);
+      alert(errorMsg);
+      throw new Error('SVG sprite build failed - no symbols loaded');
+    }
   }
 
   /**
@@ -1439,5 +1454,5 @@ window.addEventListener('DOMContentLoaded', () => {
     baseUrl: 'https://sco314.github.io/tank-sim/'
   });
   window.designer = designer; // Make globally accessible
-  console.log('✅ Designer v3.1 ready - Style preservation improved');
+  console.log('✅ Designer v3.2 ready - Full drag-and-drop enabled');
 });
