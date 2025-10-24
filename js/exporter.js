@@ -34,12 +34,12 @@
     },
     Tank: 'assets/Tankstoragevessel-dynamic.svg',
     Pump: {
-      L: 'assets/cent-pump-inlet-left-01.svg',
-      R: 'assets/cent-pump-inlet-right-01.svg'
+      L: 'assets/centpump.svg',
+      R: 'assets/centpump.svg'
     },
     PumpFixed: {
-      L: 'assets/cent-pump-inlet-left-01.svg',
-      R: 'assets/cent-pump-inlet-right-01.svg'
+      L: 'assets/centpump.svg',
+      R: 'assets/centpump.svg'
     },
     PumpVariable: 'assets/pumpVariable.svg',
     Pump3Speed: 'assets/pump3speed.svg',

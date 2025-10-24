@@ -158,8 +158,8 @@ const COMPONENT_LIBRARY = {
     color: '#ec4899',
     description: 'ON/OFF pump (100% when running)',
     image: 'https://sco314.github.io/tank-sim/cent-pump-9-inlet-left.png',
-    svg: 'cent-pump-inlet-left-01.svg',
-    svgPath: 'assets/cent-pump-inlet-left-01.svg',
+    svg: 'centpump.svg',
+    svgPath: 'assets/centpump.svg',
     imageSize: { w: 120, h: 120, x: -60, y: -60 },
     defaultConfig: {
       type: 'pumpFixed',
@@ -180,16 +180,16 @@ const COMPONENT_LIBRARY = {
     ],
     variants: {
       left: {
-        svg: 'cent-pump-inlet-left-01.svg',
-        svgPath: 'assets/cent-pump-inlet-left-01.svg',
+        svg: 'centpump.svg',
+        svgPath: 'assets/centpump.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: -60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: 60, y: 0 }
         ]
       },
       right: {
-        svg: 'cent-pump-inlet-right-01.svg',
-        svgPath: 'assets/cent-pump-inlet-right-01.svg',
+        svg: 'centpump.svg',
+        svgPath: 'assets/centpump.svg',
         connectionPoints: [
           { id: 'cp_inlet', name: 'inlet', type: 'input', x: 60, y: 0 },
           { id: 'cp_outlet', name: 'outlet', type: 'output', x: -60, y: 0 }
