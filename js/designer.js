@@ -95,16 +95,12 @@ class ProcessDesigner {
         const svgText = await res.text();
         const viewBox = (svgText.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 100 100';
         const inner = this._extractSvgInner(svgText);
-        
-        // IMPORTANT: Preserve original styles, then scope IDs and classes
-        const prefixed = this._prefixSvgIds(inner, meta.symbolId);
-        const scopedContent = this._scopeSvgStylesPreserving(prefixed, meta.symbolId);
 
         // Detect special grouping for artwork/labels (used by pumps so labels never mirror)
         const artworkRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
         const labelsRegex = new RegExp(`<g[^>]*id="${meta.symbolId}-labels"[^>]*>[\\s\\S]*?<\/g>`, 'i');
-        const artworkMatch = scopedContent.match(artworkRegex);
-        const labelsMatch = scopedContent.match(labelsRegex);
+        const artworkMatch = scoped.match(artworkRegex);
+        const labelsMatch = scoped.match(labelsRegex);
 
         let registryValue = meta.symbolId;
 
@@ -120,7 +116,7 @@ class ProcessDesigner {
             registryValue.labels = labelsSymbolId;
           }
         } else {
-          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scopedContent}</symbol>`);
+          symbols.push(`<symbol id="${meta.symbolId}" viewBox="${viewBox}">${scoped}</symbol>`);
         }
 
         // Parse and cache ports
@@ -355,14 +351,23 @@ class ProcessDesigner {
       }
     }
 
+    const typeKey = String(comp.type || comp.key || '').toLowerCase();
+    if (typeKey.includes('pump')) {
+      if (orient === 'L') {
+        orientTransform = '';
+      } else if (orient === 'R') {
+        orientTransform = 'scale(-1, 1)';
+      }
+    }
+
     const combined = [orientTransform, scaleTransform].filter(t => t).join(' ');
+    const labelOnly = [scaleTransform].filter(t => t).join(' ');
 
     return {
       outer: `translate(${comp.x}, ${comp.y})`,
       inner: combined || null,
       artwork: combined || null,
-      labels: combined || null,
-      labelComp: labelCompensation,
+      labels: labelOnly || null,
       orientation: orient
     };
   }
@@ -611,10 +616,11 @@ class ProcessDesigner {
     g.id = comp.id;
     g.classList.add('component');
     g.setAttribute('data-type', comp.type);
+    g.setAttribute('data-orientation', comp.config?.orientation || comp.orientation || 'L');
     g.setAttribute('transform', transforms.outer);
     g.setAttribute('data-orientation', transforms.orientation || 'R');
 
-    const createUse = (hrefId, className, extraTransform = null) => {
+    const createUse = (hrefId, className) => {
       const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
       use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${hrefId}`);
       use.setAttribute('width', size.w);
@@ -623,9 +629,6 @@ class ProcessDesigner {
       use.setAttribute('y', size.y);
       use.classList.add(className);
       use.setAttribute('vector-effect', 'non-scaling-stroke');
-      if (extraTransform) {
-        use.setAttribute('transform', extraTransform);
-      }
       return use;
     };
 
@@ -646,7 +649,7 @@ class ProcessDesigner {
         if (transforms.labels) {
           labelFrame.setAttribute('transform', transforms.labels);
         }
-        labelFrame.appendChild(createUse(symbolId.labels, 'comp-skin-label', transforms.labelComp));
+        labelFrame.appendChild(createUse(symbolId.labels, 'comp-skin-label'));
         g.appendChild(labelFrame);
       }
     } else {
@@ -897,7 +900,8 @@ class ProcessDesigner {
     const lib = window.COMPONENT_LIBRARY || {};
     const def = lib[comp.key] || {};
 
-    const currentOrient = comp.config?.orientation || comp.orientation || 'R';
+    // Read actual orientation from component (no default - should always have a value)
+    const currentOrient = comp.config?.orientation || comp.orientation || 'L';
     const currentScale = comp.config?.scale || 1.0;
     const scalePercent = Math.round(currentScale * 100);
 

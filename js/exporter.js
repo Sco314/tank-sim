@@ -297,12 +297,12 @@
         const prefixed = this._prefixSvgIds(inner, symbolId);
 
         // Scope classes BUT PRESERVE inline styles (fill, stroke, etc.)
-        const scopedContent = this._scopeSvgStylesPreserving(prefixed, symbolId);
+        const scoped = this._scopeSvgStylesPreserving(prefixed, symbolId);
 
         const artworkRegex = new RegExp(`<g[^>]*id="${symbolId}-artwork"[^>]*>[\\s\\S]*?<\/g>`, 'i');
         const labelsRegex = new RegExp(`<g[^>]*id="${symbolId}-labels"[^>]*>[\\s\\S]*?<\/g>`, 'i');
-        const artworkMatch = scopedContent.match(artworkRegex);
-        const labelsMatch = scopedContent.match(labelsRegex);
+        const artworkMatch = scoped.match(artworkRegex);
+        const labelsMatch = scoped.match(labelsRegex);
 
         const record = {
           symbolId,
@@ -317,7 +317,7 @@
             record.labels = { id: `${symbolId}-labels`, content: labelsMatch[0] };
           }
         } else {
-          record.content = scopedContent;
+          record.content = scoped;
         }
 
         this.symbolRegistry.set(assetPath, record);
@@ -637,14 +637,23 @@ ${data.content}
         }
       }
 
+      const typeKey = String(comp.type || '').toLowerCase();
+      if (typeKey.includes('pump')) {
+        if (orient === 'L') {
+          orientTransform = '';
+        } else if (orient === 'R') {
+          orientTransform = 'scale(-1, 1)';
+        }
+      }
+
       const combined = [orientTransform, scaleTransform].filter(t => t).join(' ');
+      const labelOnly = [scaleTransform].filter(t => t).join(' ');
 
       return {
         outer: `translate(${comp.x|0}, ${comp.y|0})`,
         inner: combined || null,
         artwork: combined || null,
-        labels: combined || null,
-        labelComp: labelCompensation,
+        labels: labelOnly || null,
         orientation: orient
       };
     }
@@ -668,10 +677,7 @@ ${data.content}
       const visual = comp.config?.visual; // For feed/drain variants
       const symbolData = this._getSymbolForComponent(type, orient, visual);
       if (symbolData) {
-        const createUse = (hrefId, className, extraTransform = null) => {
-          const transformAttr = extraTransform ? ` transform="${extraTransform}"` : '';
-          return `    <use href="#${hrefId}" class="${className}" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}"${transformAttr} />`;
-        };
+        const createUse = (hrefId, className) => `    <use href="#${hrefId}" class="${className}" vector-effect="non-scaling-stroke" width="${size.w}" height="${size.h}" x="${size.x}" y="${size.y}" />`;
 
         let frames = '';
 
@@ -686,7 +692,7 @@ ${createUse(symbolData.artwork.id, 'comp-skin')}
           const labelTransform = transforms.labels ? ` transform="${transforms.labels}"` : '';
           frames += `
   <g class="comp-label-frame"${labelTransform}>
-${createUse(symbolData.labels.id, 'comp-skin-label', transforms.labelComp)}
+${createUse(symbolData.labels.id, 'comp-skin-label')}
   </g>`;
         }
 
