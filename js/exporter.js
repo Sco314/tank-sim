@@ -625,6 +625,17 @@ ${data.content}
 
       let orientTransform = this._getOrientationTransform(orient);
       const scaleTransform = scale !== 1.0 ? `scale(${scale})` : '';
+      let labelCompensation = null;
+
+      const typeKey = String(comp.type || '').toLowerCase();
+      if (typeKey.includes('pump')) {
+        if (orient === 'L') {
+          orientTransform = '';
+        } else if (orient === 'R') {
+          orientTransform = 'scale(-1, 1)';
+          labelCompensation = 'scale(-1, 1)';
+        }
+      }
 
       const typeKey = String(comp.type || '').toLowerCase();
       if (typeKey.includes('pump')) {
